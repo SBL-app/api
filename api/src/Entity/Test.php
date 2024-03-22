@@ -3,12 +3,12 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
-use App\Repository\DivisionRepository;
+use App\Repository\TestRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: DivisionRepository::class)]
+#[ORM\Entity(repositoryClass: TestRepository::class)]
 #[ApiResource]
-class Division
+class Test
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -18,8 +18,8 @@ class Division
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
-    #[ORM\ManyToOne(inversedBy: 'divisions')]
-    private ?season $seasonID = null;
+    #[ORM\Column]
+    private ?int $age = null;
 
     public function getId(): ?int
     {
@@ -38,14 +38,14 @@ class Division
         return $this;
     }
 
-    public function getSeasonID(): ?season
+    public function getAge(): ?int
     {
-        return $this->seasonID;
+        return $this->age;
     }
 
-    public function setSeasonID(?season $seasonID): static
+    public function setAge(int $age): static
     {
-        $this->seasonID = $seasonID;
+        $this->age = $age;
 
         return $this;
     }

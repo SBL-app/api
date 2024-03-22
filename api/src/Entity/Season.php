@@ -11,7 +11,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ApiResource]
 #[ORM\Entity(repositoryClass: SeasonsRepository::class)]
-class Seasons
+class Season
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
