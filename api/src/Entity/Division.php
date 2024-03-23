@@ -19,7 +19,7 @@ class Division
     private ?string $name = null;
 
     #[ORM\ManyToOne(inversedBy: 'divisions')]
-    private ?season $seasonID = null;
+    private ?Season $seasonID = null;
 
     public function getId(): ?int
     {
@@ -38,12 +38,12 @@ class Division
         return $this;
     }
 
-    public function getSeasonID(): ?season
+    public function getSeasonID(): ?Season
     {
         return $this->seasonID;
     }
 
-    public function setSeasonID(?season $seasonID): static
+    public function setSeasonID(?Season $seasonID): static
     {
         $this->seasonID = $seasonID;
 
