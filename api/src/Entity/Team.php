@@ -17,6 +17,9 @@ class Team
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\Column(length: 255)]
+    private ?string $name = null;
+
     #[ORM\OneToMany(mappedBy: 'teamID', targetEntity: Member::class)]
     private Collection $members;
 
@@ -71,6 +74,18 @@ class Team
     public function setCapitainID(?Member $capitainID): static
     {
         $this->capitainID = $capitainID;
+
+        return $this;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): static
+    {
+        $this->name = $name;
 
         return $this;
     }
