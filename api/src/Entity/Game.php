@@ -4,6 +4,8 @@ namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
 use App\Repository\GameRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -33,6 +35,14 @@ class Game
 
     #[ORM\ManyToOne]
     private ?MatchStatus $status = null;
+
+    #[ORM\ManyToMany(targetEntity: Team::class, inversedBy: 'games')]
+    private Collection $teamID;
+
+    public function __construct()
+    {
+        $this->teamID = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -107,6 +117,30 @@ class Game
     public function setStatus(?MatchStatus $status): static
     {
         $this->status = $status;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Team>
+     */
+    public function getTeamID(): Collection
+    {
+        return $this->teamID;
+    }
+
+    public function addTeamID(Team $teamID): static
+    {
+        if (!$this->teamID->contains($teamID)) {
+            $this->teamID->add($teamID);
+        }
+
+        return $this;
+    }
+
+    public function removeTeamID(Team $teamID): static
+    {
+        $this->teamID->removeElement($teamID);
 
         return $this;
     }
