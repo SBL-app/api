@@ -26,9 +26,13 @@ class Team
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     private ?Member $capitainID = null;
 
+    #[ORM\OneToMany(mappedBy: 'teamID', targetEntity: TeamsStat::class)]
+    private Collection $teamsStats;
+
     public function __construct()
     {
         $this->members = new ArrayCollection();
+        $this->teamsStats = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -86,6 +90,36 @@ class Team
     public function setName(string $name): static
     {
         $this->name = $name;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, TeamsStat>
+     */
+    public function getTeamsStats(): Collection
+    {
+        return $this->teamsStats;
+    }
+
+    public function addTeamsStat(TeamsStat $teamsStat): static
+    {
+        if (!$this->teamsStats->contains($teamsStat)) {
+            $this->teamsStats->add($teamsStat);
+            $teamsStat->setTeamID($this);
+        }
+
+        return $this;
+    }
+
+    public function removeTeamsStat(TeamsStat $teamsStat): static
+    {
+        if ($this->teamsStats->removeElement($teamsStat)) {
+            // set the owning side to null (unless already changed)
+            if ($teamsStat->getTeamID() === $this) {
+                $teamsStat->setTeamID(null);
+            }
+        }
 
         return $this;
     }

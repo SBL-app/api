@@ -4,6 +4,8 @@ namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
 use App\Repository\DivisionRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: DivisionRepository::class)]
@@ -20,6 +22,14 @@ class Division
 
     #[ORM\ManyToOne(inversedBy: 'divisions')]
     private ?Season $seasonID = null;
+
+    #[ORM\OneToMany(mappedBy: 'divisionID', targetEntity: TeamsStat::class)]
+    private Collection $teamsStats;
+
+    public function __construct()
+    {
+        $this->teamsStats = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -46,6 +56,36 @@ class Division
     public function setSeasonID(?Season $seasonID): static
     {
         $this->seasonID = $seasonID;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, TeamsStat>
+     */
+    public function getTeamsStats(): Collection
+    {
+        return $this->teamsStats;
+    }
+
+    public function addTeamsStat(TeamsStat $teamsStat): static
+    {
+        if (!$this->teamsStats->contains($teamsStat)) {
+            $this->teamsStats->add($teamsStat);
+            $teamsStat->setDivisionID($this);
+        }
+
+        return $this;
+    }
+
+    public function removeTeamsStat(TeamsStat $teamsStat): static
+    {
+        if ($this->teamsStats->removeElement($teamsStat)) {
+            // set the owning side to null (unless already changed)
+            if ($teamsStat->getDivisionID() === $this) {
+                $teamsStat->setDivisionID(null);
+            }
+        }
 
         return $this;
     }
