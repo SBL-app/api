@@ -16,12 +16,6 @@ class Game
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'games')]
-    private ?Team $team1 = null;
-
-    #[ORM\ManyToOne(inversedBy: 'games')]
-    private ?Team $team2 = null;
-
     #[ORM\Column(nullable: true)]
     private ?int $winner = null;
 
@@ -43,30 +37,6 @@ class Game
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getTeam1(): ?Team
-    {
-        return $this->team1;
-    }
-
-    public function setTeam1(?Team $team1): static
-    {
-        $this->team1 = $team1;
-
-        return $this;
-    }
-
-    public function getTeam2(): ?Team
-    {
-        return $this->team2;
-    }
-
-    public function setTeam2(?Team $team2): static
-    {
-        $this->team2 = $team2;
-
-        return $this;
     }
 
     public function getWinner(): ?int
