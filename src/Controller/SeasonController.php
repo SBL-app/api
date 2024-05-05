@@ -20,8 +20,8 @@ class SeasonController extends AbstractController
             return [
                 'id' => $season->getId(),
                 'name' => $season->getName(),
-                'start_date' => $season->getStartDate()->format('Y-m-d'),
-                'end_date' => $season->getEndDate()->format('Y-m-d')
+                'start_date' => $season->getStartDate()->format('d-m-Y'),
+                'end_date' => $season->getEndDate()->format('d-m-Y')
             ];
         }, $seasons);
         return $this->json($data);
@@ -33,8 +33,8 @@ class SeasonController extends AbstractController
         return $this->json([
             'id' => $season->getId(),
             'name' => $season->getName(),
-            'start_date' => $season->getStartDate()->format('Y-m-d'),
-            'end_date' => $season->getEndDate()->format('Y-m-d')
+            'start_date' => $season->getStartDate()->format('d-m-Y'),
+            'end_date' => $season->getEndDate()->format('d-m-Y')
         ]);
     }
 
@@ -50,8 +50,8 @@ class SeasonController extends AbstractController
         return $this->json([
             'id' => $season->getId(),
             'name' => $season->getName(),
-            'start_date' => $season->getStartDate()->format('Y-m-d'),
-            'end_date' => $season->getEndDate()->format('Y-m-d')
+            'start_date' => $season->getStartDate()->format('d-m-Y'),
+            'end_date' => $season->getEndDate()->format('d-m-Y')
         ]);
     }
 
@@ -66,8 +66,8 @@ class SeasonController extends AbstractController
         return $this->json([
             'id' => $season->getId(),
             'name' => $season->getName(),
-            'start_date' => $season->getStartDate()->format('Y-m-d'),
-            'end_date' => $season->getEndDate()->format('Y-m-d')
+            'start_date' => $season->getStartDate()->format('d-m-Y'),
+            'end_date' => $season->getEndDate()->format('d-m-Y')
         ]);
     }
 
@@ -88,8 +88,8 @@ class SeasonController extends AbstractController
         return $this->json([
             'id' => $season->getId(),
             'name' => $season->getName(),
-            'start_date' => $season->getStartDate()->format('Y-m-d'),
-            'end_date' => $season->getEndDate()->format('Y-m-d')
+            'start_date' => $season->getStartDate()->format('d-m-Y'),
+            'end_date' => $season->getEndDate()->format('d-m-Y')
         ]);
     }
 
