@@ -39,6 +39,10 @@ class Game
     #[ORM\JoinColumn(nullable: false)]
     private ?GameStatus $status = null;
 
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Division $divisionId = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -136,6 +140,18 @@ class Game
     public function setStatus(?GameStatus $status): static
     {
         $this->status = $status;
+
+        return $this;
+    }
+
+    public function getDivisionId(): ?Division
+    {
+        return $this->divisionId;
+    }
+
+    public function setDivisionId(?Division $divisionId): static
+    {
+        $this->divisionId = $divisionId;
 
         return $this;
     }
