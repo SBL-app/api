@@ -19,7 +19,8 @@ class TeamController extends AbstractController
         $data = array_map(function ($team) {
             return [
                 'id' => $team->getId(),
-                'name' => $team->getName()
+                'name' => $team->getName(),
+                'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
             ];
         }, $teams);
         return $this->json($data);
@@ -30,7 +31,8 @@ class TeamController extends AbstractController
     {
         return $this->json([
             'id' => $team->getId(),
-            'name' => $team->getName()
+            'name' => $team->getName(),
+            'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
         ]);
     }
     
@@ -39,11 +41,13 @@ class TeamController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $team->setName($data['name']);
+        $team->setCapitain($data['capitain']);
         $em->persist($team);
         $em->flush();
         return $this->json([
             'id' => $team->getId(),
-            'name' => $team->getName()
+            'name' => $team->getName(),
+            'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
         ]);
     }
 
@@ -52,11 +56,13 @@ class TeamController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $team->setName($data['name']);
+        $team->setCapitain($data['capitain']);
         $em->persist($team);
         $em->flush();
         return $this->json([
             'id' => $team->getId(),
-            'name' => $team->getName()
+            'name' => $team->getName(),
+            'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
         ]);
     }
 
@@ -67,11 +73,15 @@ class TeamController extends AbstractController
         if (isset($data['name'])) {
             $team->setName($data['name']);
         }
+        if (isset($data['capitain'])) {
+            $team->setCapitain($data['capitain']);
+        }
         $em->persist($team);
         $em->flush();
         return $this->json([
             'id' => $team->getId(),
-            'name' => $team->getName()
+            'name' => $team->getName(),
+            'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
         ]);
     }
 
