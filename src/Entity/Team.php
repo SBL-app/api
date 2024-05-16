@@ -17,7 +17,7 @@ class Team
     private ?string $name = null;
 
     #[ORM\ManyToOne]
-    private ?Player $capitainId = null;
+    private ?Player $capitain = null;
 
     public function getId(): ?int
     {
@@ -36,14 +36,14 @@ class Team
         return $this;
     }
 
-    public function getCapitainId(): ?Player
+    public function getCapitain(): ?Player
     {
-        return $this->capitainId;
+        return $this->capitain;
     }
 
-    public function setCapitainId(?Player $capitainId): static
+    public function setCapitain(?Player $capitainId): static
     {
-        $this->capitainId = $capitainId;
+        $this->capitain = $capitainId;
 
         return $this;
     }

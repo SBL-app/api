@@ -41,7 +41,7 @@ class Game
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?Division $divisionId = null;
+    private ?Division $division = null;
 
     public function getId(): ?int
     {
@@ -144,14 +144,14 @@ class Game
         return $this;
     }
 
-    public function getDivisionId(): ?Division
+    public function getDivision(): ?Division
     {
-        return $this->divisionId;
+        return $this->division;
     }
 
-    public function setDivisionId(?Division $divisionId): static
+    public function setDivision(?Division $divisionId): static
     {
-        $this->divisionId = $divisionId;
+        $this->division = $divisionId;
 
         return $this;
     }

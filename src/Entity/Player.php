@@ -20,7 +20,7 @@ class Player
     private ?string $discord = null;
 
     #[ORM\ManyToOne]
-    private ?Team $teamId = null;
+    private ?Team $team = null;
 
     public function getId(): ?int
     {
@@ -51,14 +51,14 @@ class Player
         return $this;
     }
 
-    public function getTeamId(): ?Team
+    public function getTeam(): ?Team
     {
-        return $this->teamId;
+        return $this->team;
     }
 
-    public function setTeamId(?Team $teamId): static
+    public function setTeam(?Team $teamId): static
     {
-        $this->teamId = $teamId;
+        $this->team = $teamId;
 
         return $this;
     }

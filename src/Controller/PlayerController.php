@@ -34,7 +34,7 @@ class PlayerController extends AbstractController
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeamId()
+            'team' => $player->getTeam()
         ]);
     }
 
@@ -44,14 +44,14 @@ class PlayerController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $player->setName($data['name']);
         $player->setDiscord($data['discord']);
-        $player->setTeamId($data['team']);
+        $player->setTeam($data['team']);
         $em->persist($player);
         $em->flush();
         return $this->json([
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeamId()
+            'team' => $player->getTeam()
         ]);
     }
 
@@ -61,14 +61,14 @@ class PlayerController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $player->setName($data['name']);
         $player->setDiscord($data['discord']);
-        $player->setTeamId($data['team']);
+        $player->setTeam($data['team']);
         $em->persist($player);
         $em->flush();
         return $this->json([
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeamId()
+            'team' => $player->getTeam()
         ]);
     }
 
@@ -83,7 +83,7 @@ class PlayerController extends AbstractController
             $player->setDiscord($data['discord']);
         }
         if (isset($data['team'])) {
-            $player->setTeamId($data['team']);
+            $player->setTeam($data['team']);
         }
         $em->persist($player);
         $em->flush();
@@ -91,7 +91,7 @@ class PlayerController extends AbstractController
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeamId()
+            'team' => $player->getTeam()
         ]);
     }
 

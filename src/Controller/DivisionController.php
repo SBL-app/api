@@ -32,7 +32,7 @@ class DivisionController extends AbstractController
         return $this->json([
             'id' => $division->getId(),
             'name' => $division->getName(),
-            'season' => $division->getSeasonId()
+            'season' => $division->getSeason()
         ]);
     }
 
@@ -41,13 +41,13 @@ class DivisionController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $division->setName($data['name']);
-        $division->setSeasonId($data['season']);
+        $division->setSeason($data['season']);
         $em->persist($division);
         $em->flush();
         return $this->json([
             'id' => $division->getId(),
             'name' => $division->getName(),
-            'season' => $division->getSeasonId()
+            'season' => $division->getSeason()
         ]);
     }
 
@@ -56,13 +56,13 @@ class DivisionController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $division->setName($data['name']);
-        $division->setSeasonId($data['season']);
+        $division->setSeason($data['season']);
         $em->persist($division);
         $em->flush();
         return $this->json([
             'id' => $division->getId(),
             'name' => $division->getName(),
-            'season' => $division->getSeasonId()
+            'season' => $division->getSeason()
         ]);
     }
 
@@ -74,14 +74,14 @@ class DivisionController extends AbstractController
             $division->setName($data['name']);
         }
         if (isset($data['season'])) {
-            $division->setSeasonId($data['season']);
+            $division->setSeason($data['season']);
         }
         $em->persist($division);
         $em->flush();
         return $this->json([
             'id' => $division->getId(),
             'name' => $division->getName(),
-            'season' => $division->getSeasonId()
+            'season' => $division->getSeason()
         ]);
     }
 

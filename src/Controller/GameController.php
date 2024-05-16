@@ -46,7 +46,7 @@ class GameController extends AbstractController
             'score2' => $game->getScore2(),
             'winner' => $game->getWinner(),
             'status' => $game->getStatus()->getName(),
-            'division' => $game->getDivisionId()->getName()
+            'division' => $game->getDivision()->getName()
         ]);
     }
 
@@ -83,7 +83,7 @@ class GameController extends AbstractController
         $game->setScore2($data['score2']);
         $game->setWinner($data['winner']);
         $game->setStatus($data['status']);
-        $game->setDivisionId($data['division']);
+        $game->setDivision($data['division']);
         $em->persist($game);
         $em->flush();
         return $this->json([
@@ -96,7 +96,7 @@ class GameController extends AbstractController
             'score2' => $game->getScore2(),
             'winner' => $game->getWinner(),
             'status' => $game->getStatus()->getName(),
-            'division' => $game->getDivisionId()->getName()
+            'division' => $game->getDivision()->getName()
         ]);
     }
 
@@ -112,7 +112,7 @@ class GameController extends AbstractController
         $game->setScore2($data['score2']);
         $game->setWinner($data['winner']);
         $game->setStatus($data['status']);
-        $game->setDivisionId($data['division']);
+        $game->setDivision($data['division']);
         $em->flush();
         return $this->json([
             'id' => $game->getId(),
@@ -124,7 +124,7 @@ class GameController extends AbstractController
             'score2' => $game->getScore2(),
             'winner' => $game->getWinner(),
             'status' => $game->getStatus()->getName(),
-            'division' => $game->getDivisionId()->getName()
+            'division' => $game->getDivision()->getName()
         ]);
     }
 
@@ -157,7 +157,7 @@ class GameController extends AbstractController
             $game->setStatus($data['status']);
         }
         if (isset($data['division'])) {
-            $game->setDivisionId($data['division']);
+            $game->setDivision($data['division']);
         }
         $em->flush();
         return $this->json([
@@ -170,7 +170,7 @@ class GameController extends AbstractController
             'score2' => $game->getScore2(),
             'winner' => $game->getWinner(),
             'status' => $game->getStatus()->getName(),
-            'division' => $game->getDivisionId()->getName()
+            'division' => $game->getDivision()->getName()
         ]);
     }
 
