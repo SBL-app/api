@@ -16,8 +16,8 @@ class TeamStatController extends AbstractController
         $data = array_map(function ($teamStat) {
             return [
                 'id' => $teamStat->getId(),
-                'team_id' => $teamStat->getTeamId(),
-                'division_id' => $teamStat->getDivisionId(),
+                'team_id' => $teamStat->getTeam(),
+                'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses()
             ];
@@ -32,8 +32,8 @@ class TeamStatController extends AbstractController
         $data = array_map(function ($teamStat) {
             return [
                 'id' => $teamStat->getId(),
-                'team_id' => $teamStat->getTeamId(),
-                'division_id' => $teamStat->getDivisionId(),
+                'team_id' => $teamStat->getTeam(),
+                'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses()
             ];
@@ -48,8 +48,8 @@ class TeamStatController extends AbstractController
         $data = array_map(function ($teamStat) {
             return [
                 'id' => $teamStat->getId(),
-                'team_id' => $teamStat->getTeamId(),
-                'division_id' => $teamStat->getDivisionId(),
+                'team_id' => $teamStat->getTeam(),
+                'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses()
             ];
@@ -64,8 +64,8 @@ class TeamStatController extends AbstractController
         $data = array_map(function ($teamStat) {
             return [
                 'id' => $teamStat->getId(),
-                'team_id' => $teamStat->getTeamId(),
-                'division_id' => $teamStat->getDivisionId(),
+                'team_id' => $teamStat->getTeam(),
+                'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses()
             ];
@@ -81,8 +81,8 @@ class TeamStatController extends AbstractController
         $data = array_map(function ($teamStat) {
             return [
                 'id' => $teamStat->getId(),
-                'team_id' => $teamStat->getTeamId(),
-                'division_id' => $teamStat->getDivisionId(),
+                'team_id' => $teamStat->getTeam(),
+                'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses()
             ];

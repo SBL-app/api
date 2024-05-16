@@ -21,11 +21,11 @@ class TeamStat
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?Team $teamId = null;
+    private ?Team $team = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?Division $divisionId = null;
+    private ?Division $division = null;
 
     public function getId(): ?int
     {
@@ -56,26 +56,26 @@ class TeamStat
         return $this;
     }
 
-    public function getTeamId(): ?Team
+    public function getTeam(): ?Team
     {
-        return $this->teamId;
+        return $this->team;
     }
 
-    public function setTeamId(?Team $teamId): static
+    public function setTeam(?Team $teamId): static
     {
-        $this->teamId = $teamId;
+        $this->team = $teamId;
 
         return $this;
     }
 
-    public function getDivisionId(): ?Division
+    public function getDivision(): ?Division
     {
-        return $this->divisionId;
+        return $this->division;
     }
 
-    public function setDivisionId(?Division $divisionId): static
+    public function setDivision(?Division $divisionId): static
     {
-        $this->divisionId = $divisionId;
+        $this->division = $divisionId;
 
         return $this;
     }
