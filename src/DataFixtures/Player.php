@@ -14,7 +14,7 @@ class Player extends Fixture
             $player = new \App\Entity\Player();
             $player->setName('Player ' . $i);
             $player->setDiscord('player' . $i);
-            $player->setTeam($this->getReference('team_1'));
+            $player->setTeamId($this->getReference('team_1'));
             $manager->persist($player);
         }
 
