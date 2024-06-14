@@ -20,7 +20,7 @@ class Game extends Fixture
             $game->setScore2(0);
             $game->setWinner(null);
             $game->setStatus($this->getReference('game_status_1'));
-            $game->setDivisionId($this->getReference('division_1'));
+            $game->setDivision($this->getReference('division_1'));
             $manager->persist($game);
         }
 
