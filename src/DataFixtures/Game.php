@@ -9,18 +9,19 @@ class Game extends Fixture
 {
     public function load(ObjectManager $manager): void
     {
-        // create 3 games
-        for ($i = 1; $i <= 3; $i++) {
+        $faker = \Faker\Factory::create();
+
+        for ($i = 0; $i < 10; $i++) {
             $game = new \App\Entity\Game();
-            $game->setDate(new \DateTime('2021-01-0' . $i));
-            $game->setWeek($i);
-            $game->setTeam1($this->getReference('team_1'));
-            $game->setTeam2($this->getReference('team_2'));
-            $game->setScore1(0);
-            $game->setScore2(0);
-            $game->setWinner(null);
-            $game->setStatus($this->getReference('game_status_1'));
-            $game->setDivision($this->getReference('division_1'));
+            $game->setDate($faker->dateTimeThisYear);
+            $game->setWeek($faker->numberBetween(1, 52));
+            $game->setTeam1($this->getReference('team_' . $faker->numberBetween(0, 9)));
+            $game->setTeam2($this->getReference('team_' . $faker->numberBetween(0, 9)));
+            $game->setScore1($faker->numberBetween(0, 4));
+            $game->setScore2($faker->numberBetween(0, 4));
+            $game->setWinner($faker->numberBetween(1, 2));
+            $game->setStatus($this->getReference('game_status_' . $faker->numberBetween(0, 2)));
+            $game->setDivision($this->getReference('division_' . $faker->numberBetween(0, 9)));
             $manager->persist($game);
         }
 

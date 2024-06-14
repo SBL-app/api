@@ -9,12 +9,13 @@ class Season extends Fixture
 {
     public function load(ObjectManager $manager): void
     {
-        // create 3 seasons
-        for ($i = 1; $i <= 3; $i++) {
+        $faker = \Faker\Factory::create();
+
+        for ($i = 0; $i < 10; $i++) {
             $season = new \App\Entity\Season();
-            $season->setName('Season ' . $i);
-            $season->setStartDate(new \DateTime('2021-0' . $i . '-01'));
-            $season->setEndDate(new \DateTime('2021-0' . $i . '-31'));
+            $season->setName($faker->name);
+            $season->setStartDate($faker->dateTimeThisYear);
+            $season->setEndDate($faker->dateTimeThisYear);
             $manager->persist($season);
         }
 

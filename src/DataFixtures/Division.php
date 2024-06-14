@@ -9,10 +9,12 @@ class Division extends Fixture
 {
     public function load(ObjectManager $manager): void
     {
-        // create 3 divisions
-        for ($i = 1; $i <= 3; $i++) {
+        $faker = \Faker\Factory::create();
+
+        for ($i = 0; $i < 10; $i++) {
             $division = new \App\Entity\Division();
-            $division->setName('Division ' . $i);
+            $division->setName($faker->name);
+            $division->setSeason($this->getReference('season_' . $faker->numberBetween(0, 9)));
             $manager->persist($division);
         }
 

@@ -9,13 +9,14 @@ class TeamStat extends Fixture
 {
     public function load(ObjectManager $manager): void
     {
-        // create 3 team stats
-        for ($i = 1; $i <= 3; $i++) {
+        $faker = \Faker\Factory::create();
+
+        for ($i = 0; $i < 10; $i++) {
             $teamStat = new \App\Entity\TeamStat();
-            $teamStat->setWin($i);
-            $teamStat->setLoose($i);
-            $teamStat->setTeamId($this->getReference('team_1'));
-            $teamStat->setDivisionId($this->getReference('division_1'));
+            $teamStat->setWin($faker->numberBetween(0, 10));
+            $teamStat->setLoose($faker->numberBetween(0, 10));
+            $teamStat->setTeam($this->getReference('team_' . $faker->numberBetween(0, 9)));
+            $teamStat->setDivision($this->getReference('division_' . $faker->numberBetween(0, 9)));
             $manager->persist($teamStat);
         }
 

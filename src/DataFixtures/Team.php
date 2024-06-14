@@ -9,12 +9,14 @@ class Team extends Fixture
 {
     public function load(ObjectManager $manager): void
     {
-        // create 3 teams
-        for ($i = 1; $i <= 3; $i++) {
+        $faker = \Faker\Factory::create();
+
+        for ($i = 0; $i < 10; $i++) {
             $team = new \App\Entity\Team();
-            $team->setName('Team ' . $i);
-            $team->setCapitainId($this->getReference('player_1'));
+            $team->setName($faker->name);
+            $team->setCapitain($this->getReference('player_' . $faker->numberBetween(0, 9)));
             $manager->persist($team);
+            $this->addReference('team_' . $i, $team);
         }
 
         $manager->flush();

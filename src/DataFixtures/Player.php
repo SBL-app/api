@@ -9,12 +9,13 @@ class Player extends Fixture
 {
     public function load(ObjectManager $manager): void
     {
-        // create 3 players
-        for ($i = 1; $i <= 3; $i++) {
+        $faker = \Faker\Factory::create();
+
+        for ($i = 0; $i < 10; $i++) {
             $player = new \App\Entity\Player();
-            $player->setName('Player ' . $i);
-            $player->setDiscord('player' . $i);
-            $player->setTeam($this->getReference('team_1'));
+            $player->setName($faker->name);
+            $player->setDiscord($faker->mail);
+            $player->setTeam($this->getReference('team_' . $faker->numberBetween(0, 9)));
             $manager->persist($player);
         }
 
