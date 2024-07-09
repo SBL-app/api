@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 class DivisionController extends AbstractController
 {
-    #[Route('/division', name: 'app_division', methods: ['GET'])]
+    #[Route('/divisions', name: 'app_division', methods: ['GET'])]
     public function getDivisions(DivisionRepository $divisionRepository): JsonResponse
     {
         $divisions = $divisionRepository->findAll();

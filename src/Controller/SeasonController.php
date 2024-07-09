@@ -7,12 +7,12 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Season;
 use App\Repository\SeasonRepository;
-use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
 class SeasonController extends AbstractController
 {
-    #[Route('/season', name: 'app_season', methods: ['GET'])]
+    #[Route('/seasons', name: 'app_season', methods: ['GET'])]
     public function getSeasons(SeasonRepository $seasonRepository): JsonResponse
     {
         $seasons= $seasonRepository->findAll();
@@ -71,7 +71,7 @@ class SeasonController extends AbstractController
         ]);
     }
 
-    #[Route(':season/{id}', name: 'app_season_update', methods: ['PATCH'])]
+    #[Route('/season/{id}', name: 'app_season_update', methods: ['PATCH'])]
     public function patchSeason(Request $request, Season $season, EntityManager $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);

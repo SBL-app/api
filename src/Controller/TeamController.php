@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 class TeamController extends AbstractController
 {
-    #[Route('/team', name: 'app_team', methods: ['GET'])]
+    #[Route('/teams', name: 'app_team', methods: ['GET'])]
     public function getTeams(TeamRepository $teamRepository): JsonResponse
     {
         $teams = $teamRepository->findAll();

@@ -13,7 +13,7 @@ class Season extends Fixture
 
         for ($i = 0; $i < 10; $i++) {
             $season = new \App\Entity\Season();
-            $season->setName($faker->name);
+            $season->setName("season_$i");
             $season->setStartDate($faker->dateTimeThisYear);
             $season->setEndDate($faker->dateTimeThisYear);
             $manager->persist($season);

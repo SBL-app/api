@@ -4,8 +4,9 @@ namespace App\DataFixtures;
 
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
+use Doctrine\common\DataFixtures\DependentFixtureInterface;
 
-class Player extends Fixture
+class Player extends Fixture implements DependentFixtureInterface
 {
     public function load(ObjectManager $manager): void
     {
@@ -20,5 +21,12 @@ class Player extends Fixture
         }
 
         $manager->flush();
+    }
+
+    public function getDependencies()
+    {
+        return [
+            Team::class,
+        ];
     }
 }

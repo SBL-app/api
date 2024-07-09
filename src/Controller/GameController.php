@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 class GameController extends AbstractController
 {
-    #[Route('/game', name: 'app_game', methods: ['GET'])]
+    #[Route('/games', name: 'app_game', methods: ['GET'])]
     public function getGames(GameRepository $gameRepository): JsonResponse
     {
         $games = $gameRepository->findAll();

@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 class PlayerController extends AbstractController
 {
-    #[Route('/player', name: 'app_player', methods: ['GET'])]
+    #[Route('/players', name: 'app_player', methods: ['GET'])]
     public function getPlayers(PlayerRepository $playerRepository): JsonResponse
     {
         $players = $playerRepository->findAll();
@@ -21,7 +21,7 @@ class PlayerController extends AbstractController
                 'id' => $player->getId(),
                 'name' => $player->getName(),
                 'discord' => $player->getDiscord(),
-                'team' => $player->getTeamId()
+                'team' => $player->getTeam()
             ];
         }, $players);
         return $this->json($data);
