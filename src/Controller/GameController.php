@@ -7,7 +7,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Game;
 use App\Repository\GameRepository;
-use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
 class GameController extends AbstractController

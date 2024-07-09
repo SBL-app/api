@@ -6,6 +6,9 @@ use App\Repository\TeamStatRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Doctrine\ORM\EntityManagerInterface as EntityManager;
+use Symfony\Component\HttpFoundation\Request;
+use App\Entity\TeamStat;
 
 class TeamStatController extends AbstractController
 {
