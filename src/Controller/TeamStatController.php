@@ -19,7 +19,8 @@ class TeamStatController extends AbstractController
                 'team_id' => $teamStat->getTeam(),
                 'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses()
+                'losses' => $teamStat->getLosses(),
+                'points' => $teamStat->getPoints()
             ];
         }, $teamStats);
         return $this->json($data);
@@ -35,7 +36,25 @@ class TeamStatController extends AbstractController
                 'team_id' => $teamStat->getTeam(),
                 'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses()
+                'losses' => $teamStat->getLosses(),
+                'points' => $teamStat->getPoints()
+            ];
+        }, $teamStats);
+        return $this->json($data);
+    }
+
+    #[Route('/team/{id}/stats', name: 'app_team_stats_create', methods: ['POST'])]
+    public function createTeamStat($id, TeamStatRepository $teamStatRepository): JsonResponse
+    {
+        $teamStats = $teamStatRepository->findBy(['teamId' => $id]);
+        $data = array_map(function ($teamStat) {
+            return [
+                'id' => $teamStat->getId(),
+                'team_id' => $teamStat->getTeam(),
+                'division_id' => $teamStat->getDivision(),
+                'wins' => $teamStat->getWins(),
+                'losses' => $teamStat->getLosses(),
+                'points' => $teamStat->getPoints()
             ];
         }, $teamStats);
         return $this->json($data);
@@ -51,13 +70,14 @@ class TeamStatController extends AbstractController
                 'team_id' => $teamStat->getTeam(),
                 'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses()
+                'losses' => $teamStat->getLosses(),
+                'points' => $teamStat->getPoints()
             ];
         }, $teamStats);
         return $this->json($data);
     }
 
-    #[Route('/team/{id}/stats/{divisionId}', name: 'app_team_stats_update', methods: ['PATCH'])]
+    #[Route('/team/{id}/stats/{divisionId}', name: 'app_team_stats_patch', methods: ['PATCH'])]
     public function patchTeamStat($id, $divisionId, TeamStatRepository $teamStatRepository): JsonResponse
     {
         $teamStats = $teamStatRepository->findBy(['teamId' => $id],['divisionId' => $divisionId]);
@@ -67,7 +87,8 @@ class TeamStatController extends AbstractController
                 'team_id' => $teamStat->getTeam(),
                 'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses()
+                'losses' => $teamStat->getLosses(),
+                'points' => $teamStat->getPoints()
             ];
         }, $teamStats);
         return $this->json($data);
@@ -84,7 +105,8 @@ class TeamStatController extends AbstractController
                 'team_id' => $teamStat->getTeam(),
                 'division_id' => $teamStat->getDivision(),
                 'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses()
+                'losses' => $teamStat->getLosses(),
+                'points' => $teamStat->getPoints()
             ];
         }, $teamStats);
         return $this->json($data);

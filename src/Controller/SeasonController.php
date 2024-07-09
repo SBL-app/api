@@ -71,7 +71,7 @@ class SeasonController extends AbstractController
         ]);
     }
 
-    #[Route('/season/{id}', name: 'app_season_update', methods: ['PATCH'])]
+    #[Route('/season/{id}', name: 'app_season_patch', methods: ['PATCH'])]
     public function patchSeason(Request $request, Season $season, EntityManager $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -98,6 +98,6 @@ class SeasonController extends AbstractController
     {
         $em->remove($season);
         $em->flush();
-        return new JsonResponse(null, 204);
+        return new JsonResponse(['message' => 'Season deleted successfully'], 200);
     }
 }

@@ -60,7 +60,7 @@ class GameStatusController extends AbstractController
         ]);
     }
 
-    #[Route('/game/status/{id}', name: 'app_game_status_update', methods: ['PATCH'])]
+    #[Route('/game/status/{id}', name: 'app_game_status_patch', methods: ['PATCH'])]
     public function patchGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);

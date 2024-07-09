@@ -27,6 +27,9 @@ class TeamStat
     #[ORM\JoinColumn(nullable: false)]
     private ?Division $division = null;
 
+    #[ORM\Column]
+    private ?int $points = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -76,6 +79,18 @@ class TeamStat
     public function setDivision(?Division $divisionId): static
     {
         $this->division = $divisionId;
+
+        return $this;
+    }
+
+    public function getPoints(): ?int
+    {
+        return $this->points;
+    }
+
+    public function setPoints(int $points): static
+    {
+        $this->points = $points;
 
         return $this;
     }

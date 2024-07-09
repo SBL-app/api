@@ -128,7 +128,7 @@ class GameController extends AbstractController
         ]);
     }
 
-    #[Route('/game/{id}', name: 'app_game_update', methods: ['PATCH'])]
+    #[Route('/game/{id}', name: 'app_game_patch', methods: ['PATCH'])]
     public function patchGame(Request $request, Game $game, EntityManager $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
