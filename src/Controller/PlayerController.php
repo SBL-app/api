@@ -42,9 +42,9 @@ class PlayerController extends AbstractController
     public function createPlayer(Request $request, Player $player, EntityManager $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $player->setName($data['name']);
-        $player->setDiscord($data['discord']);
-        $player->setTeam($data['team']);
+        $player->setName($data['name'] ?? null);
+        $player->setDiscord($data['discord'] ?? null);
+        $player->setTeam($data['team'] ?? null);
         $em->persist($player);
         $em->flush();
         return $this->json([
@@ -60,8 +60,8 @@ class PlayerController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $player->setName($data['name']);
-        $player->setDiscord($data['discord']);
-        $player->setTeam($data['team']);
+        $player->setDiscord($data['discord' ?? null]);
+        $player->setTeam($data['team' ?? null]);
         $em->persist($player);
         $em->flush();
         return $this->json([
@@ -100,6 +100,8 @@ class PlayerController extends AbstractController
     {
         $em->remove($player);
         $em->flush();
-        return $this->json(null, 204);
+        return $this->json([
+            'message' => 'Player deleted successfully'
+        ]);
     }
 }
