@@ -7,7 +7,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Team;
-use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
 class TeamController extends AbstractController
@@ -20,7 +20,7 @@ class TeamController extends AbstractController
             return [
                 'id' => $team->getId(),
                 'name' => $team->getName(),
-                'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
+                'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
             ];
         }, $teams);
         return $this->json($data);
@@ -32,7 +32,7 @@ class TeamController extends AbstractController
         return $this->json([
             'id' => $team->getId(),
             'name' => $team->getName(),
-            'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
+            'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
         ]);
     }
     
@@ -41,13 +41,13 @@ class TeamController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $team->setName($data['name']);
-        $team->setCapitain($data['capitain']);
+        $team->setCapitain($data['capitain'] ?? null); // Set capitain to null if not provided
         $em->persist($team);
         $em->flush();
         return $this->json([
             'id' => $team->getId(),
             'name' => $team->getName(),
-            'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
+            'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
         ]);
     }
 
@@ -56,13 +56,13 @@ class TeamController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $team->setName($data['name']);
-        $team->setCapitain($data['capitain']);
+        $team->setCapitain($data['capitain'] ?? null);
         $em->persist($team);
         $em->flush();
         return $this->json([
             'id' => $team->getId(),
             'name' => $team->getName(),
-            'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
+            'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
         ]);
     }
 
@@ -81,7 +81,7 @@ class TeamController extends AbstractController
         return $this->json([
             'id' => $team->getId(),
             'name' => $team->getName(),
-            'capitain' => $team->getCapitain()->getName() ?? 'No capitain assigned'
+            'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
         ]);
     }
 
@@ -90,6 +90,8 @@ class TeamController extends AbstractController
     {
         $em->remove($team);
         $em->flush();
-        return $this->json(null, 204);
+        return $this->json([
+            'message' => 'Team deleted successfully'
+        ]);
     }
 }
