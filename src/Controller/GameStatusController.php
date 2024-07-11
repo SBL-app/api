@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 class GameStatusController extends AbstractController
 {
-    #[Route('/game/status', name: 'app_game_status', methods: ['GET'])]
+    #[Route('/gameStatus', name: 'app_game_status', methods: ['GET'])]
     public function getGameStatuses(GameStatusRepository $gameStatusRepository): JsonResponse
     {
         $gameStatuses = $gameStatusRepository->findAll();
@@ -25,7 +25,7 @@ class GameStatusController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/game/status/{id}', name: 'app_game_status_show', methods: ['GET'])]
+    #[Route('/gameStatus/{id}', name: 'app_game_status_show', methods: ['GET'])]
     public function getGameStatus(GameStatus $gameStatus): JsonResponse
     {
         return $this->json([
@@ -34,7 +34,7 @@ class GameStatusController extends AbstractController
         ]);
     }
 
-    #[Route('/game/status', name: 'app_game_status_create', methods: ['POST'])]
+    #[Route('/gameStatus', name: 'app_game_status_create', methods: ['POST'])]
     public function createGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -47,7 +47,7 @@ class GameStatusController extends AbstractController
         ]);
     }
 
-    #[Route('/game/status/{id}', name: 'app_game_status_update', methods: ['PUT'])]
+    #[Route('/gameStatus/{id}', name: 'app_game_status_update', methods: ['PUT'])]
     public function updateGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -60,7 +60,7 @@ class GameStatusController extends AbstractController
         ]);
     }
 
-    #[Route('/game/status/{id}', name: 'app_game_status_patch', methods: ['PATCH'])]
+    #[Route('/gameStatus/{id}', name: 'app_game_status_patch', methods: ['PATCH'])]
     public function patchGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -75,11 +75,13 @@ class GameStatusController extends AbstractController
         ]);
     }
 
-    #[Route('/game/status/{id}', name: 'app_game_status_delete', methods: ['DELETE'])]
+    #[Route('/gameStatus/{id}', name: 'app_game_status_delete', methods: ['DELETE'])]
     public function deleteGameStatus(GameStatus $gameStatus, EntityManager $em): JsonResponse
     {
         $em->remove($gameStatus);
         $em->flush();
-        return $this->json(null, 204);
+        return $this->json([
+            'message' => 'GameStatus deleted successfully'
+        ]);
     }
 }
