@@ -14,10 +14,10 @@ class TeamStat
     private ?int $id = null;
 
     #[ORM\Column]
-    private ?int $win = null;
+    private ?int $wins = null;
 
     #[ORM\Column]
-    private ?int $loose = null;
+    private ?int $losses = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
@@ -30,31 +30,34 @@ class TeamStat
     #[ORM\Column]
     private ?int $points = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $ties = null;
+
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getWin(): ?int
+    public function getWins(): ?int
     {
-        return $this->win;
+        return $this->wins;
     }
 
-    public function setWin(int $win): static
+    public function setWins(int $wins): static
     {
-        $this->win = $win;
+        $this->wins = $wins;
 
         return $this;
     }
 
-    public function getLoose(): ?int
+    public function getLosses(): ?int
     {
-        return $this->loose;
+        return $this->losses;
     }
 
-    public function setLoose(int $loose): static
+    public function setLosses(int $losses): static
     {
-        $this->loose = $loose;
+        $this->losses = $losses;
 
         return $this;
     }
@@ -91,6 +94,18 @@ class TeamStat
     public function setPoints(int $points): static
     {
         $this->points = $points;
+
+        return $this;
+    }
+
+    public function getTies(): ?int
+    {
+        return $this->ties;
+    }
+
+    public function setTies(?int $ties): static
+    {
+        $this->ties = $ties;
 
         return $this;
     }
