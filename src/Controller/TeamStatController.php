@@ -32,7 +32,7 @@ class TeamStatController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/teamStats/{teamId}', name: 'app_team_stat', methods: ['GET'])]
+    #[Route('/teamStats/{teamId}', name: 'app_team_stat_by_team', methods: ['GET'])]
     public function getTeamStat($teamId, TeamStatRepository $teamStatRepository): JsonResponse
     {
         $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
@@ -51,7 +51,7 @@ class TeamStatController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/teamStats/{teamId}/{divisionId}', name: 'app_team_stat_show', methods: ['GET'])]
+    #[Route('/teamStats/{teamId}/{divisionId}', name: 'app_team_stat_by_team_and_division', methods: ['GET'])]
     public function getTeamStatByIDAndDivision($teamId, $divisionId, TeamStatRepository $teamStatRepository): JsonResponse
     {
         $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
@@ -73,7 +73,7 @@ class TeamStatController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/teamStats/division/{divisionId}', name: 'app_team_stat_show', methods: ['GET'])]
+    #[Route('/teamStats/division/{divisionId}', name: 'app_team_stat_by_division', methods: ['GET'])]
     public function getTeamStatByDivision($divisionId, TeamStatRepository $teamStatRepository): JsonResponse
     {
         $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
@@ -138,7 +138,7 @@ class TeamStatController extends AbstractController
         ]);
     }
 
-    #[Route('/teamStats/{teamId}/{divisionId}', name: 'app_team_stats_update', methods: ['PUT'])]
+    #[Route('/teamStats/{teamId}/{divisionId}', name: 'app_team_stats_put', methods: ['PUT'])]
     public function updateTeamStat($teamId, $divisionId, Request $request, TeamStatRepository $teamStatRepository, EntityManager $entityManager): JsonResponse
     {
         $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
