@@ -14,15 +14,15 @@ use App\Entity\TeamStat;
 
 class TeamStatController extends AbstractController
 {
-    #[Route('/teamStats/{id}', name: 'app_team_stats', methods: ['GET'])]
-    public function getTeamStats($id, TeamStatRepository $teamStatRepository): JsonResponse
+    #[Route('/teamStats', name: 'app_team_stats', methods: ['GET'])]
+    public function getTeamStats(TeamStatRepository $teamStatRepository): JsonResponse
     {
-        $teamStats = $teamStatRepository->findBy(['team' => $id]);
-        $data = array_map(function ($teamStat) use ($id){
+        $teamStats = $teamStatRepository->findAll();
+        $data = array_map(function ($teamStat){
             return [
-                'selected_team_id' => $id, // This is the team id that was passed in the URL '/teamStats/{id}
                 'id' => $teamStat->getId(),
                 'team_id' => $teamStat->getTeam()->getId(),
+                'team_name' => $teamStat->getTeam()->getName(),
                 'division_id' => $teamStat->getDivision()->getId(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses(),
@@ -32,8 +32,27 @@ class TeamStatController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/teamStats/{id}/{divisionId}', name: 'app_team_stats_show', methods: ['GET'])]
-    public function getTeamStat($id, $divisionId, TeamStatRepository $teamStatRepository): JsonResponse
+    #[Route('/teamStats/{id}', name: 'app_team_stat', methods: ['GET'])]
+    public function getTeamStat($id, TeamStatRepository $teamStatRepository): JsonResponse
+    {
+        $teamStats = $teamStatRepository->findBy(['team' => $id]);
+        $data = array_map(function ($teamStat) use ($id){
+            return [
+                'selected_team_id' => $id, // This is the team id that was passed in the URL '/teamStats/{id}
+                'id' => $teamStat->getId(),
+                'team_id' => $teamStat->getTeam()->getId(),
+                'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
+                'division_id' => $teamStat->getDivision()->getId(),
+                'wins' => $teamStat->getWins(),
+                'losses' => $teamStat->getLosses(),
+                'points' => $teamStat->getPoints()
+            ];
+        }, $teamStats);
+        return $this->json($data);
+    }
+
+    #[Route('/teamStats/{id}/{divisionId}', name: 'app_team_stat_show', methods: ['GET'])]
+    public function getTeamStatByIDAndDivision($id, $divisionId, TeamStatRepository $teamStatRepository): JsonResponse
     {
         $teamStats = $teamStatRepository->findBy(['team' => $id]);
         $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
@@ -43,6 +62,27 @@ class TeamStatController extends AbstractController
                 'selected_division_id' => $divisionId, // This is the division id that was passed in the URL '/teamStats/{id}/{divisionId}
                 'id' => $teamStat->getId(),
                 'team_id' => $teamStat->getTeam()->getId(),
+                'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
+                'division_id' => $teamStat->getDivision()->getId(),
+                'wins' => $teamStat->getWins(),
+                'losses' => $teamStat->getLosses(),
+                'ties' => $teamStat->getTies(),
+                'points' => $teamStat->getPoints()
+            ];
+        }, $teamStats);
+        return $this->json($data);
+    }
+
+    #[Route('/teamStats/division/{divisionId}', name: 'app_team_stat_show', methods: ['GET'])]
+    public function getTeamStatByDivision($divisionId, TeamStatRepository $teamStatRepository): JsonResponse
+    {
+        $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
+        $data = array_map(function ($teamStat) use ($divisionId){
+            return [
+                'selected_division_id' => $divisionId, // This is the division id that was passed in the URL '/teamStats/{id}/{divisionId}
+                'id' => $teamStat->getId(),
+                'team_id' => $teamStat->getTeam()->getId(),
+                'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
                 'division_id' => $teamStat->getDivision()->getId(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses(),
@@ -89,6 +129,7 @@ class TeamStatController extends AbstractController
         return $this->json([
             'id' => $teamStat->getId(),
             'team_id' => $teamStat->getTeam()->getId(),
+            'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
             'division_id' => $teamStat->getDivision()->getId(),
             'wins' => $teamStat->getWins(),
             'losses' => $teamStat->getLosses(),
@@ -122,6 +163,7 @@ class TeamStatController extends AbstractController
         return $this->json([
             'id' => $teamStat->getId(),
             'team_id' => $teamStat->getTeam()->getId(),
+            'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
             'division_id' => $teamStat->getDivision()->getId(),
             'wins' => $teamStat->getWins(),
             'losses' => $teamStat->getLosses(),
@@ -166,6 +208,7 @@ class TeamStatController extends AbstractController
         return $this->json([
             'id' => $teamStat->getId(),
             'team_id' => $teamStat->getTeam()->getId(),
+            'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
             'division_id' => $teamStat->getDivision()->getId(),
             'wins' => $teamStat->getWins(),
             'losses' => $teamStat->getLosses(),
