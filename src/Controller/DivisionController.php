@@ -38,7 +38,8 @@ class DivisionController extends AbstractController
         return $this->json([
             'id' => $division->getId(),
             'name' => $division->getName(),
-            'season' => $seasonId
+            'season_id' => $seasonId,
+            'season_name' => $division->getSeason() ? $division->getSeason()->getName() : ''
         ]);
     }
 
