@@ -44,15 +44,28 @@ class DivisionController extends AbstractController
     }
 
     #[Route('/division/season/{id}', name: 'app_division_season', methods: ['GET'])]
-    public function getDivisionBySeason(DivisionRepository $divisionRepository, int $id): JsonResponse
+    public function getDivisionBySeason(DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository, int $id): JsonResponse
     {
         $divisions = $divisionRepository->findBy(['season' => $id]);
-        $data = array_map(function ($division) {
+        $data = array_map(function ($division) use ($teamStatRepository, $teamRepository) {
             $seasonId = $division->getSeason() ? $division->getSeason()->getId() : null;
+            $teams = $teamStatRepository->findBy(['division' => $division]);
+            $teamData = array_map(function ($teamStat) use ($teamRepository) {
+                $team = $teamStat->getTeam();
+                $teamEntity = $teamRepository->find($team->getId());
+                return [
+                    'id' => $team->getId(),
+                    'name' => $teamEntity->getName(),
+                    'wins' => $teamStat->getWins(),
+                    'losses' => $teamStat->getLosses(),
+                    'points' => $teamStat->getPoints()
+                ];
+            }, $teams);
             return [
                 'id' => $division->getId(),
                 'name' => $division->getName(),
-                'season' => $seasonId
+                'season' => $seasonId,
+                'teams' => $teamData
             ];
         }, $divisions);
         return $this->json($data);
