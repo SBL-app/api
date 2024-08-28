@@ -57,6 +57,28 @@ class GameController extends AbstractController
         return $this->json($data);
     }
 
+    #[Route('/games/team/{teamId}', name: 'app_game_team', methods: ['GET'])]
+    public function getGamesByTeamId(GameRepository $gameRepository, int $teamId): JsonResponse
+    {
+        $games = $gameRepository->findBy(['team1' => $teamId]);
+        $games = array_merge($games, $gameRepository->findBy(['team2' => $teamId]));
+        $data = array_map(function ($game) {
+            return [
+                'id' => $game->getId(),
+                'date' => $game->getDate()->format('Y-m-d H:i:s'),
+                'week' => $game->getWeek(),
+                'team1' => $game->getTeam1()->getName(),
+                'team2' => $game->getTeam2()->getName(),
+                'score1' => $game->getScore1(),
+                'score2' => $game->getScore2(),
+                'winner' => $game->getWinner(),
+                'status' => $game->getStatus()->getName(),
+                'division' => $game->getDivision()->getName()
+            ];
+        }, $games);
+        return $this->json($data);
+    }
+
     #[Route('/game/{id}', name: 'app_game_show', methods: ['GET'])]
     public function getGame(Game $game): JsonResponse
     {
