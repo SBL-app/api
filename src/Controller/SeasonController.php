@@ -6,7 +6,10 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Season;
+use App\Repository\DivisionRepository;
 use App\Repository\SeasonRepository;
+use App\Repository\TeamRepository;
+use App\Repository\TeamStatRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -36,6 +39,41 @@ class SeasonController extends AbstractController
             'start_date' => $season->getStartDate()->format('d-m-Y'),
             'end_date' => $season->getEndDate()->format('d-m-Y')
         ]);
+    }
+
+
+    // todo: need to be test with fake data
+    #[Route('/season/{id}/games', name: 'app_season_games', methods: ['GET'])]
+    public function getSeasonGames(Season $season, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository): JsonResponse
+    {
+        $games = [];
+        $divisions = $divisionRepository->findBy(['season' => $season]);
+        foreach ($divisions as $division) {
+            $teamsId = $teamStatRepository->findBy(['division' => $division]);
+            foreach ($teamsId as $teamId) {
+                $games[] = $teamId->getGames();
+            }
+        }    
+        return $this->json($games); 
+    }
+
+    // todo: need to be test with fake data
+    #[Route('/season/{id}/teams', name: 'app_season_teams', methods: ['GET'])]
+    public function getSeasonTeams(Season $season, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository): JsonResponse
+    {
+        $teams = [];
+        $divisions = $divisionRepository->findBy(['season' => $season]);
+        foreach ($divisions as $division) {
+            $teamsId = $teamStatRepository->findBy(['division' => $division]);
+            foreach ($teamsId as $teamId) {
+                $team = $teamRepository->find($teamId->getTeam());
+                $teams[] = [
+                    'id' => $team->getId(),
+                    'name' => $team->getName()
+                ];
+            }
+        }
+        return $this->json($teams);
     }
 
     #[Route('/season', name: 'app_season_create', methods: ['POST'])]
