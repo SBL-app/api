@@ -42,7 +42,7 @@ class SeasonController extends AbstractController
     }
 
 
-    // todo: need to be test with fake data
+    // TODO: need to be test with fake data
     #[Route('/season/{id}/games', name: 'app_season_games', methods: ['GET'])]
     public function getSeasonGames(Season $season, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository): JsonResponse
     {
@@ -57,7 +57,24 @@ class SeasonController extends AbstractController
         return $this->json($games); 
     }
 
-    // todo: need to be test with fake data
+    // TODO: need to be test with fake data, maybe it's useless
+    #[Route('/season/{id}/games/{status}', name: 'app_season_games_by_status', methods: ['GET'])]
+    public function getSeasonGamesByStatus(Season $season, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, string $status): JsonResponse
+    {
+        $games = [];
+        $divisions = $divisionRepository->findBy(['season' => $season]);
+        foreach ($divisions as $division) {
+            $teamsId = $teamStatRepository->findBy(['division' => $division]);
+            foreach ($teamsId as $teamId) {
+                if ($teamId->getGames() === $status) {
+                    $games[] = $teamId->getGames();
+                }
+            }
+        }
+        return $this->json($games);
+    }
+
+    // TODO: need to be test with fake data
     #[Route('/season/{id}/teams', name: 'app_season_teams', methods: ['GET'])]
     public function getSeasonTeams(Season $season, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository): JsonResponse
     {
