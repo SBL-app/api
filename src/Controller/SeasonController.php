@@ -18,15 +18,19 @@ use Symfony\Component\HttpFoundation\Request;
 class SeasonController extends AbstractController
 {
     #[Route('/seasons', name: 'app_season', methods: ['GET'])]
-    public function getSeasons(SeasonRepository $seasonRepository): JsonResponse
+    public function getSeasons(SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
         $seasons = $seasonRepository->findAll();
+        foreach ($seasons as $season) {
+            $this->getFinishedMatchPourcent($season, $divisionRepository, $gameRepository, $gameStatusRepository);
+        }
         $data = array_map(function ($season) {
             return [
                 'id' => $season->getId(),
                 'name' => $season->getName(),
                 'start_date' => $season->getStartDate()->format('d-m-Y'),
-                'end_date' => $season->getEndDate()->format('d-m-Y')
+                'end_date' => $season->getEndDate()->format('d-m-Y'),
+                
             ];
         }, $seasons);
         return $this->json($data);
