@@ -22,17 +22,30 @@ class SeasonController extends AbstractController
     {
         $seasons = $seasonRepository->findAll();
         foreach ($seasons as $season) {
-            $this->getFinishedMatchPourcent($season, $divisionRepository, $gameRepository, $gameStatusRepository);
-        }
-        $data = array_map(function ($season) {
-            return [
+            $totalGames = 0;
+            $finishedGames = 0;
+            $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'match fini']);
+            $divisions = $divisionRepository->findBy(['season' => $season]);
+            foreach ($divisions as $division) {
+                $games = $gameRepository->findBy(['division' => $division]);
+                foreach ($games as $game) {
+                    $totalGames += count($games);
+                    if ($game->getStatus() === $finishedStatus) {
+                        $finishedGames++;
+                    }
+                }
+            }
+            $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
+            $data[] = [
                 'id' => $season->getId(),
                 'name' => $season->getName(),
                 'start_date' => $season->getStartDate()->format('d-m-Y'),
                 'end_date' => $season->getEndDate()->format('d-m-Y'),
-                
+                'total_games' => $totalGames,
+                'finished_games' => $finishedGames,
+                'percentage' => $percentage
             ];
-        }, $seasons);
+        }
         return $this->json($data);
     }
 
