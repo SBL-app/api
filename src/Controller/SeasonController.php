@@ -29,7 +29,7 @@ class SeasonController extends AbstractController
             foreach ($divisions as $division) {
                 $games = $gameRepository->findBy(['division' => $division]);
                 foreach ($games as $game) {
-                    $totalGames += count($games);
+                    $totalGames ++;
                     if ($game->getStatus() === $finishedStatus) {
                         $finishedGames++;
                     }
@@ -61,19 +61,27 @@ class SeasonController extends AbstractController
     }
 
 
-    // TODO: need to be test with fake data
     #[Route('/season/{id}/games', name: 'app_season_games', methods: ['GET'])]
-    public function getSeasonGames(Season $season, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository): JsonResponse
+    public function getSeasonGames(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository): JsonResponse
     {
-        $games = [];
         $divisions = $divisionRepository->findBy(['season' => $season]);
         foreach ($divisions as $division) {
-            $teamsId = $teamStatRepository->findBy(['division' => $division]);
-            foreach ($teamsId as $teamId) {
-                $games[] = $teamId->getGames();
+            $games = $gameRepository->findBy(['division' => $division]);
+            foreach ($games as $game) {
+                $rep[] = [
+                    'id' => $game->getId(),
+                    'date' => $game->getDate()->format('d-m-Y'),
+                    'week' => $game->getWeek(),
+                    'team1' => $game->getTeam1()->getName(),
+                    'team2' => $game->getTeam2()->getName(),
+                    'score1' => $game->getScore1(),
+                    'score2' => $game->getScore2(),
+                    'winner' => $game->getWinner(),
+                    'status' => $game->getStatus()->getName()
+                ];
             }
         }
-        return $this->json($games);
+        return $this->json($rep);
     }
 
     // TODO: need to be test with fake data, maybe it's useless
@@ -116,24 +124,23 @@ class SeasonController extends AbstractController
     #[Route('/season/{id}/pourcent', name: 'app_season_pourcent', methods: ['GET'])]
     public function getFinishedMatchPourcent(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
-        $totalGames = 0;
-        $finishedGames = 0;
-        $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'match fini']);
+        $nbTotalGames = 0;
+        $nbFinishedGames = 0;
         $divisions = $divisionRepository->findBy(['season' => $season]);
         foreach ($divisions as $division) {
             $games = $gameRepository->findBy(['division' => $division]);
             foreach ($games as $game) {
-                $totalGames += count($games);
-                if ($game->getStatus() === $finishedStatus) {
-                    $finishedGames++;
-                }
+                $nbTotalGames ++;
+                if ($game->getStatus() === $gameStatusRepository->findOneBy(['name' => 'match fini'])) {
+                    $nbFinishedGames++;
+                }              
             }
         }
-        $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
+        $pourcent = $nbTotalGames > 0 ? ($nbFinishedGames / $nbTotalGames) * 100 : 0;
         return $this->json([
-            'total_games' => $totalGames,
-            'finished_games' => $finishedGames,
-            'percentage' => $percentage
+            'total' => $nbTotalGames,
+            'finished' => $nbFinishedGames,
+            'pourcent' => $pourcent
         ]);
     }
 
