@@ -36,6 +36,7 @@ class SeasonController extends AbstractController
                 }
             }
             $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
+            $percentage = number_format($percentage, 2);
             $data[] = [
                 'id' => $season->getId(),
                 'name' => $season->getName(),
@@ -121,8 +122,8 @@ class SeasonController extends AbstractController
     }
 
     //TODO: need to be tested
-    #[Route('/season/{id}/pourcent', name: 'app_season_pourcent', methods: ['GET'])]
-    public function getFinishedMatchPourcent(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
+    #[Route('/season/{id}/pourcent/{decimal}', name: 'app_season_pourcent', methods: ['GET'])]
+    public function getFinishedMatchPourcent(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository, int $decimal): JsonResponse
     {
         $nbTotalGames = 0;
         $nbFinishedGames = 0;
@@ -137,6 +138,7 @@ class SeasonController extends AbstractController
             }
         }
         $pourcent = $nbTotalGames > 0 ? ($nbFinishedGames / $nbTotalGames) * 100 : 0;
+        $pourcent = number_format($pourcent, $decimal);
         return $this->json([
             'total' => $nbTotalGames,
             'finished' => $nbFinishedGames,
