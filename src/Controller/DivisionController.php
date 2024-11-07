@@ -7,11 +7,13 @@ use App\Repository\TeamStatRepository;
 use App\Repository\TeamRepository;
 use App\Repository\SeasonRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Division;
 use App\Entity\Season;
 use App\Entity\Team;
+use App\Repository\GameRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -90,20 +92,46 @@ class DivisionController extends AbstractController
         return $this->json($data);
     }
 
+    #[Route('/division/{id}/games', name: 'app_division_games', methods: ['GET'])]
+    public function getGamesByDivision(Division $division, GameRepository $gameRepository): JsonResponse
+    {
+        $games = $gameRepository->findBy(['division' => $division]);
+        $rep = [];
+
+        foreach ($games as $game) {
+            $week = $game->getWeek();
+            if (!isset($rep[$week])) {
+                $rep[$week] = [
+                    'week' => $week,
+                    'games' => []
+                ];
+            }
+            $rep[$week]['games'][] = [
+                'id' => $game->getId(),
+                'date' => $game->getDate()->format('d-m-Y'),
+                'team1' => $game->getTeam1()->getName(),
+                'team2' => $game->getTeam2()->getName(),
+                'score1' => $game->getScore1(),
+                'score2' => $game->getScore2(),
+                'winner' => $game->getWinner(),
+                'status' => $game->getStatus()->getName()
+            ];
+        }
+        $response = array_values($rep);
+        return $this->json($response);
+    }
+
     #[Route('/division', name: 'app_division_create', methods: ['POST'])]
     public function createDivision(Request $request, Division $division, EntityManager $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $division = new Division(); // Supposons que vous créez une nouvelle instance de Division
+        $division = new Division();
         $division->setName($data['name']);
 
-        // Vérifier si le champ season est renseigné
         if (isset($data['season'])) {
-            // Récupérer l'instance de Season à partir de son ID
             $season = $em->getRepository(Season::class)->find($data['season']);
             if (!$season) {
-                // Gérer le cas où la saison n'est pas trouvée
-                return $this->json(['error' => 'Season not found'], JsonResponse::HTTP_BAD_REQUEST);
+                return $this->json(['error' => 'Season not found'], Response::HTTP_BAD_REQUEST);
             }
             $division->setSeason($season);
         } else {
@@ -129,7 +157,7 @@ class DivisionController extends AbstractController
         if (isset($data['season'])) {
             $season = $seasonRepository->find($data['season']);
             if (!$season) {
-                return $this->json(['error' => 'Season not found'], JsonResponse::HTTP_BAD_REQUEST);
+                return $this->json(['error' => 'Season not found'], Response::HTTP_BAD_REQUEST);
             }
             $division->setSeason($season);
         }
@@ -154,7 +182,7 @@ class DivisionController extends AbstractController
         if (isset($data['season'])) {
             $season = $seasonRepository->find($data['season']);
             if (!$season) {
-                return $this->json(['error' => 'Season not found'], JsonResponse::HTTP_BAD_REQUEST);
+                return $this->json(['error' => 'Season not found'], Response::HTTP_BAD_REQUEST);
             }
             $division->setSeason($season);
         }
