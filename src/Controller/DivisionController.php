@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Division;
 use App\Entity\Season;
-use App\Entity\Team;
+use App\Repository\PlayerRepository;
 use App\Repository\GameRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
@@ -74,21 +74,33 @@ class DivisionController extends AbstractController
     }
 
     #[Route('/division/{id}/teams', name: 'app_division_teams', methods: ['GET'])]
-    public function getTeamsByDivision(Division $division, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository): JsonResponse
+    public function getTeamsByDivision(Division $division, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository, PlayerRepository $playerRepository): JsonResponse
     {
         $teamStats = $teamStatRepository->findBy(['division' => $division]);
         usort($teamStats, function ($a, $b) {
             return $b->getPoints() - $a->getPoints();
         });
-        $data = array_map(function ($teamStat) use ($teamRepository) {
+        $data = array_map(function ($teamStat) use ($teamRepository, $playerRepository) {
             $team = $teamStat->getTeam();
             $teamEntity = $teamRepository->find($team->getId());
+            $players = $playerRepository->findBy(['team' => $teamEntity]);
+
+            $members = array_map(function ($player) {
+                return [
+                    'id' => $player->getId(),
+                    'name' => $player->getName(),
+                    'discord' => $player->getDiscord()
+                ];
+            }, $players);
+
             return [
                 'id' => $team->getId(),
                 'name' => $teamEntity->getName(),
-                'points' => $teamStat->getPoints()
+                'captain' => $teamEntity->getCapitain() ? $teamEntity->getCapitain()->getName() : null,
+                'members' => $members
             ];
         }, $teamStats);
+
         return $this->json($data);
     }
 
