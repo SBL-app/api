@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Repository\PlayerRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Player;
 use App\Entity\Team;
@@ -62,7 +63,7 @@ class PlayerController extends AbstractController
         $player->setDiscord($data['discord'] ?? null);
         $team = $em->getRepository(Team::class)->find($data['team'] ?? null);
         if (!$team && isset($data['team'])) {
-            return $this->json(['error' => 'Team not found'], JsonResponse::HTTP_NOT_FOUND);
+            return $this->json(['error' => 'Team not found'], Response::HTTP_NOT_FOUND);
         }
         $player->setTeam($team);
         $em->persist($player);
