@@ -96,7 +96,7 @@ class GameController extends AbstractController
         ]);
     }
 
-    #[Route('/game/division/{id}', name:'app_game_show_division', methods: ['GET'])]
+    #[Route('/game/division/{id}', name: 'app_game_show_division', methods: ['GET'])]
     public function getGamesByDivision(GameRepository $gameRepository, int $id): JsonResponse
     {
         $games = $gameRepository->findBy(['divisionId' => $id]);
@@ -124,38 +124,38 @@ class GameController extends AbstractController
         $game = new Game();
         $game->setDate(new \DateTime($data['date']));
         $game->setWeek($data['week']);
-        
-        $team1 = $teamRepository->find($data['team1']);
+
+        $team1 = $teamRepository->find($data['team1'] ?? null);
         if (!$team1) {
             return $this->json(['error' => 'Invalid team1 id'], 400);
         }
         $game->setTeam1($team1);
-        
-        $team2 = $teamRepository->find($data['team2']);
+
+        $team2 = $teamRepository->find($data['team2'] ?? null);
         if (!$team2) {
             return $this->json(['error' => 'Invalid team2 id'], 400);
         }
         $game->setTeam2($team2);
-        
-        $status = $gameStatusRepository->find($data['status']);
+
+        $status = $gameStatusRepository->find($data['status'] ?? null);
         if (!$status) {
             return $this->json(['error' => 'Invalid status id'], 400);
         }
         $game->setStatus($status);
-        
-        $division = $divisionRepository->find($data['division']);
+
+        $division = $divisionRepository->find($data['division'] ?? null);
         if (!$division) {
             return $this->json(['error' => 'Invalid division id'], 400);
         }
         $game->setDivision($division);
-        
-        $game->setScore1($data['score1']);
-        $game->setScore2($data['score2']);
-        $game->setWinner($data['winner']);
-        
+
+        $game->setScore1($data['score1'] ?? null);
+        $game->setScore2($data['score2'] ?? null);
+        $game->setWinner($data['winner'] ?? null);
+
         $em->persist($game);
         $em->flush();
-        
+
         return $this->json([
             'id' => $game->getId(),
             'date' => $game->getDate()->format('Y-m-d H:i:s'),
@@ -176,37 +176,37 @@ class GameController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $game->setDate(new \DateTime($data['date']));
         $game->setWeek($data['week']);
-        
+
         $team1 = $teamRepository->find($data['team1']);
         if (!$team1) {
             return $this->json(['error' => 'Invalid team1 id'], 400);
         }
         $game->setTeam1($team1);
-        
+
         $team2 = $teamRepository->find($data['team2']);
         if (!$team2) {
             return $this->json(['error' => 'Invalid team2 id'], 400);
         }
         $game->setTeam2($team2);
-        
+
         $status = $gameStatusRepository->find($data['status']);
         if (!$status) {
             return $this->json(['error' => 'Invalid status id'], 400);
         }
         $game->setStatus($status);
-        
+
         $division = $divisionRepository->find($data['division']);
         if (!$division) {
             return $this->json(['error' => 'Invalid division id'], 400);
         }
         $game->setDivision($division);
-        
+
         $game->setScore1($data['score1']);
         $game->setScore2($data['score2']);
         $game->setWinner($data['winner']);
-        
+
         $em->flush();
-        
+
         return $this->json([
             'id' => $game->getId(),
             'date' => $game->getDate()->format('Y-m-d H:i:s'),
@@ -290,5 +290,6 @@ class GameController extends AbstractController
         $em->flush();
         return $this->json([
             'message' => 'Game deleted successfully'
-        ]);    }
+        ]);
+    }
 }
