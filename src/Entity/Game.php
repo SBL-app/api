@@ -65,7 +65,7 @@ class Game
         return $this->week;
     }
 
-    public function setWeek(int $week): static
+    public function setWeek(?int $week): static
     {
         $this->week = $week;
 
@@ -101,7 +101,7 @@ class Game
         return $this->score1;
     }
 
-    public function setScore1(int $score1): static
+    public function setScore1(?int $score1): static
     {
         $this->score1 = $score1;
 
@@ -113,7 +113,7 @@ class Game
         return $this->score2;
     }
 
-    public function setScore2(int $score2): static
+    public function setScore2(?int $score2): static
     {
         $this->score2 = $score2;
 
