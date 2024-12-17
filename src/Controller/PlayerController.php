@@ -5,8 +5,10 @@ namespace App\Controller;
 use App\Repository\PlayerRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Player;
+use App\Entity\Team;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -21,7 +23,22 @@ class PlayerController extends AbstractController
                 'id' => $player->getId(),
                 'name' => $player->getName(),
                 'discord' => $player->getDiscord(),
-                'team' => $player->getTeam()
+                'team' => $player->getTeam() ? $player->getTeam()->getId() : null
+            ];
+        }, $players);
+        return $this->json($data);
+    }
+
+    #[Route('/players/{team}', name: 'app_player_team', methods: ['GET'])]
+    public function getPlayersByTeam(PlayerRepository $playerRepository, string $team): JsonResponse
+    {
+        $players = $playerRepository->findBy(['team' => $team]);
+        $data = array_map(function ($player) {
+            return [
+                'id' => $player->getId(),
+                'name' => $player->getName(),
+                'discord' => $player->getDiscord(),
+                'team' => $player->getTeam() ? $player->getTeam()->getId() : null
             ];
         }, $players);
         return $this->json($data);
@@ -34,7 +51,7 @@ class PlayerController extends AbstractController
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeam()
+            'team' => $player->getTeam() ? $player->getTeam()->getId() : null
         ]);
     }
 
@@ -44,14 +61,18 @@ class PlayerController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $player->setName($data['name'] ?? null);
         $player->setDiscord($data['discord'] ?? null);
-        $player->setTeam($data['team'] ?? null);
+        $team = $em->getRepository(Team::class)->find($data['team'] ?? null);
+        if (!$team && isset($data['team'])) {
+            return $this->json(['error' => 'Team not found'], Response::HTTP_NOT_FOUND);
+        }
+        $player->setTeam($team);
         $em->persist($player);
         $em->flush();
         return $this->json([
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeam()
+            'team' => $player->getTeam() ? $player->getTeam()->getId() : null
         ]);
     }
 
@@ -68,7 +89,7 @@ class PlayerController extends AbstractController
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeam()
+            'team' => $player->getTeam() ? $player->getTeam()->getId() : null
         ]);
     }
 
@@ -91,7 +112,7 @@ class PlayerController extends AbstractController
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeam()
+            'team' => $player->getTeam() ? $player->getTeam()->getId() : null
         ]);
     }
 
