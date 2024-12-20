@@ -7,6 +7,10 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Registration;
 use App\Repository\RegistrationRepository;
+use App\Entity\Season;
+use App\Repository\SeasonRepository;
+use App\Entity\Team;
+use App\Repository\TeamRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -16,13 +20,13 @@ class RegistrationController extends AbstractController
     public function getRegistrations(RegistrationRepository $registrationRepository): JsonResponse
     {
         $registrations = $registrationRepository->findAll();
-        foreach ($registrations as $registration) {
-            $data[] = [
+        $data = array_map(function ($registration) {
+            return [
                 'id' => $registration->getId(),
                 'season' => $registration->getSeason()->getName(),
                 'team' => $registration->getTeam()->getName()
             ];
-        }
+        }, $registrations);
         return $this->json($data);
     }
 
@@ -30,13 +34,13 @@ class RegistrationController extends AbstractController
     public function getRegistrationsBySeason(RegistrationRepository $registrationRepository, int $id): JsonResponse
     {
         $registrations = $registrationRepository->findBy(['season' => $id]);
-        foreach ($registrations as $registration) {
-            $data[] = [
+        $data = array_map(function ($registration) {
+            return [
                 'id' => $registration->getId(),
                 'season' => $registration->getSeason()->getName(),
                 'team' => $registration->getTeam()->getName()
             ];
-        }
+        }, $registrations);
         return $this->json($data);
     }
 
@@ -44,19 +48,23 @@ class RegistrationController extends AbstractController
     public function getRegistrationsByTeam(RegistrationRepository $registrationRepository, int $id): JsonResponse
     {
         $registrations = $registrationRepository->findBy(['team' => $id]);
-        foreach ($registrations as $registration) {
-            $data[] = [
+        $data = array_map(function ($registration) {
+            return [
                 'id' => $registration->getId(),
                 'season' => $registration->getSeason()->getName(),
                 'team' => $registration->getTeam()->getName()
             ];
-        }
+        }, $registrations);
         return $this->json($data);
     }
 
     #[Route('/registration/{id}', name: 'app_registration_show', methods: ['GET'])]
-    public function getRegistration(Registration $registration): JsonResponse
+    public function getRegistration(RegistrationRepository $registrationRepository, int $id): JsonResponse
     {
+        $registration = $registrationRepository->find($id);
+        if (!$registration) {
+            return $this->json(['error' => 'Registration not found'], 404);
+        }
         return $this->json([
             'id' => $registration->getId(),
             'season' => $registration->getSeason()->getName(),
@@ -69,11 +77,33 @@ class RegistrationController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $registration = new Registration();
-        $registration->setSeason($data['season']);
-        $registration->setTeam($data['team']);
+        if (isset($data['season'])) {
+            $season = $entityManager->getRepository(Season::class)->find($data['season']);
+            if (!$season) {
+                return $this->json(['error' => 'Season not found'], 400);
+            }
+            $registration->setSeason($season);
+        }
+        else {
+            $registration->setSeason(null);
+        }
+        if (isset($data['team'])) {
+            $team = $entityManager->getRepository(Team::class)->find($data['team']);
+            if (!$team) {
+                return $this->json(['error' => 'Team not found'], 400);
+            }
+            $registration->setTeam($team);
+        }
+        else {
+            $registration->setTeam(null);
+        }
         $entityManager->persist($registration);
         $entityManager->flush();
-        return $this->json(['id' => $registration->getId()]);
+        return $this->json([
+            'id' => $registration->getId(),
+            'season' => $registration->getSeason()->getName(),
+            'team' => $registration->getTeam()->getName()
+        ]);
     }
 
     #[Route('/registration/{id}', name: 'app_registration_update', methods: ['PUT'])]
