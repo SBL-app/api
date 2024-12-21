@@ -30,7 +30,7 @@ class SeasonController extends AbstractController
             foreach ($divisions as $division) {
                 $games = $gameRepository->findBy(['division' => $division]);
                 foreach ($games as $game) {
-                    $totalGames ++;
+                    $totalGames++;
                     if ($game->getStatus() === $finishedStatus) {
                         $finishedGames++;
                     }
@@ -108,13 +108,12 @@ class SeasonController extends AbstractController
     public function getSeasonTeams(Season $season, RegistrationRepository $registrationRepository): JsonResponse
     {
         $teams = $registrationRepository->findBy(['season' => $season]);
-        $teamsData = array_map(function($team) {
+        $teamsData = array_map(function ($team) {
             return [
-            'id' => $team->getTeam()->getId(),
-            'name' => $team->getTeam()->getName()
+                'id' => $team->getTeam()->getId(),
+                'name' => $team->getTeam()->getName()
             ];
         }, $teams);
-
         $data = [
             'id' => $season->getId(),
             'name' => $season->getName(),
@@ -136,10 +135,10 @@ class SeasonController extends AbstractController
         foreach ($divisions as $division) {
             $games = $gameRepository->findBy(['division' => $division]);
             foreach ($games as $game) {
-                $nbTotalGames ++;
+                $nbTotalGames++;
                 if ($game->getStatus() === $gameStatusRepository->findOneBy(['name' => 'match fini'])) {
                     $nbFinishedGames++;
-                }              
+                }
             }
         }
         $pourcent = $nbTotalGames > 0 ? ($nbFinishedGames / $nbTotalGames) * 100 : 0;
