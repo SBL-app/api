@@ -12,6 +12,7 @@ use App\Repository\GameStatusRepository;
 use App\Repository\SeasonRepository;
 use App\Repository\TeamRepository;
 use App\Repository\TeamStatRepository;
+use App\Repository\RegistrationRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -104,21 +105,25 @@ class SeasonController extends AbstractController
 
     // TODO: need to be test with fake data
     #[Route('/season/{id}/teams', name: 'app_season_teams', methods: ['GET'])]
-    public function getSeasonTeams(Season $season, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository): JsonResponse
+    public function getSeasonTeams(Season $season, RegistrationRepository $registrationRepository): JsonResponse
     {
-        $teams = [];
-        $divisions = $divisionRepository->findBy(['season' => $season]);
-        foreach ($divisions as $division) {
-            $teamsId = $teamStatRepository->findBy(['division' => $division]);
-            foreach ($teamsId as $teamId) {
-                $team = $teamRepository->find($teamId->getTeam());
-                $teams[] = [
-                    'id' => $team->getId(),
-                    'name' => $team->getName()
-                ];
-            }
-        }
-        return $this->json($teams);
+        $teams = $registrationRepository->findBy(['season' => $season]);
+        $teamsData = array_map(function($team) {
+            return [
+            'id' => $team->getTeam()->getId(),
+            'name' => $team->getTeam()->getName()
+            ];
+        }, $teams);
+
+        $data = [
+            'id' => $season->getId(),
+            'name' => $season->getName(),
+            'start_date' => $season->getStartDate()->format('d-m-Y'),
+            'end_date' => $season->getEndDate()->format('d-m-Y'),
+            'teams' => $teamsData
+        ];
+
+        return $this->json($data);
     }
 
     //TODO: need to be tested
