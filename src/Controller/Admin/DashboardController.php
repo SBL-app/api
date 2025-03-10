@@ -45,6 +45,13 @@ class DashboardController extends AbstractDashboardController
     public function configureMenuItems(): iterable
     {
         yield MenuItem::linkToDashboard('Dashboard', 'fa fa-home');
+        yield MenuItem::linkToCrud('Season', 'fa fa-user', Season::class);
+        yield MenuItem::linkToCrud('Division', 'fa fa-user', Division::class);
+        yield MenuItem::linkToCrud('Game', 'fa fa-user', Game::class);
+        yield MenuItem::linkToCrud('TeamStat', 'fa fa-user', TeamStat::class);
+        yield MenuItem::linkToCrud('Team', 'fa fa-user', Team::class);
+        yield MenuItem::linkToCrud('Player', 'fa fa-user', Player::class);
+        yield MenuItem::linkToCrud('GameStatus', 'fa fa-user', GameStatus::class);
         // yield MenuItem::linkToCrud('The Label', 'fas fa-list', EntityClass::class);
     }
 }
