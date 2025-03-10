@@ -11,6 +11,7 @@
         "doctrine/doctrine-bundle": "^2.12",
         "doctrine/doctrine-migrations-bundle": "^3.3",
         "doctrine/orm": "^3.1",
+        "easycorp/easyadmin-bundle": "^4.24",
         "fakerphp/faker": "^1.23",
         "nelmio/cors-bundle": "^2.5",
         "symfony/apache-pack": "^1.0",
@@ -18,7 +19,10 @@
         "symfony/dotenv": "7.0.*",
         "symfony/flex": "^2",
         "symfony/framework-bundle": "7.0.*",
+        "symfony/http-foundation": "7.0.*",
+        "symfony/process": "7.0.*",
         "symfony/runtime": "7.0.*",
+        "symfony/validator": "7.0.*",
         "symfony/yaml": "7.0.*"
     },
     "require-dev": {

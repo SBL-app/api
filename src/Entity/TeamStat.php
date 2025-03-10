@@ -33,6 +33,11 @@ class TeamStat
     #[ORM\Column(nullable: true)]
     private ?int $ties = null;
 
+    public function __toString(): string
+    {
+        return $this->team;
+    }
+
     public function getId(): ?int
     {
         return $this->id;

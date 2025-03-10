@@ -43,6 +43,11 @@ class Game
     #[ORM\JoinColumn(nullable: false)]
     private ?Division $division = null;
 
+    public function __toString(): string
+    {
+        return $this->team1 . ' vs ' . $this->team2;
+    }
+
     public function getId(): ?int
     {
         return $this->id;

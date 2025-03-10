@@ -22,6 +22,11 @@ class Player
     #[ORM\ManyToOne]
     private ?Team $team = null;
 
+    public function __toString(): string
+    {
+        return $this->name;
+    }
+
     public function getId(): ?int
     {
         return $this->id;
