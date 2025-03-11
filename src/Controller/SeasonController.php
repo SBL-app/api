@@ -25,7 +25,7 @@ class SeasonController extends AbstractController
         foreach ($seasons as $season) {
             $totalGames = 0;
             $finishedGames = 0;
-            $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'match fini']);
+            $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
             $divisions = $divisionRepository->findBy(['season' => $season]);
             foreach ($divisions as $division) {
                 $games = $gameRepository->findBy(['division' => $division]);
@@ -136,7 +136,7 @@ class SeasonController extends AbstractController
             $games = $gameRepository->findBy(['division' => $division]);
             foreach ($games as $game) {
                 $nbTotalGames++;
-                if ($game->getStatus() === $gameStatusRepository->findOneBy(['name' => 'match fini'])) {
+                if ($game->getStatus() === $gameStatusRepository->findOneBy(['name' => 'joué'])) {
                     $nbFinishedGames++;
                 }
             }
