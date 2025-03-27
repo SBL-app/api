@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\SeasonRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -22,6 +24,17 @@ class Season
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $endDate = null;
+
+    /**
+     * @var Collection<int, Registration>
+     */
+    #[ORM\OneToMany(targetEntity: Registration::class, mappedBy: 'season')]
+    private Collection $registrations;
+
+    public function __construct()
+    {
+        $this->registrations = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -60,6 +73,36 @@ class Season
     public function setEndDate(?\DateTimeInterface $endDate): static
     {
         $this->endDate = $endDate;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Registration>
+     */
+    public function getTeam(): Collection
+    {
+        return $this->registrations;
+    }
+
+    public function addTeam(Registration $registrations): static
+    {
+        if (!$this->registrations->contains($registrations)) {
+            $this->registrations->add($registrations);
+            $registrations->setSeason($this);
+        }
+
+        return $this;
+    }
+
+    public function removeTeam(Registration $registrations): static
+    {
+        if ($this->registrations->removeElement($registrations)) {
+            // set the owning side to null (unless already changed)
+            if ($registrations->getSeason() === $this) {
+                $registrations->setSeason(null);
+            }
+        }
 
         return $this;
     }
