@@ -51,7 +51,8 @@ class PlayerController extends AbstractController
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeam() ? $player->getTeam()->getId() : null
+            'team' => $player->getTeam() ? $player->getTeam()->getId() : null,
+            'team_name' => $player->getTeam() ? $player->getTeam()->getName() : null
         ]);
     }
 
