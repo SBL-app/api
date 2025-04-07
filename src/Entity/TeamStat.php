@@ -33,6 +33,12 @@ class TeamStat
     #[ORM\Column(nullable: true)]
     private ?int $ties = null;
 
+    #[ORM\Column]
+    private ?int $winRounds = null;
+
+    #[ORM\Column]
+    private ?int $looseRounds = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -106,6 +112,30 @@ class TeamStat
     public function setTies(?int $ties): static
     {
         $this->ties = $ties;
+
+        return $this;
+    }
+
+    public function getWinRounds(): ?int
+    {
+        return $this->winRounds;
+    }
+
+    public function setWinRounds(int $winRounds): static
+    {
+        $this->winRounds = $winRounds;
+
+        return $this;
+    }
+
+    public function getLooseRounds(): ?int
+    {
+        return $this->looseRounds;
+    }
+
+    public function setLooseRounds(int $looseRounds): static
+    {
+        $this->looseRounds = $looseRounds;
 
         return $this;
     }
