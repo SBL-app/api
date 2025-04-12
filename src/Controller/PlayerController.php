@@ -3,12 +3,14 @@
 namespace App\Controller;
 
 use App\Repository\PlayerRepository;
+use App\Repository\TeamStatRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Player;
 use App\Entity\Team;
+use App\Entity\TeamStat;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -45,14 +47,33 @@ class PlayerController extends AbstractController
     }
 
     #[Route('/player/{id}', name: 'app_player_show', methods: ['GET'])]
-    public function getPlayer(Player $player): JsonResponse
+    public function getPlayer(Player $player, EntityManager $em, TeamStatRepository $teamStatRepository): JsonResponse
     {
+        $team = $player->getTeam();
+        $teamStats = $teamStatRepository->findBy(['team' => $team]);
+        $statData = array_map(function ($teamStat) use ($team) {
+            return [
+                'team_id' => $team->getId(),
+                'team_name' => $team->getName(),
+                'division_id' => $teamStat->getDivision()->getId(),
+                'division_name' => $teamStat->getDivision()->getName(),
+                'season_id' => $teamStat->getDivision()->getSeason()->getId(),
+                'season_name' => $teamStat->getDivision()->getSeason()->getName(),
+                'wins' => $teamStat->getWins(),
+                'losses' => $teamStat->getLosses(),
+                'winRounds' => $teamStat->getWinRounds(),
+                'looseRounds' => $teamStat->getLooseRounds(),
+                'points' => $teamStat->getPoints(),
+            ];
+        }, $teamStats);
+
         return $this->json([
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $player->getTeam() ? $player->getTeam()->getId() : null,
-            'team_name' => $player->getTeam() ? $player->getTeam()->getName() : null
+            'team' => $team ? $team->getId() : null,
+            'team_name' => $team ? $team->getName() : null,
+            'stats' => $statData,
         ]);
     }
 

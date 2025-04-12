@@ -41,11 +41,13 @@ class TeamStatController extends AbstractController
         $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
         $data = array_map(function ($teamStat) use ($teamId){
             return [
-                'selected_team_id' => $teamId, // This is the team id that was passed in the URL '/teamStats/{id}
                 'id' => $teamStat->getId(),
                 'team_id' => $teamStat->getTeam()->getId(),
-                'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
+                'team_name' => $teamStat->getTeam()->getName(),
                 'division_id' => $teamStat->getDivision()->getId(),
+                'division_name' => $teamStat->getDivision()->getName(),
+                'season_id' => $teamStat->getDivision()->getSeason()->getId(),
+                'season_name' => $teamStat->getDivision()->getSeason()->getName(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses(),
                 'ties' => $teamStat->getTies(),
