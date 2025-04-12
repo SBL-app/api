@@ -26,6 +26,9 @@ class TeamStatController extends AbstractController
                 'division_id' => $teamStat->getDivision()->getId(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses(),
+                'ties' => $teamStat->getTies(),
+                'winRounds' => $teamStat->getWinRounds(),
+                'looseRounds' => $teamStat->getLooseRounds(),
                 'points' => $teamStat->getPoints()
             ];
         }, $teamStats);
@@ -38,13 +41,18 @@ class TeamStatController extends AbstractController
         $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
         $data = array_map(function ($teamStat) use ($teamId){
             return [
-                'selected_team_id' => $teamId, // This is the team id that was passed in the URL '/teamStats/{id}
                 'id' => $teamStat->getId(),
                 'team_id' => $teamStat->getTeam()->getId(),
-                'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
+                'team_name' => $teamStat->getTeam()->getName(),
                 'division_id' => $teamStat->getDivision()->getId(),
+                'division_name' => $teamStat->getDivision()->getName(),
+                'season_id' => $teamStat->getDivision()->getSeason()->getId(),
+                'season_name' => $teamStat->getDivision()->getSeason()->getName(),
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses(),
+                'ties' => $teamStat->getTies(),
+                'winRounds' => $teamStat->getWinRounds(),
+                'looseRounds' => $teamStat->getLooseRounds(),
                 'points' => $teamStat->getPoints()
             ];
         }, $teamStats);
@@ -67,6 +75,8 @@ class TeamStatController extends AbstractController
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses(),
                 'ties' => $teamStat->getTies(),
+                'winRounds' => $teamStat->getWinRounds(),
+                'looseRounds' => $teamStat->getLooseRounds(),
                 'points' => $teamStat->getPoints()
             ];
         }, $teamStats);
@@ -87,6 +97,8 @@ class TeamStatController extends AbstractController
                 'wins' => $teamStat->getWins(),
                 'losses' => $teamStat->getLosses(),
                 'ties' => $teamStat->getTies(),
+                'winRounds' => $teamStat->getWinRounds(),
+                'looseRounds' => $teamStat->getLooseRounds(),
                 'points' => $teamStat->getPoints()
             ];
         }, $teamStats);
@@ -118,10 +130,12 @@ class TeamStatController extends AbstractController
         $teamStat = new TeamStat();
         $teamStat->setTeam($team);
         $teamStat->setDivision($division);
-        $teamStat->setWins($data['wins']);
-        $teamStat->setLosses($data['losses']);
-        $teamStat->setTies($data['ties']);
-        $teamStat->setPoints($data['points']);
+        $teamStat->setWins($data['wins']? $data['wins'] : 0);
+        $teamStat->setLosses($data['losses']? $data['losses'] : 0);
+        $teamStat->setTies($data['ties']? $data['ties'] : 0);
+        $teamStat->setWinRounds($data['winRounds']? $data['winRounds'] : 0);
+        $teamStat->setLooseRounds($data['looseRounds']? $data['looseRounds'] : 0);
+        $teamStat->setPoints($data['points']? $data['points'] : 0);
 
         $entityManager->persist($teamStat);
         $entityManager->flush();
@@ -134,6 +148,8 @@ class TeamStatController extends AbstractController
             'wins' => $teamStat->getWins(),
             'losses' => $teamStat->getLosses(),
             'ties' => $teamStat->getTies(),
+            'winRounds' => $teamStat->getWinRounds(),
+            'looseRounds' => $teamStat->getLooseRounds(),
             'points' => $teamStat->getPoints()
         ]);
     }
@@ -155,6 +171,8 @@ class TeamStatController extends AbstractController
         $teamStat->setWins($data['wins']);
         $teamStat->setLosses($data['losses']);
         $teamStat->setTies($data['ties']);
+        $teamStat->setWinRounds($data['winRounds']);
+        $teamStat->setLooseRounds($data['looseRounds']);
         $teamStat->setPoints($data['points']);
 
         $entityManager->persist($teamStat);
@@ -185,19 +203,21 @@ class TeamStatController extends AbstractController
                 'error' => 'Team Stat not found'
             ], 404);
         }
-
         if (isset($data['wins'])) {
             $teamStat->setWins($data['wins']);
         }
-
         if (isset($data['losses'])) {
             $teamStat->setLosses($data['losses']);
         }
-
         if (isset($data['ties'])) {
             $teamStat->setTies($data['ties']);
         }
-
+        if (isset($data['winRounds'])) {
+            $teamStat->setWinRounds($data['winRounds']);
+        }
+        if (isset($data['looseRounds'])) {
+            $teamStat->setLooseRounds($data['looseRounds']);
+        }
         if (isset($data['points'])) {
             $teamStat->setPoints($data['points']);
         }
@@ -213,6 +233,8 @@ class TeamStatController extends AbstractController
             'wins' => $teamStat->getWins(),
             'losses' => $teamStat->getLosses(),
             'ties' => $teamStat->getTies(),
+            'winRounds' => $teamStat->getWinRounds(),
+            'looseRounds' => $teamStat->getLooseRounds(),
             'points' => $teamStat->getPoints()
         ]);
     }
