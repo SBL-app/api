@@ -1,7 +1,0 @@
----
-deployment:
-  tasks:
-    - export DEPLOYPATH=/home/nome4156/sbl/api/
-    - /bin/cp -R . $DEPLOYPATH
-    - /bin/chmod -R 755 $DEPLOYPATH
-    - /bin/chown -R nome4156:nome4156 $DEPLOYPATH
