@@ -36,62 +36,62 @@ class TeamController extends AbstractController
         ]);
     }
     
-    #[Route('/team', name: 'app_team_create', methods: ['POST'])]
-    public function createTeam(Request $request, Team $team, EntityManager $em): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-        $team->setName($data['name']);
-        $team->setCapitain($data['capitain'] ?? null); // Set capitain to null if not provided
-        $em->persist($team);
-        $em->flush();
-        return $this->json([
-            'id' => $team->getId(),
-            'name' => $team->getName(),
-            'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
-        ]);
-    }
+    // #[Route('/team', name: 'app_team_create', methods: ['POST'])]
+    // public function createTeam(Request $request, Team $team, EntityManager $em): JsonResponse
+    // {
+    //     $data = json_decode($request->getContent(), true);
+    //     $team->setName($data['name']);
+    //     $team->setCapitain($data['capitain'] ?? null); // Set capitain to null if not provided
+    //     $em->persist($team);
+    //     $em->flush();
+    //     return $this->json([
+    //         'id' => $team->getId(),
+    //         'name' => $team->getName(),
+    //         'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
+    //     ]);
+    // }
 
-    #[Route('/team/{id}', name: 'app_team_update', methods: ['PUT'])]
-    public function updateTeam(Request $request, Team $team, EntityManager $em): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-        $team->setName($data['name']);
-        $team->setCapitain($data['capitain'] ?? null);
-        $em->persist($team);
-        $em->flush();
-        return $this->json([
-            'id' => $team->getId(),
-            'name' => $team->getName(),
-            'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
-        ]);
-    }
+    // #[Route('/team/{id}', name: 'app_team_update', methods: ['PUT'])]
+    // public function updateTeam(Request $request, Team $team, EntityManager $em): JsonResponse
+    // {
+    //     $data = json_decode($request->getContent(), true);
+    //     $team->setName($data['name']);
+    //     $team->setCapitain($data['capitain'] ?? null);
+    //     $em->persist($team);
+    //     $em->flush();
+    //     return $this->json([
+    //         'id' => $team->getId(),
+    //         'name' => $team->getName(),
+    //         'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
+    //     ]);
+    // }
 
-    #[Route('/team/{id}', name: 'app_team_patch', methods: ['PATCH'])]
-    public function patchTeam(Request $request, Team $team, EntityManager $em): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-        if (isset($data['name'])) {
-            $team->setName($data['name']);
-        }
-        if (isset($data['capitain'])) {
-            $team->setCapitain($data['capitain']);
-        }
-        $em->persist($team);
-        $em->flush();
-        return $this->json([
-            'id' => $team->getId(),
-            'name' => $team->getName(),
-            'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
-        ]);
-    }
+    // #[Route('/team/{id}', name: 'app_team_patch', methods: ['PATCH'])]
+    // public function patchTeam(Request $request, Team $team, EntityManager $em): JsonResponse
+    // {
+    //     $data = json_decode($request->getContent(), true);
+    //     if (isset($data['name'])) {
+    //         $team->setName($data['name']);
+    //     }
+    //     if (isset($data['capitain'])) {
+    //         $team->setCapitain($data['capitain']);
+    //     }
+    //     $em->persist($team);
+    //     $em->flush();
+    //     return $this->json([
+    //         'id' => $team->getId(),
+    //         'name' => $team->getName(),
+    //         'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
+    //     ]);
+    // }
 
-    #[Route('/team/{id}', name: 'app_team_delete', methods: ['DELETE'])]
-    public function deleteTeam(Team $team, EntityManager $em): JsonResponse
-    {
-        $em->remove($team);
-        $em->flush();
-        return $this->json([
-            'message' => 'Team deleted successfully'
-        ]);
-    }
+    // #[Route('/team/{id}', name: 'app_team_delete', methods: ['DELETE'])]
+    // public function deleteTeam(Team $team, EntityManager $em): JsonResponse
+    // {
+    //     $em->remove($team);
+    //     $em->flush();
+    //     return $this->json([
+    //         'message' => 'Team deleted successfully'
+    //     ]);
+    // }
 }
