@@ -34,54 +34,54 @@ class GameStatusController extends AbstractController
         ]);
     }
 
-    #[Route('/gameStatus', name: 'app_game_status_create', methods: ['POST'])]
-    public function createGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-        $gameStatus->setName($data['name']);
-        $em->persist($gameStatus);
-        $em->flush();
-        return $this->json([
-            'id' => $gameStatus->getId(),
-            'name' => $gameStatus->getName()
-        ]);
-    }
+    // #[Route('/gameStatus', name: 'app_game_status_create', methods: ['POST'])]
+    // public function createGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
+    // {
+    //     $data = json_decode($request->getContent(), true);
+    //     $gameStatus->setName($data['name']);
+    //     $em->persist($gameStatus);
+    //     $em->flush();
+    //     return $this->json([
+    //         'id' => $gameStatus->getId(),
+    //         'name' => $gameStatus->getName()
+    //     ]);
+    // }
 
-    #[Route('/gameStatus/{id}', name: 'app_game_status_update', methods: ['PUT'])]
-    public function updateGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-        $gameStatus->setName($data['name']);
-        $em->persist($gameStatus);
-        $em->flush();
-        return $this->json([
-            'id' => $gameStatus->getId(),
-            'name' => $gameStatus->getName()
-        ]);
-    }
+    // #[Route('/gameStatus/{id}', name: 'app_game_status_update', methods: ['PUT'])]
+    // public function updateGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
+    // {
+    //     $data = json_decode($request->getContent(), true);
+    //     $gameStatus->setName($data['name']);
+    //     $em->persist($gameStatus);
+    //     $em->flush();
+    //     return $this->json([
+    //         'id' => $gameStatus->getId(),
+    //         'name' => $gameStatus->getName()
+    //     ]);
+    // }
 
-    #[Route('/gameStatus/{id}', name: 'app_game_status_patch', methods: ['PATCH'])]
-    public function patchGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-        if (isset($data['name'])) {
-            $gameStatus->setName($data['name']);
-        }
-        $em->persist($gameStatus);
-        $em->flush();
-        return $this->json([
-            'id' => $gameStatus->getId(),
-            'name' => $gameStatus->getName()
-        ]);
-    }
+    // #[Route('/gameStatus/{id}', name: 'app_game_status_patch', methods: ['PATCH'])]
+    // public function patchGameStatus(Request $request, GameStatus $gameStatus, EntityManager $em): JsonResponse
+    // {
+    //     $data = json_decode($request->getContent(), true);
+    //     if (isset($data['name'])) {
+    //         $gameStatus->setName($data['name']);
+    //     }
+    //     $em->persist($gameStatus);
+    //     $em->flush();
+    //     return $this->json([
+    //         'id' => $gameStatus->getId(),
+    //         'name' => $gameStatus->getName()
+    //     ]);
+    // }
 
-    #[Route('/gameStatus/{id}', name: 'app_game_status_delete', methods: ['DELETE'])]
-    public function deleteGameStatus(GameStatus $gameStatus, EntityManager $em): JsonResponse
-    {
-        $em->remove($gameStatus);
-        $em->flush();
-        return $this->json([
-            'message' => 'GameStatus deleted successfully'
-        ]);
-    }
+    // #[Route('/gameStatus/{id}', name: 'app_game_status_delete', methods: ['DELETE'])]
+    // public function deleteGameStatus(GameStatus $gameStatus, EntityManager $em): JsonResponse
+    // {
+    //     $em->remove($gameStatus);
+    //     $em->flush();
+    //     return $this->json([
+    //         'message' => 'GameStatus deleted successfully'
+    //     ]);
+    // }
 }
