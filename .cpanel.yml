@@ -1,5 +1,0 @@
----
-deployment:
-  tasks:
-    - export DEPLOYPATH=/home/nome4156/sbl/api/
-    - /bin/cp -R * $DEPLOYPATH
