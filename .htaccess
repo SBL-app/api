@@ -1,4 +1,16 @@
-<FilesMatch "\.json$">
- Order deny,allow
- Deny from all
+# Configuration pour rediriger vers le dossier public
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteRule ^(.*)$ /public/$1 [L,QSA]
+
+# Protection des fichiers sensibles
+<FilesMatch "\.(env|yml|yaml|json|lock)$">
+    Order deny,allow
+    Deny from all
 </FilesMatch>
+
+# Protection des dossiers système
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(vendor|var|src|config|app)/ - [F,L]
+</IfModule>

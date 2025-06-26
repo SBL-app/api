@@ -1,5 +1,23 @@
 <?php
 
+// Redirection vers la nouvelle structure Symfony avec le dossier public
+$newPath = '../public/index.php';
+
+if (file_exists($newPath)) {
+    // Rediriger vers la nouvelle structure
+    $requestUri = $_SERVER['REQUEST_URI'];
+    $redirectPath = str_replace('/web', '', $requestUri);
+    if ($redirectPath === '' || $redirectPath === '/') {
+        $redirectPath = '/';
+    }
+    
+    // Configuration des headers pour redirection permanente
+    header('HTTP/1.1 301 Moved Permanently');
+    header('Location: ' . $redirectPath);
+    exit;
+}
+
+// Fallback vers l'ancienne méthode si le nouveau système n'est pas disponible
 use Symfony\Component\HttpFoundation\Request;
 
 // Supprimer temporairement les warnings sur E_STRICT qui est déprécié
@@ -14,10 +32,7 @@ $kernel = new AppKernel('prod', false);
 if (PHP_VERSION_ID < 70000) {
     $kernel->loadClassCache();
 }
-//$kernel = new AppCache($kernel);
 
-// When using the HttpCache, you need to call the method in your front controller instead of relying on the configuration parameter
-//Request::enableHttpMethodParameterOverride();
 $request = Request::createFromGlobals();
 $response = $kernel->handle($request);
 $response->send();
