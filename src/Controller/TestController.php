@@ -59,4 +59,22 @@ class TestController extends AbstractController
             'php_version' => PHP_VERSION
         ]);
     }
+
+    #[Route('/cors-test', name: 'app_cors_test', methods: ['GET', 'POST', 'OPTIONS'])]
+    public function corsTest(Request $request): JsonResponse
+    {
+        $response = $this->json([
+            'message' => 'CORS test endpoint',
+            'method' => $request->getMethod(),
+            'origin' => $request->headers->get('Origin'),
+            'timestamp' => date('Y-m-d H:i:s')
+        ]);
+
+        // Ajouter des en-têtes CORS explicites pour ce endpoint de test
+        $response->headers->set('Access-Control-Allow-Origin', '*');
+        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
+
+        return $response;
+    }
 }
