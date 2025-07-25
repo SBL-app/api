@@ -18,10 +18,49 @@ use Symfony\Component\HttpFoundation\Request;
 
 class SeasonController extends AbstractController
 {
-    #[Route('/seasons', name: 'app_season', methods: ['GET'])]
-    public function getSeasons(SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
+    #[Route('/season', name: 'app_seasons', methods: ['GET'])]
+    public function getSeasons(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
+        $id = $request->query->get('id');
+        
+        // Si un ID est fourni, retourner une seule saison
+        if ($id) {
+            $season = $seasonRepository->find($id);
+            if (!$season) {
+                return $this->json(['error' => 'Season not found'], 404);
+            }
+
+            // Calculer les statistiques pour cette saison
+            $totalGames = 0;
+            $finishedGames = 0;
+            $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
+            $divisions = $divisionRepository->findBy(['season' => $season]);
+            foreach ($divisions as $division) {
+                $games = $gameRepository->findBy(['division' => $division]);
+                foreach ($games as $game) {
+                    $totalGames++;
+                    if ($game->getStatus() === $finishedStatus) {
+                        $finishedGames++;
+                    }
+                }
+            }
+            $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
+            $percentage = number_format($percentage, 2);
+
+            return $this->json([
+                'id' => $season->getId(),
+                'name' => $season->getName(),
+                'start_date' => $season->getStartDate()->format('d-m-Y'),
+                'end_date' => $season->getEndDate()->format('d-m-Y'),
+                'total_games' => $totalGames,
+                'finished_games' => $finishedGames,
+                'percentage' => $percentage
+            ]);
+        }
+
+        // Sinon, retourner toutes les saisons avec leurs statistiques
         $seasons = $seasonRepository->findAll();
+        $data = [];
         foreach ($seasons as $season) {
             $totalGames = 0;
             $finishedGames = 0;
@@ -51,21 +90,21 @@ class SeasonController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/season/{id}', name: 'app_season_show', methods: ['GET'])]
-    public function getSeason(Season $season): JsonResponse
-    {
-        return $this->json([
-            'id' => $season->getId(),
-            'name' => $season->getName(),
-            'start_date' => $season->getStartDate()->format('d-m-Y'),
-            'end_date' => $season->getEndDate()->format('d-m-Y')
-        ]);
-    }
 
-
-    #[Route('/season/{id}/games', name: 'app_season_games', methods: ['GET'])]
-    public function getSeasonGames(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository): JsonResponse
+    #[Route('/season/games', name: 'app_season_games', methods: ['GET'])]
+    public function getSeasonGames(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository): JsonResponse
     {
+        $id = $request->query->get('id');
+        if (!$id) {
+            return $this->json(['error' => 'Season ID is required'], 400);
+        }
+
+        $season = $seasonRepository->find($id);
+        if (!$season) {
+            return $this->json(['error' => 'Season not found'], 404);
+        }
+
+        $rep = [];
         $divisions = $divisionRepository->findBy(['season' => $season]);
         foreach ($divisions as $division) {
             $games = $gameRepository->findBy(['division' => $division]);
@@ -87,9 +126,24 @@ class SeasonController extends AbstractController
     }
 
     // TODO: need to be test with fake data, maybe it's useless
-    #[Route('/season/{id}/games/{status}', name: 'app_season_games_by_status', methods: ['GET'])]
-    public function getSeasonGamesByStatus(Season $season, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, string $status): JsonResponse
+    #[Route('/season/games/status', name: 'app_season_games_by_status', methods: ['GET'])]
+    public function getSeasonGamesByStatus(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository): JsonResponse
     {
+        $id = $request->query->get('id');
+        $status = $request->query->get('status');
+        
+        if (!$id) {
+            return $this->json(['error' => 'Season ID is required'], 400);
+        }
+        if (!$status) {
+            return $this->json(['error' => 'Status is required'], 400);
+        }
+
+        $season = $seasonRepository->find($id);
+        if (!$season) {
+            return $this->json(['error' => 'Season not found'], 404);
+        }
+
         $games = [];
         $divisions = $divisionRepository->findBy(['season' => $season]);
         foreach ($divisions as $division) {
@@ -104,9 +158,19 @@ class SeasonController extends AbstractController
     }
 
     // TODO: need to be test with fake data
-    #[Route('/season/{id}/teams', name: 'app_season_teams', methods: ['GET'])]
-    public function getSeasonTeams(Season $season, RegistrationRepository $registrationRepository): JsonResponse
+    #[Route('/season/teams', name: 'app_season_teams', methods: ['GET'])]
+    public function getSeasonTeams(Request $request, SeasonRepository $seasonRepository, RegistrationRepository $registrationRepository): JsonResponse
     {
+        $id = $request->query->get('id');
+        if (!$id) {
+            return $this->json(['error' => 'Season ID is required'], 400);
+        }
+
+        $season = $seasonRepository->find($id);
+        if (!$season) {
+            return $this->json(['error' => 'Season not found'], 404);
+        }
+
         $teams = $registrationRepository->findBy(['season' => $season]);
         $teamsData = array_map(function ($team) {
             return [
@@ -126,9 +190,21 @@ class SeasonController extends AbstractController
     }
 
     //TODO: need to be tested
-    #[Route('/season/{id}/pourcent/{decimal}', name: 'app_season_pourcent', methods: ['GET'])]
-    public function getFinishedMatchPourcent(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository, int $decimal): JsonResponse
+    #[Route('/season/pourcent', name: 'app_season_pourcent', methods: ['GET'])]
+    public function getFinishedMatchPourcent(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
+        $id = $request->query->get('id');
+        $decimal = $request->query->get('decimal', 2); // valeur par défaut : 2
+        
+        if (!$id) {
+            return $this->json(['error' => 'Season ID is required'], 400);
+        }
+
+        $season = $seasonRepository->find($id);
+        if (!$season) {
+            return $this->json(['error' => 'Season not found'], 404);
+        }
+
         $nbTotalGames = 0;
         $nbFinishedGames = 0;
         $divisions = $divisionRepository->findBy(['season' => $season]);
@@ -142,7 +218,7 @@ class SeasonController extends AbstractController
             }
         }
         $pourcent = $nbTotalGames > 0 ? ($nbFinishedGames / $nbTotalGames) * 100 : 0;
-        $pourcent = number_format($pourcent, $decimal);
+        $pourcent = number_format($pourcent, (int)$decimal);
         return $this->json([
             'total' => $nbTotalGames,
             'finished' => $nbFinishedGames,
