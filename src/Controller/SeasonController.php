@@ -18,6 +18,60 @@ use Symfony\Component\HttpFoundation\Request;
 
 class SeasonController extends AbstractController
 {
+    /**
+     * Calcule les statistiques des matchs pour une saison donnée
+     */
+    private function calculateSeasonGameStats(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): array
+    {
+        $totalGames = 0;
+        $finishedGames = 0;
+        $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
+        $divisions = $divisionRepository->findBy(['season' => $season]);
+        
+        foreach ($divisions as $division) {
+            $games = $gameRepository->findBy(['division' => $division]);
+            foreach ($games as $game) {
+                $totalGames++;
+                if ($game->getStatus() === $finishedStatus) {
+                    $finishedGames++;
+                }
+            }
+        }
+        
+        $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
+        
+        return [
+            'total_games' => $totalGames,
+            'finished_games' => $finishedGames,
+            'percentage' => $percentage
+        ];
+    }
+
+    /**
+     * Formate les données d'une saison avec ou sans statistiques
+     */
+    private function formatSeasonData(Season $season, ?DivisionRepository $divisionRepository = null, ?GameRepository $gameRepository = null, ?GameStatusRepository $gameStatusRepository = null): array
+    {
+        $data = [
+            'id' => $season->getId(),
+            'name' => $season->getName(),
+            'start_date' => $season->getStartDate()->format('d-m-Y'),
+            'end_date' => $season->getEndDate()->format('d-m-Y')
+        ];
+
+        // Si les repositories sont fournis, ajouter les statistiques
+        if ($divisionRepository && $gameRepository && $gameStatusRepository) {
+            $stats = $this->calculateSeasonGameStats($season, $divisionRepository, $gameRepository, $gameStatusRepository);
+            $data = array_merge($data, [
+                'total_games' => $stats['total_games'],
+                'finished_games' => $stats['finished_games'],
+                'percentage' => number_format($stats['percentage'], 2)
+            ]);
+        }
+
+        return $data;
+    }
+
     #[Route('/season', name: 'app_seasons', methods: ['GET'])]
     public function getSeasons(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
@@ -30,131 +84,16 @@ class SeasonController extends AbstractController
                 return $this->json(['error' => 'Season not found'], 404);
             }
 
-            // Calculer les statistiques pour cette saison
-            $totalGames = 0;
-            $finishedGames = 0;
-            $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
-            $divisions = $divisionRepository->findBy(['season' => $season]);
-            foreach ($divisions as $division) {
-                $games = $gameRepository->findBy(['division' => $division]);
-                foreach ($games as $game) {
-                    $totalGames++;
-                    if ($game->getStatus() === $finishedStatus) {
-                        $finishedGames++;
-                    }
-                }
-            }
-            $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
-            $percentage = number_format($percentage, 2);
-
-            return $this->json([
-                'id' => $season->getId(),
-                'name' => $season->getName(),
-                'start_date' => $season->getStartDate()->format('d-m-Y'),
-                'end_date' => $season->getEndDate()->format('d-m-Y'),
-                'total_games' => $totalGames,
-                'finished_games' => $finishedGames,
-                'percentage' => $percentage
-            ]);
+            return $this->json($this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository));
         }
 
         // Sinon, retourner toutes les saisons avec leurs statistiques
         $seasons = $seasonRepository->findAll();
         $data = [];
         foreach ($seasons as $season) {
-            $totalGames = 0;
-            $finishedGames = 0;
-            $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
-            $divisions = $divisionRepository->findBy(['season' => $season]);
-            foreach ($divisions as $division) {
-                $games = $gameRepository->findBy(['division' => $division]);
-                foreach ($games as $game) {
-                    $totalGames++;
-                    if ($game->getStatus() === $finishedStatus) {
-                        $finishedGames++;
-                    }
-                }
-            }
-            $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
-            $percentage = number_format($percentage, 2);
-            $data[] = [
-                'id' => $season->getId(),
-                'name' => $season->getName(),
-                'start_date' => $season->getStartDate()->format('d-m-Y'),
-                'end_date' => $season->getEndDate()->format('d-m-Y'),
-                'total_games' => $totalGames,
-                'finished_games' => $finishedGames,
-                'percentage' => $percentage
-            ];
+            $data[] = $this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository);
         }
         return $this->json($data);
-    }
-
-
-    #[Route('/season/games', name: 'app_season_games', methods: ['GET'])]
-    public function getSeasonGames(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository): JsonResponse
-    {
-        $id = $request->query->get('id');
-        if (!$id) {
-            return $this->json(['error' => 'Season ID is required'], 400);
-        }
-
-        $season = $seasonRepository->find($id);
-        if (!$season) {
-            return $this->json(['error' => 'Season not found'], 404);
-        }
-
-        $rep = [];
-        $divisions = $divisionRepository->findBy(['season' => $season]);
-        foreach ($divisions as $division) {
-            $games = $gameRepository->findBy(['division' => $division]);
-            foreach ($games as $game) {
-                $rep[] = [
-                    'id' => $game->getId(),
-                    'date' => $game->getDate()->format('d-m-Y'),
-                    'week' => $game->getWeek(),
-                    'team1' => $game->getTeam1()->getName(),
-                    'team2' => $game->getTeam2()->getName(),
-                    'score1' => $game->getScore1(),
-                    'score2' => $game->getScore2(),
-                    'winner' => $game->getWinner(),
-                    'status' => $game->getStatus()->getName()
-                ];
-            }
-        }
-        return $this->json($rep);
-    }
-
-    // TODO: need to be test with fake data, maybe it's useless
-    #[Route('/season/games/status', name: 'app_season_games_by_status', methods: ['GET'])]
-    public function getSeasonGamesByStatus(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository): JsonResponse
-    {
-        $id = $request->query->get('id');
-        $status = $request->query->get('status');
-        
-        if (!$id) {
-            return $this->json(['error' => 'Season ID is required'], 400);
-        }
-        if (!$status) {
-            return $this->json(['error' => 'Status is required'], 400);
-        }
-
-        $season = $seasonRepository->find($id);
-        if (!$season) {
-            return $this->json(['error' => 'Season not found'], 404);
-        }
-
-        $games = [];
-        $divisions = $divisionRepository->findBy(['season' => $season]);
-        foreach ($divisions as $division) {
-            $teamsId = $teamStatRepository->findBy(['division' => $division]);
-            foreach ($teamsId as $teamId) {
-                if ($teamId->getGames() === $status) {
-                    $games[] = $teamId->getGames();
-                }
-            }
-        }
-        return $this->json($games);
     }
 
     // TODO: need to be test with fake data
@@ -178,13 +117,11 @@ class SeasonController extends AbstractController
                 'name' => $team->getTeam()->getName()
             ];
         }, $teams);
-        $data = [
-            'id' => $season->getId(),
-            'name' => $season->getName(),
-            'start_date' => $season->getStartDate()->format('d-m-Y'),
-            'end_date' => $season->getEndDate()->format('d-m-Y'),
+        
+        $seasonData = $this->formatSeasonData($season);
+        $data = array_merge($seasonData, [
             'teams' => $teamsData
-        ];
+        ]);
 
         return $this->json($data);
     }
@@ -205,24 +142,12 @@ class SeasonController extends AbstractController
             return $this->json(['error' => 'Season not found'], 404);
         }
 
-        $nbTotalGames = 0;
-        $nbFinishedGames = 0;
-        $divisions = $divisionRepository->findBy(['season' => $season]);
-        foreach ($divisions as $division) {
-            $games = $gameRepository->findBy(['division' => $division]);
-            foreach ($games as $game) {
-                $nbTotalGames++;
-                if ($game->getStatus() === $gameStatusRepository->findOneBy(['name' => 'joué'])) {
-                    $nbFinishedGames++;
-                }
-            }
-        }
-        $pourcent = $nbTotalGames > 0 ? ($nbFinishedGames / $nbTotalGames) * 100 : 0;
-        $pourcent = number_format($pourcent, (int)$decimal);
+        $stats = $this->calculateSeasonGameStats($season, $divisionRepository, $gameRepository, $gameStatusRepository);
+        
         return $this->json([
-            'total' => $nbTotalGames,
-            'finished' => $nbFinishedGames,
-            'pourcent' => $pourcent
+            'total' => $stats['total_games'],
+            'finished' => $stats['finished_games'],
+            'pourcent' => number_format($stats['percentage'], (int)$decimal)
         ]);
     }
 
