@@ -12,28 +12,38 @@ use Symfony\Component\HttpFoundation\Request;
 
 class TeamController extends AbstractController
 {
-    #[Route('/teams', name: 'app_team', methods: ['GET'])]
-    public function getTeams(TeamRepository $teamRepository): JsonResponse
+    /**
+     * Formate les données de base d'une équipe
+     */
+    private function formatTeamData(Team $team): array
     {
-        $teams = $teamRepository->findAll();
-        $data = array_map(function ($team) {
-            return [
-                'id' => $team->getId(),
-                'name' => $team->getName(),
-                'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
-            ];
-        }, $teams);
-        return $this->json($data);
-    }
-
-    #[Route('/team/{id}', name: 'app_team_show', methods: ['GET'])]
-    public function getTeam(Team $team): JsonResponse
-    {
-        return $this->json([
+        return [
             'id' => $team->getId(),
             'name' => $team->getName(),
             'capitain' => $team->getCapitain() ? $team->getCapitain()->getName() : 'No capitain assigned'
-        ]);
+        ];
+    }
+
+    #[Route('/teams', name: 'app_team', methods: ['GET'])]
+    public function getTeams(Request $request, TeamRepository $teamRepository): JsonResponse
+    {
+        $id = $request->query->get('id');
+        
+        // Si un ID est fourni, retourner l'équipe spécifique
+        if ($id) {
+            $team = $teamRepository->find($id);
+            if (!$team) {
+                return $this->json(['error' => 'Team not found'], 404);
+            }
+            return $this->json($this->formatTeamData($team));
+        }
+        
+        // Sinon, retourner toutes les équipes
+        $teams = $teamRepository->findAll();
+        $data = array_map(function ($team) {
+            return $this->formatTeamData($team);
+        }, $teams);
+        return $this->json($data);
     }
     
     // #[Route('/team', name: 'app_team_create', methods: ['POST'])]

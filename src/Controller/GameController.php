@@ -15,74 +15,12 @@ use Symfony\Component\HttpFoundation\Request;
 
 class GameController extends AbstractController
 {
-    #[Route('/games', name: 'app_game', methods: ['GET'])]
-    public function getGames(GameRepository $gameRepository): JsonResponse
+    /**
+     * Formate les données de base d'un match
+     */
+    private function formatGameData(Game $game): array
     {
-        $games = $gameRepository->findAll();
-        $data = array_map(function ($game) {
-            return [
-                'id' => $game->getId(),
-                'date' => $game->getDate()->format('Y-m-d H:i:s'),
-                'week' => $game->getWeek(),
-                'team1' => $game->getTeam1()->getName(),
-                'team2' => $game->getTeam2()->getName(),
-                'score1' => $game->getScore1(),
-                'score2' => $game->getScore2(),
-                'winner' => $game->getWinner(),
-                'status' => $game->getStatus()->getName(),
-                'division' => $game->getDivision()->getName()
-            ];
-        }, $games);
-        return $this->json($data);
-    }
-
-    #[Route('/games/{divisionId}', name: 'app_game_division', methods: ['GET'])]
-    public function getGamesByDivisionId(GameRepository $gameRepository, int $divisionId): JsonResponse
-    {
-        $games = $gameRepository->findBy(['division' => $divisionId]);
-        $data = array_map(function ($game) {
-            return [
-                'id' => $game->getId(),
-                'date' => $game->getDate()->format('Y-m-d H:i:s'),
-                'week' => $game->getWeek(),
-                'team1' => $game->getTeam1()->getName(),
-                'team2' => $game->getTeam2()->getName(),
-                'score1' => $game->getScore1(),
-                'score2' => $game->getScore2(),
-                'winner' => $game->getWinner(),
-                'status' => $game->getStatus()->getName(),
-                'division' => $game->getDivision()->getName()
-            ];
-        }, $games);
-        return $this->json($data);
-    }
-
-    #[Route('/games/team/{teamId}', name: 'app_game_team', methods: ['GET'])]
-    public function getGamesByTeamId(GameRepository $gameRepository, int $teamId): JsonResponse
-    {
-        $games = $gameRepository->findBy(['team1' => $teamId]);
-        $games = array_merge($games, $gameRepository->findBy(['team2' => $teamId]));
-        $data = array_map(function ($game) {
-            return [
-                'id' => $game->getId(),
-                'date' => $game->getDate()->format('Y-m-d H:i:s'),
-                'week' => $game->getWeek(),
-                'team1' => $game->getTeam1()->getName(),
-                'team2' => $game->getTeam2()->getName(),
-                'score1' => $game->getScore1(),
-                'score2' => $game->getScore2(),
-                'winner' => $game->getWinner(),
-                'status' => $game->getStatus()->getName(),
-                'division' => $game->getDivision()->getName()
-            ];
-        }, $games);
-        return $this->json($data);
-    }
-
-    #[Route('/game/{id}', name: 'app_game_show', methods: ['GET'])]
-    public function getGame(Game $game): JsonResponse
-    {
-        return $this->json([
+        return [
             'id' => $game->getId(),
             'date' => $game->getDate()->format('Y-m-d H:i:s'),
             'week' => $game->getWeek(),
@@ -93,26 +31,77 @@ class GameController extends AbstractController
             'winner' => $game->getWinner(),
             'status' => $game->getStatus()->getName(),
             'division' => $game->getDivision()->getName()
-        ]);
+        ];
     }
 
-    #[Route('/game/division/{id}', name: 'app_game_show_division', methods: ['GET'])]
-    public function getGamesByDivision(GameRepository $gameRepository, int $id): JsonResponse
+    /**
+     * Récupère les matchs d'une équipe avec filtrage optionnel par division
+     */
+    private function getGamesByTeam(GameRepository $gameRepository, int $teamId, ?int $divisionId = null): array
     {
-        $games = $gameRepository->findBy(['divisionId' => $id]);
+        $criteria1 = ['team1' => $teamId];
+        $criteria2 = ['team2' => $teamId];
+        
+        if ($divisionId) {
+            $criteria1['division'] = $divisionId;
+            $criteria2['division'] = $divisionId;
+        }
+        
+        $games1 = $gameRepository->findBy($criteria1);
+        $games2 = $gameRepository->findBy($criteria2);
+        
+        return array_merge($games1, $games2);
+    }
+
+    #[Route('/games', name: 'app_game', methods: ['GET'])]
+    public function getGames(Request $request, GameRepository $gameRepository): JsonResponse
+    {
+        $id = $request->query->get('id');
+        $divisionId = $request->query->get('division_id');
+        $teamId = $request->query->get('team_id');
+        
+        // Si un ID est fourni, retourner le match spécifique
+        if ($id) {
+            $game = $gameRepository->find($id);
+            if (!$game) {
+                return $this->json(['error' => 'Game not found'], 404);
+            }
+            return $this->json($this->formatGameData($game));
+        }
+        
+        // Si team_id est fourni (avec ou sans division_id)
+        if ($teamId) {
+            $games = $this->getGamesByTeam($gameRepository, (int)$teamId, $divisionId ? (int)$divisionId : null);
+            
+            if (empty($games)) {
+                $errorMessage = $divisionId 
+                    ? 'No games found for this team in this division'
+                    : 'No games found for this team';
+                return $this->json(['error' => $errorMessage], 404);
+            }
+            
+            $data = array_map(function ($game) {
+                return $this->formatGameData($game);
+            }, $games);
+            return $this->json($data);
+        }
+        
+        // Si seulement division_id est fourni, retourner les matchs de cette division
+        if ($divisionId) {
+            $games = $gameRepository->findBy(['division' => $divisionId]);
+            if (empty($games)) {
+                return $this->json(['error' => 'No games found for this division'], 404);
+            }
+            $data = array_map(function ($game) {
+                return $this->formatGameData($game);
+            }, $games);
+            return $this->json($data);
+        }
+        
+        // Sinon, retourner tous les matchs
+        $games = $gameRepository->findAll();
         $data = array_map(function ($game) {
-            return [
-                'id' => $game->getId(),
-                'date' => $game->getDate()->format('Y-m-d H:i:s'),
-                'week' => $game->getWeek(),
-                'team1' => $game->getTeam1()->getName(),
-                'team2' => $game->getTeam2()->getName(),
-                'score1' => $game->getScore1(),
-                'score2' => $game->getScore2(),
-                'winner' => $game->getWinner(),
-                'status' => $game->getStatus()->getName(),
-                'division' => $game->getDivision()->getName()
-            ];
+            return $this->formatGameData($game);
         }, $games);
         return $this->json($data);
     }

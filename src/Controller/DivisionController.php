@@ -19,36 +19,55 @@ use Symfony\Component\HttpFoundation\Request;
 
 class DivisionController extends AbstractController
 {
-    #[Route('/divisions', name: 'app_division', methods: ['GET'])]
-    public function getDivisions(DivisionRepository $divisionRepository): JsonResponse
+    /**
+     * Formate les données de base d'une division
+     */
+    private function formatDivisionData(Division $division): array
     {
+        return [
+            'id' => $division->getId(),
+            'name' => $division->getName(),
+            'season_id' => $division->getSeason() ? $division->getSeason()->getId() : null,
+            'season_name' => $division->getSeason() ? $division->getSeason()->getName() : ''
+        ];
+    }
+
+    #[Route('/division', name: 'app_divisions', methods: ['GET'])]
+    public function getDivisions(Request $request, DivisionRepository $divisionRepository): JsonResponse
+    {
+        $id = $request->query->get('id');
+        
+        // Si un ID est fourni, retourner une seule division
+        if ($id) {
+            $division = $divisionRepository->find($id);
+            if (!$division) {
+                return $this->json(['error' => 'Division not found'], 404);
+            }
+
+            return $this->json($this->formatDivisionData($division));
+        }
+
+        // Sinon, retourner toutes les divisions
         $divisions = $divisionRepository->findAll();
         $data = array_map(function ($division) {
-            return [
-                'id' => $division->getId(),
-                'name' => $division->getName(),
-                'season' => $division->getSeason() ? $division->getSeason()->getId() : null
-            ];
+            return $this->formatDivisionData($division);
         }, $divisions);
         return $this->json($data);
     }
 
-    #[Route('/division/{id}', name: 'app_division_show', methods: ['GET'])]
-    public function getDivision(Division $division): JsonResponse
+    #[Route('/division/season', name: 'app_divisions_season', methods: ['GET'])]
+    public function getDivisionBySeason(Request $request, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository): JsonResponse
     {
-        $seasonId = $division->getSeason() ? $division->getSeason()->getId() : null;
-        return $this->json([
-            'id' => $division->getId(),
-            'name' => $division->getName(),
-            'season_id' => $seasonId,
-            'season_name' => $division->getSeason() ? $division->getSeason()->getName() : ''
-        ]);
-    }
+        $seasonId = $request->query->get('id');
+        if (!$seasonId) {
+            return $this->json(['error' => 'Season ID is required'], 400);
+        }
 
-    #[Route('/division/season/{id}', name: 'app_division_season', methods: ['GET'])]
-    public function getDivisionBySeason(DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository, int $id): JsonResponse
-    {
-        $divisions = $divisionRepository->findBy(['season' => $id]);
+        $divisions = $divisionRepository->findBy(['season' => $seasonId]);
+        if (!$divisions) {
+            return $this->json(['error' => 'No divisions found for this season'], 404);
+        }
+
         $data = array_map(function ($division) use ($teamStatRepository, $teamRepository) {
             $seasonId = $division->getSeason() ? $division->getSeason()->getId() : null;
             $teams = $teamStatRepository->findBy(['division' => $division]);
@@ -73,9 +92,19 @@ class DivisionController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/division/{id}/teams', name: 'app_division_teams', methods: ['GET'])]
-    public function getTeamsByDivision(Division $division, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository, PlayerRepository $playerRepository): JsonResponse
+    #[Route('/division/teams', name: 'app_division_teams', methods: ['GET'])]
+    public function getTeamsByDivision(Request $request, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository, PlayerRepository $playerRepository): JsonResponse
     {
+        $id = $request->query->get('id');
+        if (!$id) {
+            return $this->json(['error' => 'Division ID is required'], 400);
+        }
+
+        $division = $divisionRepository->find($id);
+        if (!$division) {
+            return $this->json(['error' => 'Division not found'], 404);
+        }
+
         $teamStats = $teamStatRepository->findBy(['division' => $division]);
         usort($teamStats, function ($a, $b) {
             return $b->getPoints() - $a->getPoints();
@@ -104,9 +133,19 @@ class DivisionController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/division/{id}/games', name: 'app_division_games', methods: ['GET'])]
-    public function getGamesByDivision(Division $division, GameRepository $gameRepository): JsonResponse
+    #[Route('/division/games', name: 'app_division_games', methods: ['GET'])]
+    public function getGamesByDivision(Request $request, DivisionRepository $divisionRepository, GameRepository $gameRepository): JsonResponse
     {
+        $id = $request->query->get('id');
+        if (!$id) {
+            return $this->json(['error' => 'Division ID is required'], 400);
+        }
+
+        $division = $divisionRepository->find($id);
+        if (!$division) {
+            return $this->json(['error' => 'Division not found'], 404);
+        }
+
         $games = $gameRepository->findBy(['division' => $division]);
         $rep = [];
 
