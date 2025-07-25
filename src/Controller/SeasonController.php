@@ -96,7 +96,6 @@ class SeasonController extends AbstractController
         return $this->json($data);
     }
 
-    // TODO: need to be test with fake data
     #[Route('/season/teams', name: 'app_season_teams', methods: ['GET'])]
     public function getSeasonTeams(Request $request, SeasonRepository $seasonRepository, RegistrationRepository $registrationRepository): JsonResponse
     {
@@ -142,13 +141,21 @@ class SeasonController extends AbstractController
             return $this->json(['error' => 'Season not found'], 404);
         }
 
-        $stats = $this->calculateSeasonGameStats($season, $divisionRepository, $gameRepository, $gameStatusRepository);
+        // Utiliser le formateur standard avec statistiques
+        $seasonData = $this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository);
         
-        return $this->json([
-            'total' => $stats['total_games'],
-            'finished' => $stats['finished_games'],
-            'pourcent' => number_format($stats['percentage'], (int)$decimal)
-        ]);
+        // Remplacer le formatage du pourcentage par celui demandé
+        $seasonData['percentage'] = number_format($seasonData['percentage'], (int)$decimal);
+        
+        // Renommer les clés pour correspondre au format attendu de cette route
+        $seasonData['total'] = $seasonData['total_games'];
+        $seasonData['finished'] = $seasonData['finished_games'];
+        $seasonData['pourcent'] = $seasonData['percentage'];
+        
+        // Supprimer les anciennes clés
+        unset($seasonData['total_games'], $seasonData['finished_games'], $seasonData['percentage']);
+        
+        return $this->json($seasonData);
     }
 
     // #[Route('/season', name: 'app_season_create', methods: ['POST'])]
