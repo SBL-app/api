@@ -16,60 +16,73 @@ use Symfony\Component\HttpFoundation\Request;
 
 class RegistrationController extends AbstractController
 {
-    #[Route('/registrations', name: 'app_registration', methods: ['GET'])]
-    public function getRegistrations(RegistrationRepository $registrationRepository): JsonResponse
+    /**
+     * Formate les données de base d'une inscription
+     */
+    private function formatRegistrationData(Registration $registration): array
     {
-        $registrations = $registrationRepository->findAll();
-        $data = array_map(function ($registration) {
-            return [
-                'id' => $registration->getId(),
-                'season' => $registration->getSeason()->getName(),
-                'team' => $registration->getTeam()->getName()
-            ];
-        }, $registrations);
-        return $this->json($data);
-    }
-
-    #[Route('/registration/season/{id}', name: 'app_registration_season', methods: ['GET'])]
-    public function getRegistrationsBySeason(RegistrationRepository $registrationRepository, int $id): JsonResponse
-    {
-        $registrations = $registrationRepository->findBy(['season' => $id]);
-        $data = array_map(function ($registration) {
-            return [
-                'id' => $registration->getId(),
-                'season' => $registration->getSeason()->getName(),
-                'team' => $registration->getTeam()->getName()
-            ];
-        }, $registrations);
-        return $this->json($data);
-    }
-
-    #[Route('/registration/team/{id}', name: 'app_registration_team', methods: ['GET'])]
-    public function getRegistrationsByTeam(RegistrationRepository $registrationRepository, int $id): JsonResponse
-    {
-        $registrations = $registrationRepository->findBy(['team' => $id]);
-        $data = array_map(function ($registration) {
-            return [
-                'id' => $registration->getId(),
-                'season' => $registration->getSeason()->getName(),
-                'team' => $registration->getTeam()->getName()
-            ];
-        }, $registrations);
-        return $this->json($data);
-    }
-
-    #[Route('/registration/{id}', name: 'app_registration_show', methods: ['GET'])]
-    public function getRegistration(RegistrationRepository $registrationRepository, int $id): JsonResponse
-    {
-        $registration = $registrationRepository->find($id);
-        if (!$registration) {
-            return $this->json(['error' => 'Registration not found'], 404);
-        }
-        return $this->json([
+        return [
             'id' => $registration->getId(),
             'season' => $registration->getSeason()->getName(),
             'team' => $registration->getTeam()->getName()
-        ]);
+        ];
+    }
+
+    #[Route('/registrations', name: 'app_registration', methods: ['GET'])]
+    public function getRegistrations(Request $request, RegistrationRepository $registrationRepository): JsonResponse
+    {
+        $id = $request->query->get('id');
+        $seasonId = $request->query->get('season_id');
+        $teamId = $request->query->get('team_id');
+        
+        // Si un ID est fourni, retourner l'inscription spécifique
+        if ($id) {
+            $registration = $registrationRepository->find($id);
+            if (!$registration) {
+                return $this->json(['error' => 'Registration not found'], 404);
+            }
+            return $this->json($this->formatRegistrationData($registration));
+        }
+        
+        // Si season_id ET team_id sont fournis, retourner l'inscription spécifique
+        if ($seasonId && $teamId) {
+            $registration = $registrationRepository->findOneBy(['season' => $seasonId, 'team' => $teamId]);
+            if (!$registration) {
+                return $this->json(['error' => 'Registration not found for this team and season'], 404);
+            }
+            return $this->json($this->formatRegistrationData($registration));
+        }
+        
+        // Si seulement season_id est fourni, retourner les inscriptions de cette saison
+        if ($seasonId) {
+            $registrations = $registrationRepository->findBy(['season' => $seasonId]);
+            if (empty($registrations)) {
+                return $this->json(['error' => 'No registrations found for this season'], 404);
+            }
+            $data = array_map(function ($registration) {
+                return $this->formatRegistrationData($registration);
+            }, $registrations);
+            return $this->json($data);
+        }
+        
+        // Si seulement team_id est fourni, retourner les inscriptions de cette équipe
+        if ($teamId) {
+            $registrations = $registrationRepository->findBy(['team' => $teamId]);
+            if (empty($registrations)) {
+                return $this->json(['error' => 'No registrations found for this team'], 404);
+            }
+            $data = array_map(function ($registration) {
+                return $this->formatRegistrationData($registration);
+            }, $registrations);
+            return $this->json($data);
+        }
+        
+        // Sinon, retourner toutes les inscriptions
+        $registrations = $registrationRepository->findAll();
+        $data = array_map(function ($registration) {
+            return $this->formatRegistrationData($registration);
+        }, $registrations);
+        return $this->json($data);
     }
 
     // #[Route('/registration', name: 'app_registration_create', methods: ['POST'])]

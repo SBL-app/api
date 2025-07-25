@@ -16,65 +16,70 @@ use Symfony\Component\HttpFoundation\Request;
 
 class PlayerController extends AbstractController
 {
-    #[Route('/players', name: 'app_player', methods: ['GET'])]
-    public function getPlayers(PlayerRepository $playerRepository): JsonResponse
+    /**
+     * Formate les données de base d'un joueur
+     */
+    private function formatPlayerData(Player $player): array
     {
-        $players = $playerRepository->findAll();
-        $data = array_map(function ($player) {
-            return [
-                'id' => $player->getId(),
-                'name' => $player->getName(),
-                'discord' => $player->getDiscord(),
-                'team' => $player->getTeam() ? $player->getTeam()->getId() : null
-            ];
-        }, $players);
-        return $this->json($data);
-    }
-
-    #[Route('/players/{team}', name: 'app_player_team', methods: ['GET'])]
-    public function getPlayersByTeam(PlayerRepository $playerRepository, string $team): JsonResponse
-    {
-        $players = $playerRepository->findBy(['team' => $team]);
-        $data = array_map(function ($player) {
-            return [
-                'id' => $player->getId(),
-                'name' => $player->getName(),
-                'discord' => $player->getDiscord(),
-                'team' => $player->getTeam() ? $player->getTeam()->getId() : null
-            ];
-        }, $players);
-        return $this->json($data);
-    }
-
-    #[Route('/player/{id}', name: 'app_player_show', methods: ['GET'])]
-    public function getPlayer(Player $player, EntityManager $em, TeamStatRepository $teamStatRepository): JsonResponse
-    {
-        $team = $player->getTeam();
-        $teamStats = $teamStatRepository->findBy(['team' => $team]);
-        $statData = array_map(function ($teamStat) use ($team) {
-            return [
-                'team_id' => $team->getId(),
-                'team_name' => $team->getName(),
-                'division_id' => $teamStat->getDivision()->getId(),
-                'division_name' => $teamStat->getDivision()->getName(),
-                'season_id' => $teamStat->getDivision()->getSeason()->getId(),
-                'season_name' => $teamStat->getDivision()->getSeason()->getName(),
-                'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses(),
-                'winRounds' => $teamStat->getWinRounds(),
-                'looseRounds' => $teamStat->getLooseRounds(),
-                'points' => $teamStat->getPoints(),
-            ];
-        }, $teamStats);
-
-        return $this->json([
+        return [
             'id' => $player->getId(),
             'name' => $player->getName(),
             'discord' => $player->getDiscord(),
-            'team' => $team ? $team->getId() : null,
-            'team_name' => $team ? $team->getName() : null,
-            'stats' => $statData,
-        ]);
+            'team_id' => $player->getTeam() ? $player->getTeam()->getId() : null,
+            'team_name' => $player->getTeam() ? $player->getTeam()->getName() : null
+        ];
+    }
+
+    #[Route('/players', name: 'app_players', methods: ['GET'])]
+    public function getPlayers(Request $request, PlayerRepository $playerRepository, TeamStatRepository $teamStatRepository): JsonResponse
+    {
+        $id = $request->query->get('id');
+        $teamFilter = $request->query->get('team');
+        
+        // Si un ID est fourni, retourner un seul joueur avec ses statistiques
+        if ($id) {
+            $player = $playerRepository->find($id);
+            if (!$player) {
+                return $this->json(['error' => 'Player not found'], 404);
+            }
+
+            $team = $player->getTeam();
+            $teamStats = $team ? $teamStatRepository->findBy(['team' => $team]) : [];
+            $statData = array_map(function ($teamStat) use ($team) {
+                return [
+                    'team_id' => $team->getId(),
+                    'team_name' => $team->getName(),
+                    'division_id' => $teamStat->getDivision()->getId(),
+                    'division_name' => $teamStat->getDivision()->getName(),
+                    'season_id' => $teamStat->getDivision()->getSeason()->getId(),
+                    'season_name' => $teamStat->getDivision()->getSeason()->getName(),
+                    'wins' => $teamStat->getWins(),
+                    'losses' => $teamStat->getLosses(),
+                    'winRounds' => $teamStat->getWinRounds(),
+                    'looseRounds' => $teamStat->getLooseRounds(),
+                    'points' => $teamStat->getPoints(),
+                ];
+            }, $teamStats);
+
+            $playerData = $this->formatPlayerData($player);
+            return $this->json(array_merge($playerData, [
+                'stats' => $statData
+            ]));
+        }
+
+        // Si un filtre d'équipe est fourni, filtrer par équipe
+        if ($teamFilter) {
+            $players = $playerRepository->findBy(['team' => $teamFilter]);
+        } else {
+            // Sinon, retourner tous les joueurs
+            $players = $playerRepository->findAll();
+        }
+
+        $data = array_map(function ($player) {
+            return $this->formatPlayerData($player);
+        }, $players);
+        
+        return $this->json($data);
     }
 
     // #[Route('/player', name: 'app_player_create', methods: ['POST'])]

@@ -14,93 +14,71 @@ use App\Entity\TeamStat;
 
 class TeamStatController extends AbstractController
 {
+    /**
+     * Formate les données de base d'une statistique d'équipe
+     */
+    private function formatTeamStatData(TeamStat $teamStat): array
+    {
+        return [
+            'id' => $teamStat->getId(),
+            'team_id' => $teamStat->getTeam()->getId(),
+            'team_name' => $teamStat->getTeam()->getName(),
+            'division_id' => $teamStat->getDivision()->getId(),
+            'division_name' => $teamStat->getDivision()->getName(),
+            'season_id' => $teamStat->getDivision()->getSeason()->getId(),
+            'season_name' => $teamStat->getDivision()->getSeason()->getName(),
+            'wins' => $teamStat->getWins(),
+            'losses' => $teamStat->getLosses(),
+            'ties' => $teamStat->getTies(),
+            'winRounds' => $teamStat->getWinRounds(),
+            'looseRounds' => $teamStat->getLooseRounds(),
+            'points' => $teamStat->getPoints()
+        ];
+    }
+
     #[Route('/teamStats', name: 'app_team_stats', methods: ['GET'])]
-    public function getTeamStats(TeamStatRepository $teamStatRepository): JsonResponse
+    public function getTeamStats(Request $request, TeamStatRepository $teamStatRepository): JsonResponse
     {
+        $teamId = $request->query->get('team_id');
+        $divisionId = $request->query->get('division_id');
+        
+        // Si team_id ET division_id sont fournis, retourner la stat spécifique
+        if ($teamId && $divisionId) {
+            $teamStat = $teamStatRepository->findOneBy(['team' => $teamId, 'division' => $divisionId]);
+            if (!$teamStat) {
+                return $this->json(['error' => 'Team stat not found for this team and division'], 404);
+            }
+            return $this->json($this->formatTeamStatData($teamStat));
+        }
+        
+        // Si seulement team_id est fourni, retourner toutes les stats de cette équipe
+        if ($teamId) {
+            $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
+            if (empty($teamStats)) {
+                return $this->json(['error' => 'No team stats found for this team'], 404);
+            }
+            $data = array_map(function ($teamStat) {
+                return $this->formatTeamStatData($teamStat);
+            }, $teamStats);
+            return $this->json($data);
+        }
+        
+        // Si seulement division_id est fourni, retourner toutes les stats de cette division
+        if ($divisionId) {
+            $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
+            if (empty($teamStats)) {
+                return $this->json(['error' => 'No team stats found for this division'], 404);
+            }
+            $data = array_map(function ($teamStat) {
+                return $this->formatTeamStatData($teamStat);
+            }, $teamStats);
+            return $this->json($data);
+        }
+        
+        // Sinon, retourner toutes les statistiques
         $teamStats = $teamStatRepository->findAll();
-        $data = array_map(function ($teamStat){
-            return [
-                'id' => $teamStat->getId(),
-                'team_id' => $teamStat->getTeam()->getId(),
-                'team_name' => $teamStat->getTeam()->getName(),
-                'division_id' => $teamStat->getDivision()->getId(),
-                'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses(),
-                'ties' => $teamStat->getTies(),
-                'winRounds' => $teamStat->getWinRounds(),
-                'looseRounds' => $teamStat->getLooseRounds(),
-                'points' => $teamStat->getPoints()
-            ];
-        }, $teamStats);
-        return $this->json($data);
-    }
-
-    #[Route('/teamStats/{teamId}', name: 'app_team_stat_by_team', methods: ['GET'])]
-    public function getTeamStat($teamId, TeamStatRepository $teamStatRepository): JsonResponse
-    {
-        $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
-        $data = array_map(function ($teamStat) use ($teamId){
-            return [
-                'id' => $teamStat->getId(),
-                'team_id' => $teamStat->getTeam()->getId(),
-                'team_name' => $teamStat->getTeam()->getName(),
-                'division_id' => $teamStat->getDivision()->getId(),
-                'division_name' => $teamStat->getDivision()->getName(),
-                'season_id' => $teamStat->getDivision()->getSeason()->getId(),
-                'season_name' => $teamStat->getDivision()->getSeason()->getName(),
-                'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses(),
-                'ties' => $teamStat->getTies(),
-                'winRounds' => $teamStat->getWinRounds(),
-                'looseRounds' => $teamStat->getLooseRounds(),
-                'points' => $teamStat->getPoints()
-            ];
-        }, $teamStats);
-        return $this->json($data);
-    }
-
-    #[Route('/teamStats/{teamId}/{divisionId}', name: 'app_team_stat_by_team_and_division', methods: ['GET'])]
-    public function getTeamStatByIDAndDivision($teamId, $divisionId, TeamStatRepository $teamStatRepository): JsonResponse
-    {
-        $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
-        $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
-        $data = array_map(function ($teamStat) use ($teamId, $divisionId){
-            return [
-                'selected_team_id' => $teamId, // This is the team id that was passed in the URL '/teamStats/{id}
-                'selected_division_id' => $divisionId, // This is the division id that was passed in the URL '/teamStats/{id}/{divisionId}
-                'id' => $teamStat->getId(),
-                'team_id' => $teamStat->getTeam()->getId(),
-                'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
-                'division_id' => $teamStat->getDivision()->getId(),
-                'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses(),
-                'ties' => $teamStat->getTies(),
-                'winRounds' => $teamStat->getWinRounds(),
-                'looseRounds' => $teamStat->getLooseRounds(),
-                'points' => $teamStat->getPoints()
-            ];
-        }, $teamStats);
-        return $this->json($data);
-    }
-
-    #[Route('/teamStats/division/{divisionId}', name: 'app_team_stat_by_division', methods: ['GET'])]
-    public function getTeamStatByDivision($divisionId, TeamStatRepository $teamStatRepository): JsonResponse
-    {
-        $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
-        $data = array_map(function ($teamStat) use ($divisionId){
-            return [
-                'selected_division_id' => $divisionId, // This is the division id that was passed in the URL '/teamStats/{id}/{divisionId}
-                'id' => $teamStat->getId(),
-                'team_id' => $teamStat->getTeam()->getId(),
-                'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
-                'division_id' => $teamStat->getDivision()->getId(),
-                'wins' => $teamStat->getWins(),
-                'losses' => $teamStat->getLosses(),
-                'ties' => $teamStat->getTies(),
-                'winRounds' => $teamStat->getWinRounds(),
-                'looseRounds' => $teamStat->getLooseRounds(),
-                'points' => $teamStat->getPoints()
-            ];
+        $data = array_map(function ($teamStat) {
+            return $this->formatTeamStatData($teamStat);
         }, $teamStats);
         return $this->json($data);
     }

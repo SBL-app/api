@@ -12,26 +12,37 @@ use Symfony\Component\HttpFoundation\Request;
 
 class GameStatusController extends AbstractController
 {
-    #[Route('/gameStatus', name: 'app_game_status', methods: ['GET'])]
-    public function getGameStatuses(GameStatusRepository $gameStatusRepository): JsonResponse
+    /**
+     * Formate les données de base d'un statut de match
+     */
+    private function formatGameStatusData(GameStatus $gameStatus): array
     {
-        $gameStatuses = $gameStatusRepository->findAll();
-        $data = array_map(function ($gameStatus) {
-            return [
-                'id' => $gameStatus->getId(),
-                'name' => $gameStatus->getName()
-            ];
-        }, $gameStatuses);
-        return $this->json($data);
-    }
-
-    #[Route('/gameStatus/{id}', name: 'app_game_status_show', methods: ['GET'])]
-    public function getGameStatus(GameStatus $gameStatus): JsonResponse
-    {
-        return $this->json([
+        return [
             'id' => $gameStatus->getId(),
             'name' => $gameStatus->getName()
-        ]);
+        ];
+    }
+
+    #[Route('/gameStatus', name: 'app_game_status', methods: ['GET'])]
+    public function getGameStatuses(Request $request, GameStatusRepository $gameStatusRepository): JsonResponse
+    {
+        $id = $request->query->get('id');
+        
+        // Si un ID est fourni, retourner le statut spécifique
+        if ($id) {
+            $gameStatus = $gameStatusRepository->find($id);
+            if (!$gameStatus) {
+                return $this->json(['error' => 'Game status not found'], 404);
+            }
+            return $this->json($this->formatGameStatusData($gameStatus));
+        }
+        
+        // Sinon, retourner tous les statuts
+        $gameStatuses = $gameStatusRepository->findAll();
+        $data = array_map(function ($gameStatus) {
+            return $this->formatGameStatusData($gameStatus);
+        }, $gameStatuses);
+        return $this->json($data);
     }
 
     // #[Route('/gameStatus', name: 'app_game_status_create', methods: ['POST'])]
