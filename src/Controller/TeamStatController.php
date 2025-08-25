@@ -5,35 +5,43 @@ namespace App\Controller;
 use App\Repository\TeamStatRepository;
 use App\Repository\TeamRepository;
 use App\Repository\DivisionRepository;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 use App\Entity\TeamStat;
 
-class TeamStatController extends AbstractController
+class TeamStatController extends BaseController
 {
+    protected function formatEntityData($entity): array
+    {
+        if (!$entity instanceof TeamStat) {
+            throw new \InvalidArgumentException('Entity must be an instance of TeamStat');
+        }
+        
+        return [
+            'id' => $entity->getId(),
+            'team_id' => $entity->getTeam()->getId(),
+            'team_name' => $entity->getTeam()->getName(),
+            'division_id' => $entity->getDivision()->getId(),
+            'division_name' => $entity->getDivision()->getName(),
+            'season_id' => $entity->getDivision()->getSeason()->getId(),
+            'season_name' => $entity->getDivision()->getSeason()->getName(),
+            'wins' => $entity->getWins(),
+            'losses' => $entity->getLosses(),
+            'ties' => $entity->getTies(),
+            'winRounds' => $entity->getWinRounds(),
+            'looseRounds' => $entity->getLooseRounds(),
+            'points' => $entity->getPoints()
+        ];
+    }
+
     /**
      * Formate les données de base d'une statistique d'équipe
      */
     private function formatTeamStatData(TeamStat $teamStat): array
     {
-        return [
-            'id' => $teamStat->getId(),
-            'team_id' => $teamStat->getTeam()->getId(),
-            'team_name' => $teamStat->getTeam()->getName(),
-            'division_id' => $teamStat->getDivision()->getId(),
-            'division_name' => $teamStat->getDivision()->getName(),
-            'season_id' => $teamStat->getDivision()->getSeason()->getId(),
-            'season_name' => $teamStat->getDivision()->getSeason()->getName(),
-            'wins' => $teamStat->getWins(),
-            'losses' => $teamStat->getLosses(),
-            'ties' => $teamStat->getTies(),
-            'winRounds' => $teamStat->getWinRounds(),
-            'looseRounds' => $teamStat->getLooseRounds(),
-            'points' => $teamStat->getPoints()
-        ];
+        return $this->formatEntityData($teamStat);
     }
 
     #[Route('/teamStats', name: 'app_team_stats', methods: ['GET'])]
@@ -83,150 +91,131 @@ class TeamStatController extends AbstractController
         return $this->json($data);
     }
 
-    // #[Route('/teamStats', name: 'app_team_stats_create', methods: ['POST'])]
-    // public function createTeamStat(Request $request, TeamRepository $teamRepository, DivisionRepository $divisionRepository, EntityManager $entityManager): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $teamId = $data['team'];
-    //     $divisionId = $data['division'];
+    #[Route('/teamStats', name: 'app_team_stats_create', methods: ['POST'])]
+    public function createTeamStat(Request $request): JsonResponse
+    {
+        try {
+            $data = $this->getRequestData($request);
+            
+            $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
+            $division = $this->findEntityOrFail('App\Entity\Division', $data['division'], 'Division');
 
-    //     $team = $teamRepository->find($teamId);
-    //     $division = $divisionRepository->find($divisionId);
+            $teamStat = new TeamStat();
+            $teamStat->setTeam($team);
+            $teamStat->setDivision($division);
+            $teamStat->setWins($data['wins'] ?? 0);
+            $teamStat->setLosses($data['losses'] ?? 0);
+            $teamStat->setTies($data['ties'] ?? 0);
+            $teamStat->setWinRounds($data['winRounds'] ?? 0);
+            $teamStat->setLooseRounds($data['looseRounds'] ?? 0);
+            $teamStat->setPoints($data['points'] ?? 0);
 
-    //     if (!$team) {
-    //         return $this->json([
-    //         'error' => 'Invalid team id'
-    //         ], 400);
-    //     }
+            $this->saveEntity($teamStat);
 
-    //     if (!$division) {
-    //         return $this->json([
-    //         'error' => 'Invalid division id'
-    //         ], 400);
-    //     }
+            return $this->json($this->formatEntityData($teamStat));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 
-    //     $teamStat = new TeamStat();
-    //     $teamStat->setTeam($team);
-    //     $teamStat->setDivision($division);
-    //     $teamStat->setWins($data['wins']? $data['wins'] : 0);
-    //     $teamStat->setLosses($data['losses']? $data['losses'] : 0);
-    //     $teamStat->setTies($data['ties']? $data['ties'] : 0);
-    //     $teamStat->setWinRounds($data['winRounds']? $data['winRounds'] : 0);
-    //     $teamStat->setLooseRounds($data['looseRounds']? $data['looseRounds'] : 0);
-    //     $teamStat->setPoints($data['points']? $data['points'] : 0);
+    #[Route('/teamStats', name: 'app_team_stats_update', methods: ['PUT'])]
+    public function updateTeamStat(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
 
-    //     $entityManager->persist($teamStat);
-    //     $entityManager->flush();
+            $teamStat = $this->findEntityOrFail('App\Entity\TeamStat', $id, 'TeamStat');
+            $data = $this->getRequestData($request);
 
-    //     return $this->json([
-    //         'id' => $teamStat->getId(),
-    //         'team_id' => $teamStat->getTeam()->getId(),
-    //         'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
-    //         'division_id' => $teamStat->getDivision()->getId(),
-    //         'wins' => $teamStat->getWins(),
-    //         'losses' => $teamStat->getLosses(),
-    //         'ties' => $teamStat->getTies(),
-    //         'winRounds' => $teamStat->getWinRounds(),
-    //         'looseRounds' => $teamStat->getLooseRounds(),
-    //         'points' => $teamStat->getPoints()
-    //     ]);
-    // }
+            $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
+            $division = $this->findEntityOrFail('App\Entity\Division', $data['division'], 'Division');
 
-    // #[Route('/teamStats/{teamId}/{divisionId}', name: 'app_team_stats_put', methods: ['PUT'])]
-    // public function updateTeamStat($teamId, $divisionId, Request $request, TeamStatRepository $teamStatRepository, EntityManager $entityManager): JsonResponse
-    // {
-    //     $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
-    //     $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
-    //     $data = json_decode($request->getContent(), true);
-    //     $teamStat = $teamStats[0];
+            $teamStat->setTeam($team);
+            $teamStat->setDivision($division);
+            $teamStat->setWins($data['wins'] ?? 0);
+            $teamStat->setLosses($data['losses'] ?? 0);
+            $teamStat->setTies($data['ties'] ?? 0);
+            $teamStat->setWinRounds($data['winRounds'] ?? 0);
+            $teamStat->setLooseRounds($data['looseRounds'] ?? 0);
+            $teamStat->setPoints($data['points'] ?? 0);
 
-    //     if (!$teamStat) {
-    //         return $this->json([
-    //             'error' => 'Team Stat not found'
-    //         ], 404);
-    //     }
+            $this->saveEntity($teamStat);
 
-    //     $teamStat->setWins($data['wins']);
-    //     $teamStat->setLosses($data['losses']);
-    //     $teamStat->setTies($data['ties']);
-    //     $teamStat->setWinRounds($data['winRounds']);
-    //     $teamStat->setLooseRounds($data['looseRounds']);
-    //     $teamStat->setPoints($data['points']);
+            return $this->json($this->formatEntityData($teamStat));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 
-    //     $entityManager->persist($teamStat);
-    //     $entityManager->flush();
+    #[Route('/teamStats', name: 'app_team_stats_patch', methods: ['PATCH'])]
+    public function patchTeamStat(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
 
-    //     return $this->json([
-    //         'id' => $teamStat->getId(),
-    //         'team_id' => $teamStat->getTeam()->getId(),
-    //         'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
-    //         'division_id' => $teamStat->getDivision()->getId(),
-    //         'wins' => $teamStat->getWins(),
-    //         'losses' => $teamStat->getLosses(),
-    //         'ties' => $teamStat->getTies(),
-    //         'points' => $teamStat->getPoints()
-    //     ]);
-    // }
+            $teamStat = $this->findEntityOrFail('App\Entity\TeamStat', $id, 'TeamStat');
+            $data = $this->getRequestData($request);
 
-    // #[Route('/teamStats/{teamId}/{divisionId}', name: 'app_team_stats_patch', methods: ['PATCH'])]
-    // public function patchTeamStat($teamId, $divisionId, Request $request, TeamStatRepository $teamStatRepository, EntityManager $entityManager): JsonResponse
-    // {
-    //     $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
-    //     $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
-    //     $data = json_decode($request->getContent(), true);
-    //     $teamStat = $teamStats[0];
+            if (isset($data['team'])) {
+                $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
+                $teamStat->setTeam($team);
+            }
+            if (isset($data['division'])) {
+                $division = $this->findEntityOrFail('App\Entity\Division', $data['division'], 'Division');
+                $teamStat->setDivision($division);
+            }
+            if (isset($data['wins'])) {
+                $teamStat->setWins($data['wins']);
+            }
+            if (isset($data['losses'])) {
+                $teamStat->setLosses($data['losses']);
+            }
+            if (isset($data['ties'])) {
+                $teamStat->setTies($data['ties']);
+            }
+            if (isset($data['winRounds'])) {
+                $teamStat->setWinRounds($data['winRounds']);
+            }
+            if (isset($data['looseRounds'])) {
+                $teamStat->setLooseRounds($data['looseRounds']);
+            }
+            if (isset($data['points'])) {
+                $teamStat->setPoints($data['points']);
+            }
 
-    //     if (!$teamStat) {
-    //         return $this->json([
-    //             'error' => 'Team Stat not found'
-    //         ], 404);
-    //     }
-    //     if (isset($data['wins'])) {
-    //         $teamStat->setWins($data['wins']);
-    //     }
-    //     if (isset($data['losses'])) {
-    //         $teamStat->setLosses($data['losses']);
-    //     }
-    //     if (isset($data['ties'])) {
-    //         $teamStat->setTies($data['ties']);
-    //     }
-    //     if (isset($data['winRounds'])) {
-    //         $teamStat->setWinRounds($data['winRounds']);
-    //     }
-    //     if (isset($data['looseRounds'])) {
-    //         $teamStat->setLooseRounds($data['looseRounds']);
-    //     }
-    //     if (isset($data['points'])) {
-    //         $teamStat->setPoints($data['points']);
-    //     }
+            $this->saveEntity($teamStat);
 
-    //     $entityManager->persist($teamStat);
-    //     $entityManager->flush();
+            return $this->json($this->formatEntityData($teamStat));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 
-    //     return $this->json([
-    //         'id' => $teamStat->getId(),
-    //         'team_id' => $teamStat->getTeam()->getId(),
-    //         'team_name' => $teamStat->getTeam()->getName(), // This is the team name that was passed in the URL '/teamStats/{id}
-    //         'division_id' => $teamStat->getDivision()->getId(),
-    //         'wins' => $teamStat->getWins(),
-    //         'losses' => $teamStat->getLosses(),
-    //         'ties' => $teamStat->getTies(),
-    //         'winRounds' => $teamStat->getWinRounds(),
-    //         'looseRounds' => $teamStat->getLooseRounds(),
-    //         'points' => $teamStat->getPoints()
-    //     ]);
-    // }
+    #[Route('/teamStats', name: 'app_team_stats_delete', methods: ['DELETE'])]
+    public function deleteTeamStat(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
 
-    // #[Route('/teamStats/{teamId}/{divisionId}', name: 'app_team_stats_delete', methods: ['DELETE'])]
-    // public function deleteTeamStat($teamId,$divisionId,TeamStatRepository $teamStatRepository,EntityManager $em): JsonResponse
-    // {
-    //     $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
-    //     $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
+            $teamStat = $this->findEntityOrFail('App\Entity\TeamStat', $id, 'TeamStat');
+            $this->deleteEntity($teamStat);
 
-    //     $em->remove($teamStats[0]);
-    //     $em->flush();
-    //     return $this->json([
-    //         'message' => 'Team Stat deleted successfully'
-    //     ]);
-    // }
+            return $this->deleteSuccessResponse('TeamStat');
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 }
