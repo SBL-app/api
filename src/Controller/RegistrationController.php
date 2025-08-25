@@ -2,7 +2,6 @@
 
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Registration;
@@ -14,18 +13,27 @@ use App\Repository\TeamRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
-class RegistrationController extends AbstractController
+class RegistrationController extends BaseController
 {
+    protected function formatEntityData($entity): array
+    {
+        if (!$entity instanceof Registration) {
+            throw new \InvalidArgumentException('Entity must be an instance of Registration');
+        }
+        
+        return [
+            'id' => $entity->getId(),
+            'season' => $entity->getSeason()->getName(),
+            'team' => $entity->getTeam()->getName()
+        ];
+    }
+
     /**
      * Formate les données de base d'une inscription
      */
     private function formatRegistrationData(Registration $registration): array
     {
-        return [
-            'id' => $registration->getId(),
-            'season' => $registration->getSeason()->getName(),
-            'team' => $registration->getTeam()->getName()
-        ];
+        return $this->formatEntityData($registration);
     }
 
     #[Route('/registrations', name: 'app_registration', methods: ['GET'])]
@@ -85,77 +93,109 @@ class RegistrationController extends AbstractController
         return $this->json($data);
     }
 
-    // #[Route('/registration', name: 'app_registration_create', methods: ['POST'])]
-    // public function createRegistration(Request $request, EntityManager $entityManager): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $registration = new Registration();
-    //     if (isset($data['season'])) {
-    //         $season = $entityManager->getRepository(Season::class)->find($data['season']);
-    //         if (!$season) {
-    //             return $this->json(['error' => 'Season not found'], 400);
-    //         }
-    //         $registration->setSeason($season);
-    //     }
-    //     else {
-    //         $registration->setSeason(null);
-    //     }
-    //     if (isset($data['team'])) {
-    //         $team = $entityManager->getRepository(Team::class)->find($data['team']);
-    //         if (!$team) {
-    //             return $this->json(['error' => 'Team not found'], 400);
-    //         }
-    //         $registration->setTeam($team);
-    //     }
-    //     else {
-    //         $registration->setTeam(null);
-    //     }
-    //     $entityManager->persist($registration);
-    //     $entityManager->flush();
-    //     return $this->json([
-    //         'id' => $registration->getId(),
-    //         'season' => $registration->getSeason()->getName(),
-    //         'team' => $registration->getTeam()->getName()
-    //     ]);
-    // }
+    #[Route('/registrations', name: 'app_registration_create', methods: ['POST'])]
+    public function createRegistration(Request $request): JsonResponse
+    {
+        try {
+            $data = $this->getRequestData($request);
+            $registration = new Registration();
+            
+            if (isset($data['season'])) {
+                $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
+                $registration->setSeason($season);
+            } else {
+                $registration->setSeason(null);
+            }
+            
+            if (isset($data['team'])) {
+                $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
+                $registration->setTeam($team);
+            } else {
+                $registration->setTeam(null);
+            }
+            
+            $this->saveEntity($registration);
+            
+            return $this->json($this->formatEntityData($registration));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 
-    // #[Route('/registration/{id}', name: 'app_registration_update', methods: ['PUT'])]
-    // public function updateRegistration(Registration $registration, Request $request, EntityManager $entityManager): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $registration->setSeason($data['season']);
-    //     $registration->setTeam($data['team']);
-    //     $entityManager->flush();
-    //     return $this->json([
-    //         'id' => $registration->getId(),
-    //         'season' => $registration->getSeason()->getName(),
-    //         'team' => $registration->getTeam()->getName()
-    //     ]);
-    // }
+    #[Route('/registrations', name: 'app_registration_update', methods: ['PUT'])]
+    public function updateRegistration(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
 
-    // #[Route('/registration/{id}', name: 'app_registration_patch', methods: ['PATCH'])]
-    // public function patchRegistration(Registration $registration, Request $request, EntityManager $entityManager): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     if (isset($data['season'])) {
-    //         $registration->setSeason($data['season']);
-    //     }
-    //     if (isset($data['team'])) {
-    //         $registration->setTeam($data['team']);
-    //     }
-    //     $entityManager->flush();
-    //     return $this->json([
-    //         'id' => $registration->getId(),
-    //         'season' => $registration->getSeason()->getName(),
-    //         'team' => $registration->getTeam()->getName()
-    //     ]);
-    // }
+            $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
+            $data = $this->getRequestData($request);
+            
+            $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
+            $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
+            
+            $registration->setSeason($season);
+            $registration->setTeam($team);
+            
+            $this->saveEntity($registration);
+            
+            return $this->json($this->formatEntityData($registration));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 
-    // #[Route('/registration/{id}', name: 'app_registration_delete', methods: ['DELETE'])]
-    // public function deleteRegistration(Registration $registration, EntityManager $entityManager): JsonResponse
-    // {
-    //     $entityManager->remove($registration);
-    //     $entityManager->flush();
-    //     return $this->json(null, 204);
-    // }
+    #[Route('/registrations', name: 'app_registration_patch', methods: ['PATCH'])]
+    public function patchRegistration(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
+            $data = $this->getRequestData($request);
+            
+            if (isset($data['season'])) {
+                $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
+                $registration->setSeason($season);
+            }
+            if (isset($data['team'])) {
+                $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
+                $registration->setTeam($team);
+            }
+            
+            $this->saveEntity($registration);
+            
+            return $this->json($this->formatEntityData($registration));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/registrations', name: 'app_registration_delete', methods: ['DELETE'])]
+    public function deleteRegistration(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
+            $this->deleteEntity($registration);
+            
+            return $this->deleteSuccessResponse('Registration');
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 }

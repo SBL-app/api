@@ -4,30 +4,51 @@ namespace App\Controller;
 
 use App\Repository\PlayerRepository;
 use App\Repository\TeamStatRepository;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Player;
 use App\Entity\Team;
-use App\Entity\TeamStat;
-use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
-class PlayerController extends AbstractController
+class PlayerController extends BaseController
 {
-    /**
-     * Formate les données de base d'un joueur
-     */
-    private function formatPlayerData(Player $player): array
+    protected function formatEntityData($entity): array
     {
+        if (!$entity instanceof Player) {
+            throw new \InvalidArgumentException('Entity must be an instance of Player');
+        }
+        
         return [
-            'id' => $player->getId(),
-            'name' => $player->getName(),
-            'discord' => $player->getDiscord(),
-            'team_id' => $player->getTeam() ? $player->getTeam()->getId() : null,
-            'team_name' => $player->getTeam() ? $player->getTeam()->getName() : null
+            'id' => $entity->getId(),
+            'name' => $entity->getName(),
+            'discord' => $entity->getDiscord(),
+            'team_id' => $entity->getTeam() ? $entity->getTeam()->getId() : null,
+            'team_name' => $entity->getTeam() ? $entity->getTeam()->getName() : null
         ];
+    }
+
+    private function formatPlayerWithStats(Player $player, TeamStatRepository $teamStatRepository): array
+    {
+        $team = $player->getTeam();
+        $teamStats = $team ? $teamStatRepository->findBy(['team' => $team]) : [];
+        $statData = array_map(function ($teamStat) use ($team) {
+            return [
+                'team_id' => $team->getId(),
+                'team_name' => $team->getName(),
+                'division_id' => $teamStat->getDivision()->getId(),
+                'division_name' => $teamStat->getDivision()->getName(),
+                'season_id' => $teamStat->getDivision()->getSeason()->getId(),
+                'season_name' => $teamStat->getDivision()->getSeason()->getName(),
+                'wins' => $teamStat->getWins(),
+                'losses' => $teamStat->getLosses(),
+                'winRounds' => $teamStat->getWinRounds(),
+                'looseRounds' => $teamStat->getLooseRounds(),
+                'points' => $teamStat->getPoints(),
+            ];
+        }, $teamStats);
+
+        $playerData = $this->formatEntityData($player);
+        return array_merge($playerData, ['stats' => $statData]);
     }
 
     #[Route('/players', name: 'app_players', methods: ['GET'])]
@@ -40,116 +61,145 @@ class PlayerController extends AbstractController
         if ($id) {
             $player = $playerRepository->find($id);
             if (!$player) {
-                return $this->json(['error' => 'Player not found'], 404);
+                return $this->notFoundError('Player');
             }
 
-            $team = $player->getTeam();
-            $teamStats = $team ? $teamStatRepository->findBy(['team' => $team]) : [];
-            $statData = array_map(function ($teamStat) use ($team) {
-                return [
-                    'team_id' => $team->getId(),
-                    'team_name' => $team->getName(),
-                    'division_id' => $teamStat->getDivision()->getId(),
-                    'division_name' => $teamStat->getDivision()->getName(),
-                    'season_id' => $teamStat->getDivision()->getSeason()->getId(),
-                    'season_name' => $teamStat->getDivision()->getSeason()->getName(),
-                    'wins' => $teamStat->getWins(),
-                    'losses' => $teamStat->getLosses(),
-                    'winRounds' => $teamStat->getWinRounds(),
-                    'looseRounds' => $teamStat->getLooseRounds(),
-                    'points' => $teamStat->getPoints(),
-                ];
-            }, $teamStats);
-
-            $playerData = $this->formatPlayerData($player);
-            return $this->json(array_merge($playerData, [
-                'stats' => $statData
-            ]));
+            return $this->json($this->formatPlayerWithStats($player, $teamStatRepository));
         }
 
         // Si un filtre d'équipe est fourni, filtrer par équipe
         if ($teamFilter) {
             $players = $playerRepository->findBy(['team' => $teamFilter]);
         } else {
-            // Sinon, retourner tous les joueurs
             $players = $playerRepository->findAll();
         }
 
         $data = array_map(function ($player) {
-            return $this->formatPlayerData($player);
+            return $this->formatEntityData($player);
         }, $players);
         
         return $this->json($data);
     }
 
-    // #[Route('/player', name: 'app_player_create', methods: ['POST'])]
-    // public function createPlayer(Request $request, Player $player, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $player->setName($data['name'] ?? null);
-    //     $player->setDiscord($data['discord'] ?? null);
-    //     $team = $em->getRepository(Team::class)->find($data['team'] ?? null);
-    //     if (!$team && isset($data['team'])) {
-    //         return $this->json(['error' => 'Team not found'], Response::HTTP_NOT_FOUND);
-    //     }
-    //     $player->setTeam($team);
-    //     $em->persist($player);
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $player->getId(),
-    //         'name' => $player->getName(),
-    //         'discord' => $player->getDiscord(),
-    //         'team' => $player->getTeam() ? $player->getTeam()->getId() : null
-    //     ]);
-    // }
+    #[Route('/players', name: 'app_player_create', methods: ['POST'])]
+    public function createPlayer(Request $request): JsonResponse
+    {
+        try {
+            $data = $this->getRequestData($request);
+            $player = new Player();
+            
+            $player->setName($data['name'] ?? null);
+            $player->setDiscord($data['discord'] ?? null);
+            
+            if (isset($data['team']) && $data['team']) {
+                $team = $this->entityManager->getRepository(Team::class)->find($data['team']);
+                if (!$team) {
+                    return $this->json(['error' => 'Team not found'], 404);
+                }
+                $player->setTeam($team);
+            } else {
+                $player->setTeam(null);
+            }
+            
+            $this->saveEntity($player);
+            
+            return $this->json($this->formatEntityData($player));
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+    }
 
-    // #[Route('/player/{id}', name: 'app_player_update', methods: ['PUT'])]
-    // public function updatePlayer(Request $request, Player $player, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $player->setName($data['name']);
-    //     $player->setDiscord($data['discord' ?? null]);
-    //     $player->setTeam($data['team' ?? null]);
-    //     $em->persist($player);
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $player->getId(),
-    //         'name' => $player->getName(),
-    //         'discord' => $player->getDiscord(),
-    //         'team' => $player->getTeam() ? $player->getTeam()->getId() : null
-    //     ]);
-    // }
+    #[Route('/players', name: 'app_player_update', methods: ['PUT'])]
+    public function updatePlayer(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
 
-    // #[Route('/player/{id}', name: 'app_player_patch', methods: ['PATCH'])]
-    // public function patchPlayer(Request $request, Player $player, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     if (isset($data['name'])) {
-    //         $player->setName($data['name']);
-    //     }
-    //     if (isset($data['discord'])) {
-    //         $player->setDiscord($data['discord']);
-    //     }
-    //     if (isset($data['team'])) {
-    //         $player->setTeam($data['team']);
-    //     }
-    //     $em->persist($player);
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $player->getId(),
-    //         'name' => $player->getName(),
-    //         'discord' => $player->getDiscord(),
-    //         'team' => $player->getTeam() ? $player->getTeam()->getId() : null
-    //     ]);
-    // }
+            $player = $this->findEntityOrFail('App\Entity\Player', $id, 'Player');
+            $data = $this->getRequestData($request);
+            
+            $player->setName($data['name']);
+            $player->setDiscord($data['discord'] ?? null);
+            
+            if (isset($data['team'])) {
+                if ($data['team']) {
+                    $team = $this->entityManager->getRepository(Team::class)->find($data['team']);
+                    if (!$team) {
+                        return $this->json(['error' => 'Team not found'], 404);
+                    }
+                    $player->setTeam($team);
+                } else {
+                    $player->setTeam(null);
+                }
+            }
+            
+            $this->saveEntity($player);
+            
+            return $this->json($this->formatEntityData($player));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 
-    // #[Route('/player/{id}', name: 'app_player_delete', methods: ['DELETE'])]
-    // public function deletePlayer(Player $player, EntityManager $em): JsonResponse
-    // {
-    //     $em->remove($player);
-    //     $em->flush();
-    //     return $this->json([
-    //         'message' => 'Player deleted successfully'
-    //     ]);
-    // }
+    #[Route('/players', name: 'app_player_patch', methods: ['PATCH'])]
+    public function patchPlayer(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $player = $this->findEntityOrFail('App\Entity\Player', $id, 'Player');
+            $data = $this->getRequestData($request);
+            
+            if (isset($data['name'])) {
+                $player->setName($data['name']);
+            }
+            if (isset($data['discord'])) {
+                $player->setDiscord($data['discord']);
+            }
+            if (isset($data['team'])) {
+                if ($data['team']) {
+                    $team = $this->entityManager->getRepository(Team::class)->find($data['team']);
+                    if (!$team) {
+                        return $this->json(['error' => 'Team not found'], 404);
+                    }
+                    $player->setTeam($team);
+                } else {
+                    $player->setTeam(null);
+                }
+            }
+            
+            $this->saveEntity($player);
+            
+            return $this->json($this->formatEntityData($player));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/players', name: 'app_player_delete', methods: ['DELETE'])]
+    public function deletePlayer(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $player = $this->findEntityOrFail('App\Entity\Player', $id, 'Player');
+            $this->deleteEntity($player);
+
+            return $this->deleteSuccessResponse('Player');
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 500;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 }

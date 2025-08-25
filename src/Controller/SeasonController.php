@@ -2,7 +2,6 @@
 
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Season;
@@ -16,8 +15,21 @@ use App\Repository\RegistrationRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
-class SeasonController extends AbstractController
+class SeasonController extends BaseController
 {
+    protected function formatEntityData($entity): array
+    {
+        if (!$entity instanceof Season) {
+            throw new \InvalidArgumentException('Entity must be an instance of Season');
+        }
+        
+        return [
+            'id' => $entity->getId(),
+            'name' => $entity->getName(),
+            'start_date' => $entity->getStartDate()->format('d-m-Y'),
+            'end_date' => $entity->getEndDate()->format('d-m-Y')
+        ];
+    }
     /**
      * Calcule les statistiques des matchs pour une saison donnée
      */
@@ -158,66 +170,97 @@ class SeasonController extends AbstractController
         return $this->json($seasonData);
     }
 
-    // #[Route('/season', name: 'app_season_create', methods: ['POST'])]
-    // public function createSeason(Request $request, Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $season->setName($data['name']);
-    //     $season->setStartDate(new \DateTime($data['start_date']));
-    //     $season->setEndDate(new \DateTime($data['end_date']));
-    //     $em->persist($season);
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $season->getId(),
-    //         'name' => $season->getName(),
-    //         'start_date' => $season->getStartDate()->format('d-m-Y'),
-    //         'end_date' => $season->getEndDate()->format('d-m-Y')
-    //     ]);
-    // }
+    #[Route('/season', name: 'app_season_create', methods: ['POST'])]
+    public function createSeason(Request $request): JsonResponse
+    {
+        try {
+            $data = $this->getRequestData($request);
+            $season = new Season();
+            
+            $season->setName($data['name']);
+            $season->setStartDate(new \DateTime($data['start_date']));
+            $season->setEndDate(new \DateTime($data['end_date']));
+            
+            $this->saveEntity($season);
+            
+            return $this->json($this->formatEntityData($season));
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+    }
 
-    // #[Route('/season/{id}', name: 'app_season_update', methods: ['PUT'])]
-    // public function updateSeason(Request $request, Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $season->setName($data['name']);
-    //     $season->setStartDate(new \DateTime($data['start_date']));
-    //     $season->setEndDate(new \DateTime($data['end_date']));
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $season->getId(),
-    //         'name' => $season->getName(),
-    //         'start_date' => $season->getStartDate()->format('d-m-Y'),
-    //         'end_date' => $season->getEndDate()->format('d-m-Y')
-    //     ]);
-    // }
+    #[Route('/season', name: 'app_season_update', methods: ['PUT'])]
+    public function updateSeason(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
 
-    // #[Route('/season/{id}', name: 'app_season_patch', methods: ['PATCH'])]
-    // public function patchSeason(Request $request, Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     if (isset($data['name'])) {
-    //         $season->setName($data['name']);
-    //     }
-    //     if (isset($data['start_date'])) {
-    //         $season->setStartDate(new \DateTime($data['start_date']));
-    //     }
-    //     if (isset($data['end_date'])) {
-    //         $season->setEndDate(new \DateTime($data['end_date']));
-    //     }
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $season->getId(),
-    //         'name' => $season->getName(),
-    //         'start_date' => $season->getStartDate()->format('d-m-Y'),
-    //         'end_date' => $season->getEndDate()->format('d-m-Y')
-    //     ]);
-    // }
+            $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+            $data = $this->getRequestData($request);
+            
+            $season->setName($data['name']);
+            $season->setStartDate(new \DateTime($data['start_date']));
+            $season->setEndDate(new \DateTime($data['end_date']));
+            
+            $this->saveEntity($season);
+            
+            return $this->json($this->formatEntityData($season));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 
-    // #[Route('/season/{id}', name: 'app_season_delete', methods: ['DELETE'])]
-    // public function deleteSeason(Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $em->remove($season);
-    //     $em->flush();
-    //     return new JsonResponse(['message' => 'Season deleted successfully'], 200);
-    // }
+    #[Route('/season', name: 'app_season_patch', methods: ['PATCH'])]
+    public function patchSeason(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+            $data = $this->getRequestData($request);
+            
+            if (isset($data['name'])) {
+                $season->setName($data['name']);
+            }
+            if (isset($data['start_date'])) {
+                $season->setStartDate(new \DateTime($data['start_date']));
+            }
+            if (isset($data['end_date'])) {
+                $season->setEndDate(new \DateTime($data['end_date']));
+            }
+            
+            $this->saveEntity($season);
+            
+            return $this->json($this->formatEntityData($season));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/season', name: 'app_season_delete', methods: ['DELETE'])]
+    public function deleteSeason(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+            $this->deleteEntity($season);
+            
+            return $this->deleteSuccessResponse('Season');
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 }
