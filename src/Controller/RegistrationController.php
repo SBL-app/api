@@ -13,6 +13,7 @@ use App\Repository\TeamRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
+#[Route('/api')]
 class RegistrationController extends BaseController
 {
     protected function formatEntityData($entity): array
@@ -20,7 +21,7 @@ class RegistrationController extends BaseController
         if (!$entity instanceof Registration) {
             throw new \InvalidArgumentException('Entity must be an instance of Registration');
         }
-        
+
         return [
             'id' => $entity->getId(),
             'season' => $entity->getSeason()->getName(),
@@ -42,7 +43,7 @@ class RegistrationController extends BaseController
         $id = $request->query->get('id');
         $seasonId = $request->query->get('season_id');
         $teamId = $request->query->get('team_id');
-        
+
         // Si un ID est fourni, retourner l'inscription spécifique
         if ($id) {
             $registration = $registrationRepository->find($id);
@@ -51,7 +52,7 @@ class RegistrationController extends BaseController
             }
             return $this->json($this->formatRegistrationData($registration));
         }
-        
+
         // Si season_id ET team_id sont fournis, retourner l'inscription spécifique
         if ($seasonId && $teamId) {
             $registration = $registrationRepository->findOneBy(['season' => $seasonId, 'team' => $teamId]);
@@ -60,7 +61,7 @@ class RegistrationController extends BaseController
             }
             return $this->json($this->formatRegistrationData($registration));
         }
-        
+
         // Si seulement season_id est fourni, retourner les inscriptions de cette saison
         if ($seasonId) {
             $registrations = $registrationRepository->findBy(['season' => $seasonId]);
@@ -72,7 +73,7 @@ class RegistrationController extends BaseController
             }, $registrations);
             return $this->json($data);
         }
-        
+
         // Si seulement team_id est fourni, retourner les inscriptions de cette équipe
         if ($teamId) {
             $registrations = $registrationRepository->findBy(['team' => $teamId]);
@@ -84,7 +85,7 @@ class RegistrationController extends BaseController
             }, $registrations);
             return $this->json($data);
         }
-        
+
         // Sinon, retourner toutes les inscriptions
         $registrations = $registrationRepository->findAll();
         $data = array_map(function ($registration) {
@@ -99,23 +100,23 @@ class RegistrationController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $registration = new Registration();
-            
+
             if (isset($data['season'])) {
                 $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
                 $registration->setSeason($season);
             } else {
                 $registration->setSeason(null);
             }
-            
+
             if (isset($data['team'])) {
                 $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
                 $registration->setTeam($team);
             } else {
                 $registration->setTeam(null);
             }
-            
+
             $this->saveEntity($registration);
-            
+
             return $this->json($this->formatEntityData($registration));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -134,15 +135,15 @@ class RegistrationController extends BaseController
 
             $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
             $data = $this->getRequestData($request);
-            
+
             $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
             $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
-            
+
             $registration->setSeason($season);
             $registration->setTeam($team);
-            
+
             $this->saveEntity($registration);
-            
+
             return $this->json($this->formatEntityData($registration));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -161,7 +162,7 @@ class RegistrationController extends BaseController
 
             $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
             $data = $this->getRequestData($request);
-            
+
             if (isset($data['season'])) {
                 $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
                 $registration->setSeason($season);
@@ -170,9 +171,9 @@ class RegistrationController extends BaseController
                 $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
                 $registration->setTeam($team);
             }
-            
+
             $this->saveEntity($registration);
-            
+
             return $this->json($this->formatEntityData($registration));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -191,7 +192,7 @@ class RegistrationController extends BaseController
 
             $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
             $this->deleteEntity($registration);
-            
+
             return $this->deleteSuccessResponse('Registration');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;

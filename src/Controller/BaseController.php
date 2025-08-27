@@ -2,6 +2,8 @@
 
 namespace App\Controller;
 
+use App\Service\AuthenticationService;
+use App\Security\SecuredControllerTrait;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,11 +15,15 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 abstract class BaseController extends AbstractController
 {
-    protected EntityManagerInterface $entityManager;
+    use SecuredControllerTrait;
 
-    public function __construct(EntityManagerInterface $entityManager)
+    protected EntityManagerInterface $entityManager;
+    protected AuthenticationService $authService;
+
+    public function __construct(EntityManagerInterface $entityManager, AuthenticationService $authService)
     {
         $this->entityManager = $entityManager;
+        $this->authService = $authService;
     }
 
     /**
@@ -29,12 +35,12 @@ abstract class BaseController extends AbstractController
         if (empty($content)) {
             return [];
         }
-        
+
         $data = json_decode($content, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new \InvalidArgumentException('Invalid JSON format');
         }
-        
+
         return $data ?? [];
     }
 
@@ -80,11 +86,11 @@ abstract class BaseController extends AbstractController
     {
         $repository = $this->entityManager->getRepository($repositoryClass);
         $entity = $repository->find($id);
-        
+
         if (!$entity) {
             throw new \Exception("{$entityName} with id {$id} not found", 404);
         }
-        
+
         return $entity;
     }
 
@@ -95,6 +101,56 @@ abstract class BaseController extends AbstractController
     {
         $this->entityManager->persist($entity);
         $this->entityManager->flush();
+    }
+
+    /**
+     * Méthode sécurisée pour créer une entité
+     */
+    protected function securedCreateEntity($entity): JsonResponse
+    {
+        try {
+            $this->checkModificationPermissions();
+            $this->saveEntity($entity);
+            return $this->json($this->formatEntityData($entity), 201);
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->permissionDeniedResponse($e->getMessage());
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Méthode sécurisée pour mettre à jour une entité
+     */
+    protected function securedUpdateEntity($entity): JsonResponse
+    {
+        try {
+            $this->checkModificationPermissions();
+            $this->saveEntity($entity);
+            return $this->json($this->formatEntityData($entity));
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->permissionDeniedResponse($e->getMessage());
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    /**
+     * Méthode sécurisée pour supprimer une entité
+     */
+    protected function securedDeleteEntity($entity, string $entityName): JsonResponse
+    {
+        try {
+            $this->checkModificationPermissions();
+            $this->deleteEntity($entity);
+            return $this->deleteSuccessResponse($entityName);
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->permissionDeniedResponse($e->getMessage());
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
     }
 
     /**
@@ -118,7 +174,7 @@ abstract class BaseController extends AbstractController
     {
         $repository = $this->entityManager->getRepository($repositoryClass);
         $entities = $repository->findAll();
-        
+
         return array_map(function ($entity) {
             return $this->formatEntityData($entity);
         }, $entities);

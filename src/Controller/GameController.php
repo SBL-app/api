@@ -12,6 +12,7 @@ use App\Repository\DivisionRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
+#[Route('/api')]
 class GameController extends BaseController
 {
     /**
@@ -22,7 +23,7 @@ class GameController extends BaseController
         if (!$entity instanceof Game) {
             throw new \InvalidArgumentException('Entity must be an instance of Game');
         }
-        
+
         return $this->formatGameData($entity);
     }
 
@@ -52,15 +53,15 @@ class GameController extends BaseController
     {
         $criteria1 = ['team1' => $teamId];
         $criteria2 = ['team2' => $teamId];
-        
+
         if ($divisionId) {
             $criteria1['division'] = $divisionId;
             $criteria2['division'] = $divisionId;
         }
-        
+
         $games1 = $gameRepository->findBy($criteria1);
         $games2 = $gameRepository->findBy($criteria2);
-        
+
         return array_merge($games1, $games2);
     }
 
@@ -113,7 +114,7 @@ class GameController extends BaseController
         $id = $request->query->get('id');
         $divisionId = $request->query->get('division_id');
         $teamId = $request->query->get('team_id');
-        
+
         // Si un ID est fourni, retourner le match spécifique
         if ($id) {
             $game = $gameRepository->find($id);
@@ -122,24 +123,24 @@ class GameController extends BaseController
             }
             return $this->json($this->formatGameData($game));
         }
-        
+
         // Si team_id est fourni (avec ou sans division_id)
         if ($teamId) {
             $games = $this->getGamesByTeam($gameRepository, (int)$teamId, $divisionId ? (int)$divisionId : null);
-            
+
             if (empty($games)) {
-                $errorMessage = $divisionId 
+                $errorMessage = $divisionId
                     ? 'No games found for this team in this division'
                     : 'No games found for this team';
                 return $this->json(['error' => $errorMessage], 404);
             }
-            
+
             $data = array_map(function ($game) {
                 return $this->formatGameData($game);
             }, $games);
             return $this->json($data);
         }
-        
+
         // Si seulement division_id est fourni, retourner les matchs de cette division
         if ($divisionId) {
             $games = $gameRepository->findBy(['division' => $divisionId]);
@@ -151,7 +152,7 @@ class GameController extends BaseController
             }, $games);
             return $this->json($data);
         }
-        
+
         // Sinon, retourner tous les matchs
         $games = $gameRepository->findAll();
         $data = array_map(function ($game) {
@@ -166,7 +167,7 @@ class GameController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $game = new Game();
-            
+
             // Définition des propriétés de base
             $game->setDate(isset($data['date']) ? new \DateTime($data['date']) : null);
             $game->setWeek($data['week'] ?? null);
@@ -199,7 +200,7 @@ class GameController extends BaseController
 
             $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
             $data = $this->getRequestData($request);
-            
+
             // Mise à jour des propriétés de base
             $game->setDate(new \DateTime($data['date']));
             $game->setWeek($data['week']);
@@ -238,7 +239,7 @@ class GameController extends BaseController
 
             $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
             $data = $this->getRequestData($request);
-            
+
             // Mise à jour conditionnelle des propriétés
             if (isset($data['date'])) {
                 $game->setDate(new \DateTime($data['date']));

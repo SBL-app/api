@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Season;
 use App\Repository\DivisionRepository;
@@ -13,8 +14,9 @@ use App\Repository\TeamRepository;
 use App\Repository\TeamStatRepository;
 use App\Repository\RegistrationRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
-use Symfony\Component\HttpFoundation\Request;
+use App\Service\AuthenticationService;
 
+#[Route('/api')]
 class SeasonController extends BaseController
 {
     protected function formatEntityData($entity): array
@@ -22,7 +24,7 @@ class SeasonController extends BaseController
         if (!$entity instanceof Season) {
             throw new \InvalidArgumentException('Entity must be an instance of Season');
         }
-        
+
         return [
             'id' => $entity->getId(),
             'name' => $entity->getName(),
@@ -39,7 +41,7 @@ class SeasonController extends BaseController
         $finishedGames = 0;
         $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
         $divisions = $divisionRepository->findBy(['season' => $season]);
-        
+
         foreach ($divisions as $division) {
             $games = $gameRepository->findBy(['division' => $division]);
             foreach ($games as $game) {
@@ -49,9 +51,9 @@ class SeasonController extends BaseController
                 }
             }
         }
-        
+
         $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
-        
+
         return [
             'total_games' => $totalGames,
             'finished_games' => $finishedGames,
@@ -88,7 +90,7 @@ class SeasonController extends BaseController
     public function getSeasons(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
         $id = $request->query->get('id');
-        
+
         // Si un ID est fourni, retourner une seule saison
         if ($id) {
             $season = $seasonRepository->find($id);
@@ -128,7 +130,7 @@ class SeasonController extends BaseController
                 'name' => $team->getTeam()->getName()
             ];
         }, $teams);
-        
+
         $seasonData = $this->formatSeasonData($season);
         $data = array_merge($seasonData, [
             'teams' => $teamsData
@@ -143,7 +145,7 @@ class SeasonController extends BaseController
     {
         $id = $request->query->get('id');
         $decimal = $request->query->get('decimal', 2); // valeur par défaut : 2
-        
+
         if (!$id) {
             return $this->json(['error' => 'Season ID is required'], 400);
         }
@@ -155,18 +157,18 @@ class SeasonController extends BaseController
 
         // Utiliser le formateur standard avec statistiques
         $seasonData = $this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository);
-        
+
         // Remplacer le formatage du pourcentage par celui demandé
         $seasonData['percentage'] = number_format($seasonData['percentage'], (int)$decimal);
-        
+
         // Renommer les clés pour correspondre au format attendu de cette route
         $seasonData['total'] = $seasonData['total_games'];
         $seasonData['finished'] = $seasonData['finished_games'];
         $seasonData['pourcent'] = $seasonData['percentage'];
-        
+
         // Supprimer les anciennes clés
         unset($seasonData['total_games'], $seasonData['finished_games'], $seasonData['percentage']);
-        
+
         return $this->json($seasonData);
     }
 
@@ -176,14 +178,12 @@ class SeasonController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $season = new Season();
-            
+
             $season->setName($data['name']);
             $season->setStartDate(new \DateTime($data['start_date']));
             $season->setEndDate(new \DateTime($data['end_date']));
-            
-            $this->saveEntity($season);
-            
-            return $this->json($this->formatEntityData($season));
+
+            return $this->securedCreateEntity($season);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 400);
         }
@@ -200,14 +200,12 @@ class SeasonController extends BaseController
 
             $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
             $data = $this->getRequestData($request);
-            
+
             $season->setName($data['name']);
             $season->setStartDate(new \DateTime($data['start_date']));
             $season->setEndDate(new \DateTime($data['end_date']));
-            
-            $this->saveEntity($season);
-            
-            return $this->json($this->formatEntityData($season));
+
+            return $this->securedUpdateEntity($season);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
@@ -218,6 +216,8 @@ class SeasonController extends BaseController
     public function patchSeason(Request $request): JsonResponse
     {
         try {
+            $this->checkModificationPermissions();
+
             $id = $request->query->get('id');
             if (!$id) {
                 return $this->missingParameterError('id');
@@ -225,7 +225,7 @@ class SeasonController extends BaseController
 
             $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
             $data = $this->getRequestData($request);
-            
+
             if (isset($data['name'])) {
                 $season->setName($data['name']);
             }
@@ -235,10 +235,12 @@ class SeasonController extends BaseController
             if (isset($data['end_date'])) {
                 $season->setEndDate(new \DateTime($data['end_date']));
             }
-            
+
             $this->saveEntity($season);
-            
+
             return $this->json($this->formatEntityData($season));
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->permissionDeniedResponse($e->getMessage());
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
@@ -255,9 +257,8 @@ class SeasonController extends BaseController
             }
 
             $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
-            $this->deleteEntity($season);
-            
-            return $this->deleteSuccessResponse('Season');
+
+            return $this->securedDeleteEntity($season, 'Season');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);

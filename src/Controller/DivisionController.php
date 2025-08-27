@@ -16,6 +16,7 @@ use App\Repository\GameRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
+#[Route('/api')]
 class DivisionController extends BaseController
 {
     protected function formatEntityData($entity): array
@@ -23,7 +24,7 @@ class DivisionController extends BaseController
         if (!$entity instanceof Division) {
             throw new \InvalidArgumentException('Entity must be an instance of Division');
         }
-        
+
         return [
             'id' => $entity->getId(),
             'name' => $entity->getName(),
@@ -44,7 +45,7 @@ class DivisionController extends BaseController
     public function getDivisions(Request $request, DivisionRepository $divisionRepository): JsonResponse
     {
         $id = $request->query->get('id');
-        
+
         // Si un ID est fourni, retourner une seule division
         if ($id) {
             $division = $divisionRepository->find($id);
@@ -186,7 +187,7 @@ class DivisionController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $division = new Division();
-            
+
             $division->setName($data['name']);
 
             if (isset($data['season'])) {
@@ -216,16 +217,16 @@ class DivisionController extends BaseController
 
             $division = $this->findEntityOrFail('App\Entity\Division', $id, 'Division');
             $data = $this->getRequestData($request);
-            
+
             $division->setName($data['name']);
-            
+
             if (isset($data['season'])) {
                 $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
                 $division->setSeason($season);
             }
-            
+
             $this->saveEntity($division);
-            
+
             return $this->json($this->formatEntityData($division));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -244,7 +245,7 @@ class DivisionController extends BaseController
 
             $division = $this->findEntityOrFail('App\Entity\Division', $id, 'Division');
             $data = $this->getRequestData($request);
-            
+
             if (isset($data['name'])) {
                 $division->setName($data['name']);
             }
@@ -252,9 +253,9 @@ class DivisionController extends BaseController
                 $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
                 $division->setSeason($season);
             }
-            
+
             $this->saveEntity($division);
-            
+
             return $this->json($this->formatEntityData($division));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -273,7 +274,7 @@ class DivisionController extends BaseController
 
             $division = $this->findEntityOrFail('App\Entity\Division', $id, 'Division');
             $this->deleteEntity($division);
-            
+
             return $this->deleteSuccessResponse('Division');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;

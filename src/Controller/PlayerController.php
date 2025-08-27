@@ -10,6 +10,7 @@ use App\Entity\Player;
 use App\Entity\Team;
 use Symfony\Component\HttpFoundation\Request;
 
+#[Route('/api')]
 class PlayerController extends BaseController
 {
     protected function formatEntityData($entity): array
@@ -17,7 +18,7 @@ class PlayerController extends BaseController
         if (!$entity instanceof Player) {
             throw new \InvalidArgumentException('Entity must be an instance of Player');
         }
-        
+
         return [
             'id' => $entity->getId(),
             'name' => $entity->getName(),
@@ -56,7 +57,7 @@ class PlayerController extends BaseController
     {
         $id = $request->query->get('id');
         $teamFilter = $request->query->get('team');
-        
+
         // Si un ID est fourni, retourner un seul joueur avec ses statistiques
         if ($id) {
             $player = $playerRepository->find($id);
@@ -77,7 +78,7 @@ class PlayerController extends BaseController
         $data = array_map(function ($player) {
             return $this->formatEntityData($player);
         }, $players);
-        
+
         return $this->json($data);
     }
 
@@ -87,10 +88,10 @@ class PlayerController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $player = new Player();
-            
+
             $player->setName($data['name'] ?? null);
             $player->setDiscord($data['discord'] ?? null);
-            
+
             if (isset($data['team']) && $data['team']) {
                 $team = $this->entityManager->getRepository(Team::class)->find($data['team']);
                 if (!$team) {
@@ -100,9 +101,9 @@ class PlayerController extends BaseController
             } else {
                 $player->setTeam(null);
             }
-            
+
             $this->saveEntity($player);
-            
+
             return $this->json($this->formatEntityData($player));
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 400);
@@ -120,10 +121,10 @@ class PlayerController extends BaseController
 
             $player = $this->findEntityOrFail('App\Entity\Player', $id, 'Player');
             $data = $this->getRequestData($request);
-            
+
             $player->setName($data['name']);
             $player->setDiscord($data['discord'] ?? null);
-            
+
             if (isset($data['team'])) {
                 if ($data['team']) {
                     $team = $this->entityManager->getRepository(Team::class)->find($data['team']);
@@ -135,9 +136,9 @@ class PlayerController extends BaseController
                     $player->setTeam(null);
                 }
             }
-            
+
             $this->saveEntity($player);
-            
+
             return $this->json($this->formatEntityData($player));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -156,7 +157,7 @@ class PlayerController extends BaseController
 
             $player = $this->findEntityOrFail('App\Entity\Player', $id, 'Player');
             $data = $this->getRequestData($request);
-            
+
             if (isset($data['name'])) {
                 $player->setName($data['name']);
             }
@@ -174,9 +175,9 @@ class PlayerController extends BaseController
                     $player->setTeam(null);
                 }
             }
-            
+
             $this->saveEntity($player);
-            
+
             return $this->json($this->formatEntityData($player));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;

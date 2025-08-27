@@ -9,6 +9,7 @@ use App\Entity\GameStatus;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
+#[Route('/api')]
 class GameStatusController extends BaseController
 {
     protected function formatEntityData($entity): array
@@ -16,7 +17,7 @@ class GameStatusController extends BaseController
         if (!$entity instanceof GameStatus) {
             throw new \InvalidArgumentException('Entity must be an instance of GameStatus');
         }
-        
+
         return [
             'id' => $entity->getId(),
             'name' => $entity->getName()
@@ -27,12 +28,12 @@ class GameStatusController extends BaseController
     public function getGameStatuses(Request $request, GameStatusRepository $gameStatusRepository): JsonResponse
     {
         $id = $request->query->get('id');
-        
+
         // Si un ID est fourni, retourner le statut spécifique
         if ($id) {
             return $this->getEntityById('App\Entity\GameStatus', $id, 'Game status');
         }
-        
+
         // Sinon, retourner tous les statuts
         $gameStatuses = $gameStatusRepository->findAll();
         $data = array_map(function ($gameStatus) {
@@ -47,11 +48,11 @@ class GameStatusController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $gameStatus = new GameStatus();
-            
+
             $gameStatus->setName($data['name']);
-            
+
             $this->saveEntity($gameStatus);
-            
+
             return $this->json($this->formatEntityData($gameStatus));
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 400);
@@ -69,11 +70,11 @@ class GameStatusController extends BaseController
 
             $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
             $data = $this->getRequestData($request);
-            
+
             $gameStatus->setName($data['name']);
-            
+
             $this->saveEntity($gameStatus);
-            
+
             return $this->json($this->formatEntityData($gameStatus));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -92,13 +93,13 @@ class GameStatusController extends BaseController
 
             $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
             $data = $this->getRequestData($request);
-            
+
             if (isset($data['name'])) {
                 $gameStatus->setName($data['name']);
             }
-            
+
             $this->saveEntity($gameStatus);
-            
+
             return $this->json($this->formatEntityData($gameStatus));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -117,7 +118,7 @@ class GameStatusController extends BaseController
 
             $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
             $this->deleteEntity($gameStatus);
-            
+
             return $this->deleteSuccessResponse('GameStatus');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;

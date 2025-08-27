@@ -9,6 +9,7 @@ use App\Entity\Team;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
+#[Route('/api')]
 class TeamController extends BaseController
 {
     protected function formatEntityData($entity): array
@@ -16,7 +17,7 @@ class TeamController extends BaseController
         if (!$entity instanceof Team) {
             throw new \InvalidArgumentException('Entity must be an instance of Team');
         }
-        
+
         return [
             'id' => $entity->getId(),
             'name' => $entity->getName()
@@ -27,12 +28,12 @@ class TeamController extends BaseController
     public function getTeams(Request $request, TeamRepository $teamRepository): JsonResponse
     {
         $id = $request->query->get('id');
-        
+
         // Si un ID est fourni, retourner l'équipe spécifique
         if ($id) {
             return $this->getEntityById('App\Entity\Team', $id, 'Team');
         }
-        
+
         // Sinon, retourner toutes les équipes
         $teams = $teamRepository->findAll();
         $data = array_map(function ($team) {
@@ -47,11 +48,11 @@ class TeamController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $team = new Team();
-            
+
             $team->setName($data['name']);
-            
+
             $this->saveEntity($team);
-            
+
             return $this->json($this->formatEntityData($team));
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 400);
@@ -69,11 +70,11 @@ class TeamController extends BaseController
 
             $team = $this->findEntityOrFail('App\Entity\Team', $id, 'Team');
             $data = $this->getRequestData($request);
-            
+
             $team->setName($data['name']);
-            
+
             $this->saveEntity($team);
-            
+
             return $this->json($this->formatEntityData($team));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -92,13 +93,13 @@ class TeamController extends BaseController
 
             $team = $this->findEntityOrFail('App\Entity\Team', $id, 'Team');
             $data = $this->getRequestData($request);
-            
+
             if (isset($data['name'])) {
                 $team->setName($data['name']);
             }
-            
+
             $this->saveEntity($team);
-            
+
             return $this->json($this->formatEntityData($team));
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
@@ -117,7 +118,7 @@ class TeamController extends BaseController
 
             $team = $this->findEntityOrFail('App\Entity\Team', $id, 'Team');
             $this->deleteEntity($team);
-            
+
             return $this->deleteSuccessResponse('Team');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
