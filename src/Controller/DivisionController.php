@@ -6,7 +6,6 @@ use App\Repository\DivisionRepository;
 use App\Repository\TeamStatRepository;
 use App\Repository\TeamRepository;
 use App\Repository\SeasonRepository;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -17,26 +16,36 @@ use App\Repository\GameRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
-class DivisionController extends AbstractController
+#[Route('/api')]
+class DivisionController extends BaseController
 {
+    protected function formatEntityData($entity): array
+    {
+        if (!$entity instanceof Division) {
+            throw new \InvalidArgumentException('Entity must be an instance of Division');
+        }
+
+        return [
+            'id' => $entity->getId(),
+            'name' => $entity->getName(),
+            'season_id' => $entity->getSeason() ? $entity->getSeason()->getId() : null,
+            'season_name' => $entity->getSeason() ? $entity->getSeason()->getName() : ''
+        ];
+    }
+
     /**
      * Formate les données de base d'une division
      */
     private function formatDivisionData(Division $division): array
     {
-        return [
-            'id' => $division->getId(),
-            'name' => $division->getName(),
-            'season_id' => $division->getSeason() ? $division->getSeason()->getId() : null,
-            'season_name' => $division->getSeason() ? $division->getSeason()->getName() : ''
-        ];
+        return $this->formatEntityData($division);
     }
 
     #[Route('/division', name: 'app_divisions', methods: ['GET'])]
     public function getDivisions(Request $request, DivisionRepository $divisionRepository): JsonResponse
     {
         $id = $request->query->get('id');
-        
+
         // Si un ID est fourni, retourner une seule division
         if ($id) {
             $division = $divisionRepository->find($id);
@@ -172,87 +181,208 @@ class DivisionController extends AbstractController
         return $this->json($response);
     }
 
-    // #[Route('/division', name: 'app_division_create', methods: ['POST'])]
-    // public function createDivision(Request $request, Division $division, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $division = new Division();
-    //     $division->setName($data['name']);
+    #[Route('/division/details', name: 'app_division_details', methods: ['GET'])]
+    public function getDivisionDetails(Request $request, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, TeamRepository $teamRepository, PlayerRepository $playerRepository, GameRepository $gameRepository): JsonResponse
+    {
+        $divisionId = $request->query->get('division_id');
+        if (!$divisionId) {
+            return $this->json(['error' => 'Division ID is required'], 400);
+        }
 
-    //     if (isset($data['season'])) {
-    //         $season = $em->getRepository(Season::class)->find($data['season']);
-    //         if (!$season) {
-    //             return $this->json(['error' => 'Season not found'], Response::HTTP_BAD_REQUEST);
-    //         }
-    //         $division->setSeason($season);
-    //     } else {
-    //         $division->setSeason(null);
-    //     }
+        try {
+            // Récupération de la division
+            $division = $this->findEntityOrFail('App\Entity\Division', $divisionId, 'Division');
 
-    //     $em->persist($division);
-    //     $em->flush();
+            // Informations de base de la division
+            $divisionData = $this->formatEntityData($division);
 
-    //     return $this->json([
-    //         'id' => $division->getId(),
-    //         'name' => $division->getName(),
-    //         'season' => $division->getSeason() ? $division->getSeason()->getId() : null
-    //     ]);
-    // }
+            // Récupération des statistiques d'équipes pour le classement
+            $teamStats = $teamStatRepository->findBy(['division' => $division]);
 
-    // #[Route('/division/{id}', name: 'app_division_update', methods: ['PUT'])]
-    // public function updateDivision(Request $request, Division $division, EntityManager $em, SeasonRepository $seasonRepository): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $division->setName($data['name']);
-        
-    //     if (isset($data['season'])) {
-    //         $season = $seasonRepository->find($data['season']);
-    //         if (!$season) {
-    //             return $this->json(['error' => 'Season not found'], Response::HTTP_BAD_REQUEST);
-    //         }
-    //         $division->setSeason($season);
-    //     }
-        
-    //     $em->persist($division);
-    //     $em->flush();
-        
-    //     return $this->json([
-    //         'id' => $division->getId(),
-    //         'name' => $division->getName(),
-    //         'season' => $division->getSeason() ? $division->getSeason()->getId() : null
-    //     ]);
-    // }
+            // Tri par points décroissant pour le classement
+            usort($teamStats, function ($a, $b) {
+                return $b->getPoints() - $a->getPoints();
+            });
 
-    // #[Route('/division/{id}', name: 'app_division_patch', methods: ['PATCH'])]
-    // public function patchDivision(Request $request, Division $division, EntityManager $em, SeasonRepository $seasonRepository): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     if (isset($data['name'])) {
-    //         $division->setName($data['name']);
-    //     }
-    //     if (isset($data['season'])) {
-    //         $season = $seasonRepository->find($data['season']);
-    //         if (!$season) {
-    //             return $this->json(['error' => 'Season not found'], Response::HTTP_BAD_REQUEST);
-    //         }
-    //         $division->setSeason($season);
-    //     }
-    //     $em->persist($division);
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $division->getId(),
-    //         'name' => $division->getName(),
-    //         'season' => $division->getSeason() ? $division->getSeason()->getId() : null
-    //     ]);
-    // }
+            // Formation du classement simplifié (nom équipe + statistiques)
+            $ranking = [];
+            $teams = [];
 
-    // #[Route('/division/{id}', name: 'app_division_delete', methods: ['DELETE'])]
-    // public function deleteDivision(Division $division, EntityManager $em): JsonResponse
-    // {
-    //     $em->remove($division);
-    //     $em->flush();
-    //     return $this->json([
-    //         'message' => 'Division deleted successfully'
-    //     ]);
-    // }
+            foreach ($teamStats as $position => $teamStat) {
+                $team = $teamStat->getTeam();
+                $teamEntity = $teamRepository->find($team->getId());
+                $players = $playerRepository->findBy(['team' => $teamEntity]);
+
+                $members = array_map(function ($player) {
+                    return [
+                        'id' => $player->getId(),
+                        'name' => $player->getName(),
+                        'discord' => $player->getDiscord()
+                    ];
+                }, $players);
+
+                // Classement simplifié
+                $ranking[] = [
+                    'position' => $position + 1,
+                    'team_id' => $team->getId(),
+                    'team_name' => $teamEntity->getName(),
+                    'stats' => [
+                        'wins' => $teamStat->getWins(),
+                        'losses' => $teamStat->getLosses(),
+                        'ties' => $teamStat->getTies(),
+                        'winRounds' => $teamStat->getWinRounds(),
+                        'looseRounds' => $teamStat->getLooseRounds(),
+                        'points' => $teamStat->getPoints()
+                    ]
+                ];
+
+                // Détails complets des équipes pour la fin de réponse
+                $teams[] = [
+                    'id' => $team->getId(),
+                    'name' => $teamEntity->getName(),
+                    'captain' => $teamEntity->getCapitain() ? $teamEntity->getCapitain()->getName() : null,
+                    'members' => $members
+                ];
+            }
+
+            // Récupération des matchs de la division organisés par semaine
+            $games = $gameRepository->findBy(['division' => $division]);
+            $gamesData = [];
+
+            foreach ($games as $game) {
+                $week = $game->getWeek();
+                if (!isset($gamesData[$week])) {
+                    $gamesData[$week] = [
+                        'week' => $week,
+                        'games' => []
+                    ];
+                }
+                $gamesData[$week]['games'][] = [
+                    'id' => $game->getId(),
+                    'date' => $game->getDate() ? $game->getDate()->format('d-m-Y') : null,
+                    'team1' => $game->getTeam1() ? $game->getTeam1()->getName() : null,
+                    'team2' => $game->getTeam2() ? $game->getTeam2()->getName() : null,
+                    'score1' => $game->getScore1(),
+                    'score2' => $game->getScore2(),
+                    'winner' => $game->getWinner(),
+                    'status' => $game->getStatus() ? $game->getStatus()->getName() : null
+                ];
+            }
+
+            // Assemblage de la réponse complète avec les détails des équipes à la fin
+            $response = [
+                'division' => $divisionData,
+                'ranking' => $ranking,
+                'teams_count' => count($teamStats),
+                'games' => array_values($gamesData),
+                'teams' => $teams
+            ];
+
+            return $this->json($response);
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 500;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/division', name: 'app_division_create', methods: ['POST'])]
+    public function createDivision(Request $request): JsonResponse
+    {
+        try {
+            $data = $this->getRequestData($request);
+            $division = new Division();
+
+            $division->setName($data['name']);
+
+            if (isset($data['season'])) {
+                $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
+                $division->setSeason($season);
+            } else {
+                $division->setSeason(null);
+            }
+
+            $this->saveEntity($division);
+
+            return $this->json($this->formatEntityData($division));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/division', name: 'app_division_update', methods: ['PUT'])]
+    public function updateDivision(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $division = $this->findEntityOrFail('App\Entity\Division', $id, 'Division');
+            $data = $this->getRequestData($request);
+
+            $division->setName($data['name']);
+
+            if (isset($data['season'])) {
+                $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
+                $division->setSeason($season);
+            }
+
+            $this->saveEntity($division);
+
+            return $this->json($this->formatEntityData($division));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/division', name: 'app_division_patch', methods: ['PATCH'])]
+    public function patchDivision(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $division = $this->findEntityOrFail('App\Entity\Division', $id, 'Division');
+            $data = $this->getRequestData($request);
+
+            if (isset($data['name'])) {
+                $division->setName($data['name']);
+            }
+            if (isset($data['season'])) {
+                $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
+                $division->setSeason($season);
+            }
+
+            $this->saveEntity($division);
+
+            return $this->json($this->formatEntityData($division));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/division', name: 'app_division_delete', methods: ['DELETE'])]
+    public function deleteDivision(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $division = $this->findEntityOrFail('App\Entity\Division', $id, 'Division');
+            $this->deleteEntity($division);
+
+            return $this->deleteSuccessResponse('Division');
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 }

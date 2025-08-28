@@ -6,7 +6,7 @@ This project is an API that will be used later with the front part of the applic
 
 To install the project, you need to have php and composer installed on your machine.
 
-```bash	
+```bash
 composer install
 ```
 

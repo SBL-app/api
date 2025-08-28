@@ -9,3 +9,7 @@
 /vendor/
 ###< symfony/framework-bundle ###
 /.vscode
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###
+phpunit.xml.dist
