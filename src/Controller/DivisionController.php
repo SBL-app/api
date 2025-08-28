@@ -16,6 +16,7 @@ use App\Repository\GameRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
+#[Route('/api')]
 class DivisionController extends BaseController
 {
     protected function formatEntityData($entity): array

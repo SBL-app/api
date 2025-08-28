@@ -11,6 +11,7 @@ use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 use App\Entity\TeamStat;
 
+#[Route('/api')]
 class TeamStatController extends BaseController
 {
     protected function formatEntityData($entity): array
@@ -18,7 +19,6 @@ class TeamStatController extends BaseController
         if (!$entity instanceof TeamStat) {
             throw new \InvalidArgumentException('Entity must be an instance of TeamStat');
         }
-        
         return [
             'id' => $entity->getId(),
             'team_id' => $entity->getTeam()->getId(),
@@ -49,7 +49,7 @@ class TeamStatController extends BaseController
     {
         $teamId = $request->query->get('team_id');
         $divisionId = $request->query->get('division_id');
-        
+
         // Si team_id ET division_id sont fournis, retourner la stat spécifique
         if ($teamId && $divisionId) {
             $teamStat = $teamStatRepository->findOneBy(['team' => $teamId, 'division' => $divisionId]);
@@ -58,7 +58,7 @@ class TeamStatController extends BaseController
             }
             return $this->json($this->formatTeamStatData($teamStat));
         }
-        
+
         // Si seulement team_id est fourni, retourner toutes les stats de cette équipe
         if ($teamId) {
             $teamStats = $teamStatRepository->findBy(['team' => $teamId]);
@@ -70,7 +70,7 @@ class TeamStatController extends BaseController
             }, $teamStats);
             return $this->json($data);
         }
-        
+
         // Si seulement division_id est fourni, retourner toutes les stats de cette division
         if ($divisionId) {
             $teamStats = $teamStatRepository->findBy(['division' => $divisionId]);
@@ -82,7 +82,7 @@ class TeamStatController extends BaseController
             }, $teamStats);
             return $this->json($data);
         }
-        
+
         // Sinon, retourner toutes les statistiques
         $teamStats = $teamStatRepository->findAll();
         $data = array_map(function ($teamStat) {
@@ -96,7 +96,6 @@ class TeamStatController extends BaseController
     {
         try {
             $data = $this->getRequestData($request);
-            
             $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
             $division = $this->findEntityOrFail('App\Entity\Division', $data['division'], 'Division');
 

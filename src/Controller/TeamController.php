@@ -11,6 +11,7 @@ use App\Entity\Team;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
+#[Route('/api')]
 class TeamController extends BaseController
 {
     protected function formatEntityData($entity): array
