@@ -2,8 +2,8 @@
 
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Season;
 use App\Repository\DivisionRepository;
@@ -14,10 +14,24 @@ use App\Repository\TeamRepository;
 use App\Repository\TeamStatRepository;
 use App\Repository\RegistrationRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
-use Symfony\Component\HttpFoundation\Request;
+use App\Service\AuthenticationService;
 
-class SeasonController extends AbstractController
+#[Route('/api')]
+class SeasonController extends BaseController
 {
+    protected function formatEntityData($entity): array
+    {
+        if (!$entity instanceof Season) {
+            throw new \InvalidArgumentException('Entity must be an instance of Season');
+        }
+
+        return [
+            'id' => $entity->getId(),
+            'name' => $entity->getName(),
+            'start_date' => $entity->getStartDate()->format('d-m-Y'),
+            'end_date' => $entity->getEndDate()->format('d-m-Y')
+        ];
+    }
     /**
      * Calcule les statistiques des matchs pour une saison donnée
      */
@@ -27,7 +41,7 @@ class SeasonController extends AbstractController
         $finishedGames = 0;
         $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
         $divisions = $divisionRepository->findBy(['season' => $season]);
-        
+
         foreach ($divisions as $division) {
             $games = $gameRepository->findBy(['division' => $division]);
             foreach ($games as $game) {
@@ -37,9 +51,9 @@ class SeasonController extends AbstractController
                 }
             }
         }
-        
+
         $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
-        
+
         return [
             'total_games' => $totalGames,
             'finished_games' => $finishedGames,
@@ -76,7 +90,7 @@ class SeasonController extends AbstractController
     public function getSeasons(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
         $id = $request->query->get('id');
-        
+
         // Si un ID est fourni, retourner une seule saison
         if ($id) {
             $season = $seasonRepository->find($id);
@@ -116,7 +130,7 @@ class SeasonController extends AbstractController
                 'name' => $team->getTeam()->getName()
             ];
         }, $teams);
-        
+
         $seasonData = $this->formatSeasonData($season);
         $data = array_merge($seasonData, [
             'teams' => $teamsData
@@ -131,7 +145,7 @@ class SeasonController extends AbstractController
     {
         $id = $request->query->get('id');
         $decimal = $request->query->get('decimal', 2); // valeur par défaut : 2
-        
+
         if (!$id) {
             return $this->json(['error' => 'Season ID is required'], 400);
         }
@@ -143,81 +157,111 @@ class SeasonController extends AbstractController
 
         // Utiliser le formateur standard avec statistiques
         $seasonData = $this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository);
-        
+
         // Remplacer le formatage du pourcentage par celui demandé
         $seasonData['percentage'] = number_format($seasonData['percentage'], (int)$decimal);
-        
+
         // Renommer les clés pour correspondre au format attendu de cette route
         $seasonData['total'] = $seasonData['total_games'];
         $seasonData['finished'] = $seasonData['finished_games'];
         $seasonData['pourcent'] = $seasonData['percentage'];
-        
+
         // Supprimer les anciennes clés
         unset($seasonData['total_games'], $seasonData['finished_games'], $seasonData['percentage']);
-        
+
         return $this->json($seasonData);
     }
 
-    // #[Route('/season', name: 'app_season_create', methods: ['POST'])]
-    // public function createSeason(Request $request, Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $season->setName($data['name']);
-    //     $season->setStartDate(new \DateTime($data['start_date']));
-    //     $season->setEndDate(new \DateTime($data['end_date']));
-    //     $em->persist($season);
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $season->getId(),
-    //         'name' => $season->getName(),
-    //         'start_date' => $season->getStartDate()->format('d-m-Y'),
-    //         'end_date' => $season->getEndDate()->format('d-m-Y')
-    //     ]);
-    // }
+    #[Route('/season', name: 'app_season_create', methods: ['POST'])]
+    public function createSeason(Request $request): JsonResponse
+    {
+        try {
+            $data = $this->getRequestData($request);
+            $season = new Season();
 
-    // #[Route('/season/{id}', name: 'app_season_update', methods: ['PUT'])]
-    // public function updateSeason(Request $request, Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $season->setName($data['name']);
-    //     $season->setStartDate(new \DateTime($data['start_date']));
-    //     $season->setEndDate(new \DateTime($data['end_date']));
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $season->getId(),
-    //         'name' => $season->getName(),
-    //         'start_date' => $season->getStartDate()->format('d-m-Y'),
-    //         'end_date' => $season->getEndDate()->format('d-m-Y')
-    //     ]);
-    // }
+            $season->setName($data['name']);
+            $season->setStartDate(new \DateTime($data['start_date']));
+            $season->setEndDate(new \DateTime($data['end_date']));
 
-    // #[Route('/season/{id}', name: 'app_season_patch', methods: ['PATCH'])]
-    // public function patchSeason(Request $request, Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     if (isset($data['name'])) {
-    //         $season->setName($data['name']);
-    //     }
-    //     if (isset($data['start_date'])) {
-    //         $season->setStartDate(new \DateTime($data['start_date']));
-    //     }
-    //     if (isset($data['end_date'])) {
-    //         $season->setEndDate(new \DateTime($data['end_date']));
-    //     }
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $season->getId(),
-    //         'name' => $season->getName(),
-    //         'start_date' => $season->getStartDate()->format('d-m-Y'),
-    //         'end_date' => $season->getEndDate()->format('d-m-Y')
-    //     ]);
-    // }
+            return $this->securedCreateEntity($season);
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+    }
 
-    // #[Route('/season/{id}', name: 'app_season_delete', methods: ['DELETE'])]
-    // public function deleteSeason(Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $em->remove($season);
-    //     $em->flush();
-    //     return new JsonResponse(['message' => 'Season deleted successfully'], 200);
-    // }
+    #[Route('/season', name: 'app_season_update', methods: ['PUT'])]
+    public function updateSeason(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+            $data = $this->getRequestData($request);
+
+            $season->setName($data['name']);
+            $season->setStartDate(new \DateTime($data['start_date']));
+            $season->setEndDate(new \DateTime($data['end_date']));
+
+            return $this->securedUpdateEntity($season);
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/season', name: 'app_season_patch', methods: ['PATCH'])]
+    public function patchSeason(Request $request): JsonResponse
+    {
+        try {
+            $this->checkModificationPermissions();
+
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+            $data = $this->getRequestData($request);
+
+            if (isset($data['name'])) {
+                $season->setName($data['name']);
+            }
+            if (isset($data['start_date'])) {
+                $season->setStartDate(new \DateTime($data['start_date']));
+            }
+            if (isset($data['end_date'])) {
+                $season->setEndDate(new \DateTime($data['end_date']));
+            }
+
+            $this->saveEntity($season);
+
+            return $this->json($this->formatEntityData($season));
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->permissionDeniedResponse($e->getMessage());
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/season', name: 'app_season_delete', methods: ['DELETE'])]
+    public function deleteSeason(Request $request): JsonResponse
+    {
+        try {
+            $id = $request->query->get('id');
+            if (!$id) {
+                return $this->missingParameterError('id');
+            }
+
+            $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+
+            return $this->securedDeleteEntity($season, 'Season');
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
 }
