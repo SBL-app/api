@@ -23,7 +23,6 @@ class GameController extends BaseController
         if (!$entity instanceof Game) {
             throw new \InvalidArgumentException('Entity must be an instance of Game');
         }
-
         return $this->formatGameData($entity);
     }
 
@@ -167,7 +166,6 @@ class GameController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $game = new Game();
-
             // Définition des propriétés de base
             $game->setDate(isset($data['date']) ? new \DateTime($data['date']) : null);
             $game->setWeek($data['week'] ?? null);
@@ -200,7 +198,6 @@ class GameController extends BaseController
 
             $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
             $data = $this->getRequestData($request);
-
             // Mise à jour des propriétés de base
             $game->setDate(new \DateTime($data['date']));
             $game->setWeek($data['week']);
@@ -239,7 +236,6 @@ class GameController extends BaseController
 
             $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
             $data = $this->getRequestData($request);
-
             // Mise à jour conditionnelle des propriétés
             if (isset($data['date'])) {
                 $game->setDate(new \DateTime($data['date']));

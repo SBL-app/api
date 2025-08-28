@@ -17,7 +17,6 @@ class GameStatusController extends BaseController
         if (!$entity instanceof GameStatus) {
             throw new \InvalidArgumentException('Entity must be an instance of GameStatus');
         }
-
         return [
             'id' => $entity->getId(),
             'name' => $entity->getName()
@@ -118,7 +117,6 @@ class GameStatusController extends BaseController
 
             $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
             $this->deleteEntity($gameStatus);
-
             return $this->deleteSuccessResponse('GameStatus');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;

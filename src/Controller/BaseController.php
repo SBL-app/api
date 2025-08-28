@@ -35,12 +35,10 @@ abstract class BaseController extends AbstractController
         if (empty($content)) {
             return [];
         }
-
         $data = json_decode($content, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new \InvalidArgumentException('Invalid JSON format');
         }
-
         return $data ?? [];
     }
 
@@ -90,7 +88,6 @@ abstract class BaseController extends AbstractController
         if (!$entity) {
             throw new \Exception("{$entityName} with id {$id} not found", 404);
         }
-
         return $entity;
     }
 
@@ -174,7 +171,6 @@ abstract class BaseController extends AbstractController
     {
         $repository = $this->entityManager->getRepository($repositoryClass);
         $entities = $repository->findAll();
-
         return array_map(function ($entity) {
             return $this->formatEntityData($entity);
         }, $entities);
