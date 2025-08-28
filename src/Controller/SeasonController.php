@@ -24,7 +24,6 @@ class SeasonController extends BaseController
         if (!$entity instanceof Season) {
             throw new \InvalidArgumentException('Entity must be an instance of Season');
         }
-
         return [
             'id' => $entity->getId(),
             'name' => $entity->getName(),
@@ -178,7 +177,6 @@ class SeasonController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $season = new Season();
-
             $season->setName($data['name']);
             $season->setStartDate(new \DateTime($data['start_date']));
             $season->setEndDate(new \DateTime($data['end_date']));
@@ -200,7 +198,6 @@ class SeasonController extends BaseController
 
             $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
             $data = $this->getRequestData($request);
-
             $season->setName($data['name']);
             $season->setStartDate(new \DateTime($data['start_date']));
             $season->setEndDate(new \DateTime($data['end_date']));
@@ -217,7 +214,6 @@ class SeasonController extends BaseController
     {
         try {
             $this->checkModificationPermissions();
-
             $id = $request->query->get('id');
             if (!$id) {
                 return $this->missingParameterError('id');
@@ -225,7 +221,6 @@ class SeasonController extends BaseController
 
             $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
             $data = $this->getRequestData($request);
-
             if (isset($data['name'])) {
                 $season->setName($data['name']);
             }

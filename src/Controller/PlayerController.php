@@ -18,7 +18,6 @@ class PlayerController extends BaseController
         if (!$entity instanceof Player) {
             throw new \InvalidArgumentException('Entity must be an instance of Player');
         }
-
         return [
             'id' => $entity->getId(),
             'name' => $entity->getName(),
@@ -157,7 +156,6 @@ class PlayerController extends BaseController
 
             $player = $this->findEntityOrFail('App\Entity\Player', $id, 'Player');
             $data = $this->getRequestData($request);
-
             if (isset($data['name'])) {
                 $player->setName($data['name']);
             }

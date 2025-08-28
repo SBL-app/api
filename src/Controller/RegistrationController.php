@@ -21,7 +21,6 @@ class RegistrationController extends BaseController
         if (!$entity instanceof Registration) {
             throw new \InvalidArgumentException('Entity must be an instance of Registration');
         }
-
         return [
             'id' => $entity->getId(),
             'season' => $entity->getSeason()->getName(),
@@ -100,14 +99,12 @@ class RegistrationController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $registration = new Registration();
-
             if (isset($data['season'])) {
                 $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
                 $registration->setSeason($season);
             } else {
                 $registration->setSeason(null);
             }
-
             if (isset($data['team'])) {
                 $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
                 $registration->setTeam($team);
@@ -162,7 +159,7 @@ class RegistrationController extends BaseController
 
             $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
             $data = $this->getRequestData($request);
-
+          
             if (isset($data['season'])) {
                 $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
                 $registration->setSeason($season);
@@ -192,7 +189,7 @@ class RegistrationController extends BaseController
 
             $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
             $this->deleteEntity($registration);
-
+          
             return $this->deleteSuccessResponse('Registration');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;

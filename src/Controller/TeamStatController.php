@@ -19,7 +19,6 @@ class TeamStatController extends BaseController
         if (!$entity instanceof TeamStat) {
             throw new \InvalidArgumentException('Entity must be an instance of TeamStat');
         }
-
         return [
             'id' => $entity->getId(),
             'team_id' => $entity->getTeam()->getId(),
@@ -97,7 +96,6 @@ class TeamStatController extends BaseController
     {
         try {
             $data = $this->getRequestData($request);
-
             $team = $this->findEntityOrFail('App\Entity\Team', $data['team'], 'Team');
             $division = $this->findEntityOrFail('App\Entity\Division', $data['division'], 'Division');
 
