@@ -3,6 +3,8 @@
 namespace App\Controller;
 
 use App\Repository\TeamRepository;
+use App\Repository\PlayerRepository;
+use App\Repository\TeamStatRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Team;
@@ -20,7 +22,74 @@ class TeamController extends BaseController
 
         return [
             'id' => $entity->getId(),
-            'name' => $entity->getName()
+            'name' => $entity->getName(),
+            'captain' => $entity->getCapitain() ? $entity->getCapitain()->getName() : null,
+            'captain_id' => $entity->getCapitain() ? $entity->getCapitain()->getId() : null
+        ];
+    }
+
+    /**
+     * Formate les données complètes d'une équipe avec joueurs et statistiques
+     */
+    private function formatTeamWithDetails(Team $team, PlayerRepository $playerRepository, TeamStatRepository $teamStatRepository): array
+    {
+        // Informations de base de l'équipe
+        $teamData = $this->formatEntityData($team);
+
+        // Récupération des joueurs de l'équipe
+        $players = $playerRepository->findBy(['team' => $team]);
+        $playersData = array_map(function ($player) {
+            return [
+                'id' => $player->getId(),
+                'name' => $player->getName(),
+                'discord' => $player->getDiscord()
+            ];
+        }, $players);
+
+        // Récupération des statistiques de l'équipe dans toutes les divisions
+        $teamStats = $teamStatRepository->findBy(['team' => $team]);
+        $statsData = array_map(function ($teamStat) use ($teamStatRepository, $team) {
+            $division = $teamStat->getDivision();
+
+            // Récupération de toutes les équipes de cette division pour calculer la position
+            $allTeamStatsInDivision = $teamStatRepository->findBy(['division' => $division]);
+
+            // Tri par points décroissant pour déterminer le classement
+            usort($allTeamStatsInDivision, function ($a, $b) {
+                return $b->getPoints() - $a->getPoints();
+            });
+
+            // Recherche de la position de l'équipe courante
+            $position = 1;
+            foreach ($allTeamStatsInDivision as $index => $stat) {
+                if ($stat->getTeam()->getId() === $team->getId()) {
+                    $position = $index + 1;
+                    break;
+                }
+            }
+
+            return [
+                'division_id' => $division->getId(),
+                'division_name' => $division->getName(),
+                'season_id' => $division->getSeason()->getId(),
+                'season_name' => $division->getSeason()->getName(),
+                'position' => $position,
+                'total_teams' => count($allTeamStatsInDivision),
+                'wins' => $teamStat->getWins(),
+                'losses' => $teamStat->getLosses(),
+                'ties' => $teamStat->getTies(),
+                'winRounds' => $teamStat->getWinRounds(),
+                'looseRounds' => $teamStat->getLooseRounds(),
+                'points' => $teamStat->getPoints()
+            ];
+        }, $teamStats);
+
+        return [
+            'team' => $teamData,
+            'players' => $playersData,
+            'stats' => $statsData,
+            'players_count' => count($playersData),
+            'divisions_count' => count($statsData)
         ];
     }
 
@@ -40,6 +109,28 @@ class TeamController extends BaseController
             return $this->formatEntityData($team);
         }, $teams);
         return $this->json($data);
+    }
+
+    #[Route('/teams/details', name: 'app_team_details', methods: ['GET'])]
+    public function getTeamDetails(Request $request, TeamRepository $teamRepository, PlayerRepository $playerRepository, TeamStatRepository $teamStatRepository): JsonResponse
+    {
+        $teamId = $request->query->get('team_id');
+        if (!$teamId) {
+            return $this->json(['error' => 'Team ID is required'], 400);
+        }
+
+        try {
+            // Récupération de l'équipe
+            $team = $this->findEntityOrFail('App\Entity\Team', $teamId, 'Team');
+
+            // Formatage des données complètes avec joueurs et statistiques
+            $teamDetails = $this->formatTeamWithDetails($team, $playerRepository, $teamStatRepository);
+
+            return $this->json($teamDetails);
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 500;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
     }
 
     #[Route('/teams', name: 'app_team_create', methods: ['POST'])]
