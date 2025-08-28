@@ -19,7 +19,7 @@ class Team
     private ?string $name = null;
 
     #[ORM\ManyToOne]
-    private ?Player $capitain = null;
+    private ?Player $captain = null;
 
     /**
      * @var Collection<int, Registration>
@@ -49,14 +49,14 @@ class Team
         return $this;
     }
 
-    public function getCapitain(): ?Player
+    public function getCaptain(): ?Player
     {
-        return $this->capitain;
+        return $this->captain;
     }
 
-    public function setCapitain(?Player $capitainId): static
+    public function setCaptain(?Player $captainId): static
     {
-        $this->capitain = $capitainId;
+        $this->captain = $captainId;
 
         return $this;
     }

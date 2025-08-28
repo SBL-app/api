@@ -13,7 +13,7 @@ class Registration
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'team')]
+    #[ORM\ManyToOne(inversedBy: 'registrations')]
     private ?Season $season = null;
 
     #[ORM\ManyToOne(inversedBy: 'registrations')]

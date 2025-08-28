@@ -134,7 +134,7 @@ class DivisionController extends BaseController
             return [
                 'id' => $team->getId(),
                 'name' => $teamEntity->getName(),
-                'captain' => $teamEntity->getCapitain() ? $teamEntity->getCapitain()->getName() : null,
+                'captain' => $teamEntity->getCaptain() ? $teamEntity->getCaptain()->getName() : null,
                 'members' => $members
             ];
         }, $teamStats);
@@ -240,7 +240,7 @@ class DivisionController extends BaseController
                 $teams[] = [
                     'id' => $team->getId(),
                     'name' => $teamEntity->getName(),
-                    'captain' => $teamEntity->getCapitain() ? $teamEntity->getCapitain()->getName() : null,
+                    'captain' => $teamEntity->getCaptain() ? $teamEntity->getCaptain()->getName() : null,
                     'members' => $members
                 ];
             }
