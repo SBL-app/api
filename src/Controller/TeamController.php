@@ -23,8 +23,8 @@ class TeamController extends BaseController
         return [
             'id' => $entity->getId(),
             'name' => $entity->getName(),
-            'captain' => $entity->getCapitain() ? $entity->getCapitain()->getName() : null,
-            'captain_id' => $entity->getCapitain() ? $entity->getCapitain()->getId() : null
+            'captain' => $entity->getCaptain() ? $entity->getCaptain()->getName() : null,
+            'captain_id' => $entity->getCaptain() ? $entity->getCaptain()->getId() : null
         ];
     }
 

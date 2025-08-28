@@ -80,27 +80,27 @@ class Season
     /**
      * @return Collection<int, Registration>
      */
-    public function getTeam(): Collection
+    public function getRegistrations(): Collection
     {
         return $this->registrations;
     }
 
-    public function addTeam(Registration $registrations): static
+    public function addRegistration(Registration $registration): static
     {
-        if (!$this->registrations->contains($registrations)) {
-            $this->registrations->add($registrations);
-            $registrations->setSeason($this);
+        if (!$this->registrations->contains($registration)) {
+            $this->registrations->add($registration);
+            $registration->setSeason($this);
         }
 
         return $this;
     }
 
-    public function removeTeam(Registration $registrations): static
+    public function removeRegistration(Registration $registration): static
     {
-        if ($this->registrations->removeElement($registrations)) {
+        if ($this->registrations->removeElement($registration)) {
             // set the owning side to null (unless already changed)
-            if ($registrations->getSeason() === $this) {
-                $registrations->setSeason(null);
+            if ($registration->getSeason() === $this) {
+                $registration->setSeason(null);
             }
         }
 
