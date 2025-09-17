@@ -41,7 +41,10 @@ class GameController extends BaseController
             'score2' => $game->getScore2(),
             'winner' => $game->getWinner(),
             'status' => $game->getStatus() ? $game->getStatus()->getName() : null,
-            'division' => $game->getDivision() ? $game->getDivision()->getName() : null
+            'division' => $game->getDivision() ? $game->getDivision()->getName() : null,
+            'is_forfeit' => $game->isForfeit(),
+            'forfeit_team' => $game->getForfeitTeam(),
+            'forfeit_reason' => $game->getForfeitReason()
         ];
     }
 
@@ -166,12 +169,30 @@ class GameController extends BaseController
         try {
             $data = $this->getRequestData($request);
             $game = new Game();
+
             // Définition des propriétés de base
             $game->setDate(isset($data['date']) ? new \DateTime($data['date']) : null);
             $game->setWeek($data['week'] ?? null);
-            $game->setScore1($data['score1'] ?? null);
-            $game->setScore2($data['score2'] ?? null);
-            $game->setWinner($data['winner'] ?? null);
+
+            // Gestion des forfaits
+            if (isset($data['is_forfeit']) && $data['is_forfeit']) {
+                $game->setIsForfeit(true);
+                if (isset($data['forfeit_team'])) {
+                    $forfeitTeam = (int)$data['forfeit_team'];
+                    if ($forfeitTeam !== 1 && $forfeitTeam !== 2) {
+                        return $this->json(['error' => 'forfeit_team must be 1 or 2'], 400);
+                    }
+                    $game->setForfeitTeam($forfeitTeam);
+                }
+                if (isset($data['forfeit_reason'])) {
+                    $game->setForfeitReason($data['forfeit_reason']);
+                }
+            } else {
+                // Scores normaux seulement si ce n'est pas un forfait
+                $game->setScore1($data['score1'] ?? null);
+                $game->setScore2($data['score2'] ?? null);
+                $game->setWinner($data['winner'] ?? null);
+            }
 
             // Validation et association des entités liées
             $error = $this->setGameRelations($game, $data);
@@ -198,12 +219,33 @@ class GameController extends BaseController
 
             $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
             $data = $this->getRequestData($request);
+
             // Mise à jour des propriétés de base
             $game->setDate(new \DateTime($data['date']));
             $game->setWeek($data['week']);
-            $game->setScore1($data['score1']);
-            $game->setScore2($data['score2']);
-            $game->setWinner($data['winner']);
+
+            // Gestion des forfaits
+            if (isset($data['is_forfeit']) && $data['is_forfeit']) {
+                $game->setIsForfeit(true);
+                if (isset($data['forfeit_team'])) {
+                    $forfeitTeam = (int)$data['forfeit_team'];
+                    if ($forfeitTeam !== 1 && $forfeitTeam !== 2) {
+                        return $this->json(['error' => 'forfeit_team must be 1 or 2'], 400);
+                    }
+                    $game->setForfeitTeam($forfeitTeam);
+                }
+                if (isset($data['forfeit_reason'])) {
+                    $game->setForfeitReason($data['forfeit_reason']);
+                }
+            } else {
+                // Réinitialiser les données de forfait et utiliser les scores normaux
+                $game->setIsForfeit(false);
+                $game->setForfeitTeam(null);
+                $game->setForfeitReason(null);
+                $game->setScore1($data['score1']);
+                $game->setScore2($data['score2']);
+                $game->setWinner($data['winner']);
+            }
 
             // Validation et association des entités liées (mode strict pour PUT)
             $team1 = $this->findEntityOrFail('App\Entity\Team', $data['team1'], 'Team1');
@@ -236,6 +278,7 @@ class GameController extends BaseController
 
             $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
             $data = $this->getRequestData($request);
+
             // Mise à jour conditionnelle des propriétés
             if (isset($data['date'])) {
                 $game->setDate(new \DateTime($data['date']));
@@ -243,14 +286,33 @@ class GameController extends BaseController
             if (isset($data['week'])) {
                 $game->setWeek($data['week']);
             }
-            if (isset($data['score1'])) {
-                $game->setScore1($data['score1']);
+
+            // Gestion des forfaits
+            if (isset($data['is_forfeit'])) {
+                $game->setIsForfeit((bool)$data['is_forfeit']);
             }
-            if (isset($data['score2'])) {
-                $game->setScore2($data['score2']);
+            if (isset($data['forfeit_team'])) {
+                $forfeitTeam = (int)$data['forfeit_team'];
+                if ($forfeitTeam !== 1 && $forfeitTeam !== 2 && $forfeitTeam !== null) {
+                    return $this->json(['error' => 'forfeit_team must be 1, 2, or null'], 400);
+                }
+                $game->setForfeitTeam($forfeitTeam);
             }
-            if (isset($data['winner'])) {
-                $game->setWinner($data['winner']);
+            if (isset($data['forfeit_reason'])) {
+                $game->setForfeitReason($data['forfeit_reason']);
+            }
+
+            // Mise à jour des scores seulement si ce n'est pas un forfait ou si on désactive le forfait
+            if (!$game->isForfeit()) {
+                if (isset($data['score1'])) {
+                    $game->setScore1($data['score1']);
+                }
+                if (isset($data['score2'])) {
+                    $game->setScore2($data['score2']);
+                }
+                if (isset($data['winner'])) {
+                    $game->setWinner($data['winner']);
+                }
             }
 
             // Validation et association des entités liées

@@ -108,15 +108,6 @@ dev-server:
 	php -S localhost:8000 -t public/
 	@echo "🚀 Serveur de développement démarré sur http://localhost:8000"
 
-# Génération de fixtures
-fixtures:
-	php bin/console doctrine:fixtures:load --no-interaction
-	@echo "✅ Fixtures chargées"
-
-fixtures-test:
-	php bin/console doctrine:fixtures:load --env=test --no-interaction
-	@echo "✅ Fixtures de test chargées"
-
 # Vérification de sécurité
 security:
 	@if [ -f vendor/bin/security-checker ]; then \

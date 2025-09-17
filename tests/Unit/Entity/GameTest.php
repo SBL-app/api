@@ -32,6 +32,10 @@ class GameTest extends TestCase
         $this->assertNull($this->game->getWinner());
         $this->assertNull($this->game->getStatus());
         $this->assertNull($this->game->getDivision());
+        // Tests pour les nouveaux champs de forfait
+        $this->assertFalse($this->game->isForfeit());
+        $this->assertNull($this->game->getForfeitTeam());
+        $this->assertNull($this->game->getForfeitReason());
     }
 
     public function testSetAndGetDate(): void
@@ -221,5 +225,74 @@ class GameTest extends TestCase
 
         $retrievedDate = $this->game->getDate();
         $this->assertEquals($date->format('Y-m-d H:i:s'), $retrievedDate->format('Y-m-d H:i:s'));
+    }
+
+    /**
+     * Tests pour la gestion des forfaits
+     */
+    public function testForfeitInitialState(): void
+    {
+        $this->assertFalse($this->game->isForfeit());
+        $this->assertNull($this->game->getForfeitTeam());
+        $this->assertNull($this->game->getForfeitReason());
+    }
+
+    public function testSetForfeitTeam1(): void
+    {
+        $this->game->setForfeitTeam(1);
+
+        $this->assertTrue($this->game->isForfeit());
+        $this->assertEquals(1, $this->game->getForfeitTeam());
+        $this->assertEquals(0, $this->game->getScore1()); // Team1 forfait = 0 point
+        $this->assertEquals(4, $this->game->getScore2()); // Team2 gagne = 4 points
+        $this->assertEquals(2, $this->game->getWinner()); // Team2 gagne
+    }
+
+    public function testSetForfeitTeam2(): void
+    {
+        $this->game->setForfeitTeam(2);
+
+        $this->assertTrue($this->game->isForfeit());
+        $this->assertEquals(2, $this->game->getForfeitTeam());
+        $this->assertEquals(4, $this->game->getScore1()); // Team1 gagne = 4 points
+        $this->assertEquals(0, $this->game->getScore2()); // Team2 forfait = 0 point
+        $this->assertEquals(1, $this->game->getWinner()); // Team1 gagne
+    }
+
+    public function testSetIsForfeitDirectly(): void
+    {
+        $this->game->setForfeitTeam(1);
+        $this->game->setIsForfeit(true);
+
+        $this->assertTrue($this->game->isForfeit());
+        $this->assertEquals(0, $this->game->getScore1()); // Team1 forfait = 0 point
+        $this->assertEquals(4, $this->game->getScore2()); // Team2 gagne = 4 points
+        $this->assertEquals(2, $this->game->getWinner()); // Team2 gagne
+    }
+
+    public function testForfeitReason(): void
+    {
+        $reason = "Joueur blessé";
+        $this->game->setForfeitReason($reason);
+
+        $this->assertEquals($reason, $this->game->getForfeitReason());
+    }
+
+    public function testResetForfeit(): void
+    {
+        // D'abord, définir un forfait
+        $this->game->setForfeitTeam(1);
+        $this->game->setForfeitReason("Test forfait");
+
+        $this->assertTrue($this->game->isForfeit());
+
+        // Puis réinitialiser
+        $this->game->setIsForfeit(false);
+        $this->game->setForfeitTeam(null);
+        $this->game->setForfeitReason(null);
+
+        $this->assertFalse($this->game->isForfeit());
+        $this->assertNull($this->game->getForfeitTeam());
+        $this->assertNull($this->game->getForfeitReason());
     }
 }

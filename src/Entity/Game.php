@@ -43,6 +43,15 @@ class Game
     #[ORM\JoinColumn(nullable: false)]
     private ?Division $division = null;
 
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $isForfeit = false;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $forfeitTeam = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $forfeitReason = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -152,6 +161,62 @@ class Game
     public function setDivision(?Division $divisionId): static
     {
         $this->division = $divisionId;
+
+        return $this;
+    }
+
+    public function isForfeit(): bool
+    {
+        return $this->isForfeit;
+    }
+
+    public function setIsForfeit(bool $isForfeit): static
+    {
+        $this->isForfeit = $isForfeit;
+
+        // Si c'est un forfait, appliquer automatiquement le score 4-0
+        if ($isForfeit && $this->forfeitTeam !== null) {
+            if ($this->forfeitTeam === 1) {
+                // Team1 forfait, Team2 gagne 4-0
+                $this->score1 = 0;
+                $this->score2 = 4;
+                $this->winner = 2;
+            } elseif ($this->forfeitTeam === 2) {
+                // Team2 forfait, Team1 gagne 4-0
+                $this->score1 = 4;
+                $this->score2 = 0;
+                $this->winner = 1;
+            }
+        }
+
+        return $this;
+    }
+
+    public function getForfeitTeam(): ?int
+    {
+        return $this->forfeitTeam;
+    }
+
+    public function setForfeitTeam(?int $forfeitTeam): static
+    {
+        $this->forfeitTeam = $forfeitTeam;
+
+        // Si on définit une équipe forfait et que isForfeit n'est pas encore défini, l'activer
+        if ($forfeitTeam !== null && !$this->isForfeit) {
+            $this->setIsForfeit(true);
+        }
+
+        return $this;
+    }
+
+    public function getForfeitReason(): ?string
+    {
+        return $this->forfeitReason;
+    }
+
+    public function setForfeitReason(?string $forfeitReason): static
+    {
+        $this->forfeitReason = $forfeitReason;
 
         return $this;
     }
