@@ -5,9 +5,7 @@ namespace App\Tests\Functional;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Common\DataFixtures\Executor\ORMExecutor;
-use Doctrine\Common\DataFixtures\Purger\ORMPurger;
-use Doctrine\Common\DataFixtures\Loader;
+use Doctrine\ORM\Tools\SchemaTool;
 
 /**
  * Classe de base pour les tests fonctionnels
@@ -40,24 +38,12 @@ abstract class ApiTestCase extends WebTestCase
      */
     protected function cleanDatabase(): void
     {
-        $purger = new ORMPurger($this->entityManager);
-        $executor = new ORMExecutor($this->entityManager, $purger);
-        $executor->purge();
-    }
+        $schemaTool = new SchemaTool($this->entityManager);
+        $metadata = $this->entityManager->getMetadataFactory()->getAllMetadata();
 
-    /**
-     * Charge des fixtures spécifiques
-     */
-    protected function loadFixtures(array $fixtures): void
-    {
-        $loader = new Loader();
-        foreach ($fixtures as $fixture) {
-            $loader->addFixture($fixture);
-        }
-
-        $purger = new ORMPurger($this->entityManager);
-        $executor = new ORMExecutor($this->entityManager, $purger);
-        $executor->execute($loader->getFixtures());
+        // Supprimer et recréer le schéma
+        $schemaTool->dropSchema($metadata);
+        $schemaTool->createSchema($metadata);
     }
 
     /**
