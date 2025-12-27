@@ -48,4 +48,9 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    public function findByDiscordId(string $discordId): ?User
+    {
+        return $this->findOneBy(['discordId' => $discordId]);
+    }
 }

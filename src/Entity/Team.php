@@ -21,6 +21,9 @@ class Team
     #[ORM\ManyToOne]
     private ?Player $captain = null;
 
+    #[ORM\ManyToOne]
+    private ?User $captainUser = null;
+
     /**
      * @var Collection<int, Registration>
      */
@@ -57,6 +60,18 @@ class Team
     public function setCaptain(?Player $captainId): static
     {
         $this->captain = $captainId;
+
+        return $this;
+    }
+
+    public function getCaptainUser(): ?User
+    {
+        return $this->captainUser;
+    }
+
+    public function setCaptainUser(?User $captainUser): static
+    {
+        $this->captainUser = $captainUser;
 
         return $this;
     }

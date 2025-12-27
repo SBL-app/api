@@ -5,10 +5,12 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Service\AuthenticationService;
+use App\Service\DiscordOAuthService;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
@@ -22,7 +24,8 @@ class AuthController extends AbstractController
         private UserPasswordHasherInterface $passwordHasher,
         private JWTTokenManagerInterface $jwtManager,
         private UserRepository $userRepository,
-        private AuthenticationService $authService
+        private AuthenticationService $authService,
+        private DiscordOAuthService $discordOAuthService
     ) {}
 
     #[Route('/login', name: 'api_login', methods: ['POST'])]
@@ -221,5 +224,93 @@ class AuthController extends AbstractController
                 'api_key' => $user->getApiKey()
             ]
         ], 201);
+    }
+
+    #[Route('/discord', name: 'api_discord_auth', methods: ['GET'])]
+    public function discordAuth(Request $request): RedirectResponse
+    {
+        $redirectAfter = $request->query->get('redirect_after');
+        $authData = $this->discordOAuthService->getAuthorizationUrl($redirectAfter);
+
+        return new RedirectResponse($authData['url']);
+    }
+
+    #[Route('/discord/callback', name: 'api_discord_callback', methods: ['GET'])]
+    public function discordCallback(Request $request): RedirectResponse|JsonResponse
+    {
+        $code = $request->query->get('code');
+        $state = $request->query->get('state');
+        $error = $request->query->get('error');
+
+        if ($error) {
+            return $this->json([
+                'error' => 'Discord authorization failed',
+                'details' => $request->query->get('error_description')
+            ], 400);
+        }
+
+        if (!$code) {
+            return $this->json(['error' => 'Missing authorization code'], 400);
+        }
+
+        try {
+            $stateData = $this->discordOAuthService->decodeState($state ?? '');
+            $tokens = $this->discordOAuthService->exchangeCodeForToken($code);
+            $discordUser = $this->discordOAuthService->getDiscordUser($tokens['access_token']);
+            $user = $this->discordOAuthService->createOrUpdateUserFromDiscord($discordUser);
+
+            $jwtToken = $this->jwtManager->create($user);
+            $userResponse = $this->discordOAuthService->formatUserResponse($user);
+
+            $redirectUrl = $this->discordOAuthService->getRedirectUrl(
+                $stateData['redirect_after'],
+                $jwtToken,
+                $userResponse
+            );
+
+            return new RedirectResponse($redirectUrl);
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 'Discord authentication failed',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/discord/bot', name: 'api_discord_bot', methods: ['POST'])]
+    public function discordBot(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (!isset($data['discord_id']) || !isset($data['bot_secret'])) {
+            return $this->json([
+                'error' => 'discord_id and bot_secret are required'
+            ], 400);
+        }
+
+        if (!$this->discordOAuthService->validateBotSecret($data['bot_secret'])) {
+            return $this->json(['error' => 'Invalid bot secret'], 401);
+        }
+
+        $user = $this->discordOAuthService->getUserByDiscordId($data['discord_id']);
+
+        if (!$user) {
+            return $this->json(['error' => 'User not found'], 404);
+        }
+
+        if (!$user->isActive()) {
+            return $this->json(['error' => 'User account is inactive'], 403);
+        }
+
+        $user->setLastLogin(new \DateTime());
+        $this->entityManager->flush();
+
+        $token = $this->jwtManager->create($user);
+
+        return $this->json([
+            'token' => $token,
+            'user' => $this->discordOAuthService->formatUserResponse($user),
+            'expires_in' => 3600
+        ]);
     }
 }

@@ -34,6 +34,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'boolean')]
     private bool $isActive = true;
 
+    #[ORM\Column(length: 255, unique: true, nullable: true)]
+    private ?string $discordId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $discordUsername = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $discordAvatar = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -131,6 +140,39 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setIsActive(bool $isActive): static
     {
         $this->isActive = $isActive;
+        return $this;
+    }
+
+    public function getDiscordId(): ?string
+    {
+        return $this->discordId;
+    }
+
+    public function setDiscordId(?string $discordId): static
+    {
+        $this->discordId = $discordId;
+        return $this;
+    }
+
+    public function getDiscordUsername(): ?string
+    {
+        return $this->discordUsername;
+    }
+
+    public function setDiscordUsername(?string $discordUsername): static
+    {
+        $this->discordUsername = $discordUsername;
+        return $this;
+    }
+
+    public function getDiscordAvatar(): ?string
+    {
+        return $this->discordAvatar;
+    }
+
+    public function setDiscordAvatar(?string $discordAvatar): static
+    {
+        $this->discordAvatar = $discordAvatar;
         return $this;
     }
 }

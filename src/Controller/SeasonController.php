@@ -85,6 +85,83 @@ class SeasonController extends BaseController
         return $data;
     }
 
+    #[Route('/season/current', name: 'app_season_current', methods: ['GET'])]
+    public function getCurrentSeason(SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
+    {
+        $now = new \DateTime();
+        $seasons = $seasonRepository->findAll();
+
+        $currentSeason = null;
+        foreach ($seasons as $season) {
+            if ($season->getStartDate() <= $now && $season->getEndDate() >= $now) {
+                $currentSeason = $season;
+                break;
+            }
+        }
+
+        if (!$currentSeason) {
+            // Si pas de saison en cours, prendre la prochaine saison (start_date > now)
+            usort($seasons, fn($a, $b) => $a->getStartDate() <=> $b->getStartDate());
+            foreach ($seasons as $season) {
+                if ($season->getStartDate() > $now) {
+                    $currentSeason = $season;
+                    break;
+                }
+            }
+        }
+
+        if (!$currentSeason) {
+            return $this->json(['error' => 'No current or upcoming season found'], 404);
+        }
+
+        return $this->json($this->formatSeasonData($currentSeason, $divisionRepository, $gameRepository, $gameStatusRepository));
+    }
+
+    #[Route('/season/current/week', name: 'app_season_current_week', methods: ['GET'])]
+    public function getCurrentSeasonWeek(SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository): JsonResponse
+    {
+        $now = new \DateTime();
+        $seasons = $seasonRepository->findAll();
+
+        $currentSeason = null;
+        foreach ($seasons as $season) {
+            if ($season->getStartDate() <= $now && $season->getEndDate() >= $now) {
+                $currentSeason = $season;
+                break;
+            }
+        }
+
+        if (!$currentSeason) {
+            return $this->json(['error' => 'No current season found'], 404);
+        }
+
+        // Calculer le numéro de semaine depuis le début de la saison
+        $startDate = $currentSeason->getStartDate();
+        $interval = $startDate->diff($now);
+        $weekNumber = (int) ceil(($interval->days + 1) / 7);
+
+        // Trouver le numéro de semaine max dans les matchs
+        $divisions = $divisionRepository->findBy(['season' => $currentSeason]);
+        $maxWeek = 1;
+        foreach ($divisions as $division) {
+            $games = $gameRepository->findBy(['division' => $division]);
+            foreach ($games as $game) {
+                if ($game->getWeek() > $maxWeek) {
+                    $maxWeek = $game->getWeek();
+                }
+            }
+        }
+
+        return $this->json([
+            'season_id' => $currentSeason->getId(),
+            'season_name' => $currentSeason->getName(),
+            'current_week' => min($weekNumber, $maxWeek),
+            'max_week' => $maxWeek,
+            'start_date' => $currentSeason->getStartDate()->format('d-m-Y'),
+            'end_date' => $currentSeason->getEndDate()->format('d-m-Y')
+        ]);
+    }
+
     #[Route('/season', name: 'app_seasons', methods: ['GET'])]
     public function getSeasons(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {

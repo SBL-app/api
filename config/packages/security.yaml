@@ -34,7 +34,23 @@ security:
             pattern: ^/api/auth/create-user
             stateless: true
             security: false
-        
+
+        # Routes Discord OAuth - pas de sécurité
+        discord_auth:
+            pattern: ^/api/auth/discord$
+            stateless: true
+            security: false
+
+        discord_callback:
+            pattern: ^/api/auth/discord/callback$
+            stateless: true
+            security: false
+
+        discord_bot:
+            pattern: ^/api/auth/discord/bot$
+            stateless: true
+            security: false
+
         # Toutes les autres routes API nécessitent une authentification JWT
         api:
             pattern: ^/api
@@ -51,6 +67,9 @@ security:
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/login-api-key$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/create-user, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/discord$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/discord/callback$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/discord/bot$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth, roles: ROLE_USER }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [GET] }
