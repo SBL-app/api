@@ -110,6 +110,96 @@ class GameController extends BaseController
         return null; // Pas d'erreur
     }
 
+    #[Route('/games/week', name: 'app_games_by_week', methods: ['GET'])]
+    public function getGamesByWeek(Request $request, GameRepository $gameRepository, DivisionRepository $divisionRepository): JsonResponse
+    {
+        $week = $request->query->get('week');
+        $seasonId = $request->query->get('season_id');
+
+        if (!$week) {
+            return $this->json(['error' => 'week parameter is required'], 400);
+        }
+
+        $criteria = ['week' => (int)$week];
+
+        // Si season_id est fourni, filtrer par saison via les divisions
+        if ($seasonId) {
+            $divisions = $divisionRepository->findBy(['season' => $seasonId]);
+            if (empty($divisions)) {
+                return $this->json(['error' => 'No divisions found for this season'], 404);
+            }
+
+            $games = [];
+            foreach ($divisions as $division) {
+                $divisionGames = $gameRepository->findBy(['week' => (int)$week, 'division' => $division]);
+                $games = array_merge($games, $divisionGames);
+            }
+        } else {
+            $games = $gameRepository->findBy($criteria);
+        }
+
+        if (empty($games)) {
+            return $this->json(['error' => 'No games found for this week'], 404);
+        }
+
+        $data = array_map(fn($game) => $this->formatGameData($game), $games);
+        return $this->json($data);
+    }
+
+    #[Route('/games/unscheduled', name: 'app_games_unscheduled', methods: ['GET'])]
+    public function getUnscheduledGames(Request $request, GameRepository $gameRepository, DivisionRepository $divisionRepository): JsonResponse
+    {
+        $week = $request->query->get('week');
+        $seasonId = $request->query->get('season_id');
+
+        if (!$week || !$seasonId) {
+            return $this->json(['error' => 'week and season_id parameters are required'], 400);
+        }
+
+        $divisions = $divisionRepository->findBy(['season' => $seasonId]);
+        if (empty($divisions)) {
+            return $this->json(['error' => 'No divisions found for this season'], 404);
+        }
+
+        $unscheduledGames = [];
+        foreach ($divisions as $division) {
+            $games = $gameRepository->findBy(['week' => (int)$week, 'division' => $division]);
+            foreach ($games as $game) {
+                // Un match est non planifié si sa date est null
+                if ($game->getDate() === null) {
+                    $unscheduledGames[] = $game;
+                }
+            }
+        }
+
+        $data = array_map(fn($game) => $this->formatGameData($game), $unscheduledGames);
+        return $this->json($data);
+    }
+
+    #[Route('/games/{id}/schedule', name: 'app_game_schedule', methods: ['PATCH'])]
+    public function scheduleGame(Request $request, int $id, GameRepository $gameRepository): JsonResponse
+    {
+        try {
+            $game = $gameRepository->find($id);
+            if (!$game) {
+                return $this->json(['error' => 'Game not found'], 404);
+            }
+
+            $data = $this->getRequestData($request);
+
+            if (!isset($data['date'])) {
+                return $this->json(['error' => 'date is required'], 400);
+            }
+
+            $game->setDate(new \DateTime($data['date']));
+            $this->saveEntity($game);
+
+            return $this->json($this->formatGameData($game));
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
     #[Route('/games', name: 'app_game', methods: ['GET'])]
     public function getGames(Request $request, GameRepository $gameRepository): JsonResponse
     {

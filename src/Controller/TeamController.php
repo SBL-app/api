@@ -5,9 +5,13 @@ namespace App\Controller;
 use App\Repository\TeamRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\TeamStatRepository;
+use App\Repository\SeasonRepository;
+use App\Repository\UserRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Team;
+use App\Entity\Player;
+use App\Entity\Registration;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -214,6 +218,112 @@ class TeamController extends BaseController
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/teams/register', name: 'app_team_register', methods: ['POST'])]
+    public function registerTeam(Request $request, SeasonRepository $seasonRepository, UserRepository $userRepository): JsonResponse
+    {
+        try {
+            $data = $this->getRequestData($request);
+
+            // Validation des champs requis
+            if (!isset($data['name'])) {
+                return $this->json(['error' => 'Team name is required'], 400);
+            }
+            if (!isset($data['captain_discord_id'])) {
+                return $this->json(['error' => 'Captain Discord ID is required'], 400);
+            }
+            if (!isset($data['players']) || !is_array($data['players']) || count($data['players']) < 2) {
+                return $this->json(['error' => 'At least 2 players are required'], 400);
+            }
+
+            // Vérifier que le capitaine existe dans la base users
+            $captainUser = $userRepository->findByDiscordId($data['captain_discord_id']);
+            if (!$captainUser) {
+                return $this->json(['error' => 'Captain must have a linked Discord account'], 400);
+            }
+
+            // Trouver la saison en cours ou la prochaine
+            $now = new \DateTime();
+            $seasons = $seasonRepository->findAll();
+            $currentSeason = null;
+
+            foreach ($seasons as $season) {
+                if ($season->getStartDate() <= $now && $season->getEndDate() >= $now) {
+                    $currentSeason = $season;
+                    break;
+                }
+            }
+
+            if (!$currentSeason) {
+                // Prendre la prochaine saison
+                usort($seasons, fn($a, $b) => $a->getStartDate() <=> $b->getStartDate());
+                foreach ($seasons as $season) {
+                    if ($season->getStartDate() > $now) {
+                        $currentSeason = $season;
+                        break;
+                    }
+                }
+            }
+
+            if (!$currentSeason) {
+                return $this->json(['error' => 'No current or upcoming season found for registration'], 400);
+            }
+
+            // Créer l'équipe
+            $team = new Team();
+            $team->setName($data['name']);
+            $team->setCaptainUser($captainUser);
+            $this->entityManager->persist($team);
+
+            // Créer les joueurs
+            $createdPlayers = [];
+            foreach ($data['players'] as $playerData) {
+                $player = new Player();
+                $player->setName($playerData['name']);
+                $player->setTeam($team);
+
+                if (isset($playerData['discord'])) {
+                    $player->setDiscord($playerData['discord']);
+                }
+
+                $this->entityManager->persist($player);
+                $createdPlayers[] = [
+                    'name' => $player->getName(),
+                    'discord' => $player->getDiscord()
+                ];
+
+                // Si ce joueur est le capitaine, le définir aussi comme captain (Player)
+                if (isset($playerData['discord_id']) && $playerData['discord_id'] === $data['captain_discord_id']) {
+                    $team->setCaptain($player);
+                }
+            }
+
+            // Créer l'inscription à la saison
+            $registration = new Registration();
+            $registration->setTeam($team);
+            $registration->setSeason($currentSeason);
+            $this->entityManager->persist($registration);
+
+            $this->entityManager->flush();
+
+            return $this->json([
+                'message' => 'Team registered successfully',
+                'team' => [
+                    'id' => $team->getId(),
+                    'name' => $team->getName(),
+                    'captain_user_id' => $captainUser->getId(),
+                    'captain_discord_id' => $captainUser->getDiscordId()
+                ],
+                'players' => $createdPlayers,
+                'season' => [
+                    'id' => $currentSeason->getId(),
+                    'name' => $currentSeason->getName()
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
         }
     }
 }
