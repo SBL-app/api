@@ -7,7 +7,6 @@ use App\Entity\Division;
 use App\Entity\Season;
 use App\Entity\Team;
 use App\Entity\TeamStat;
-use Doctrine\Common\DataFixtures\AbstractFixture;
 
 /**
  * Tests fonctionnels pour le DivisionController
