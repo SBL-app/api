@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml
+
+# Development
+.env
+.env.local
+.env.*.local
+var/
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Tests
+tests/
+phpunit.xml
+.phpunit.result.cache
+
+# Documentation
+*.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
