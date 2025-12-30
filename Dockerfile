@@ -1,0 +1,49 @@
+# syntax=docker/dockerfile:1
+FROM php:8.2-fpm-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    postgresql-dev \
+    icu-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    git \
+    && docker-php-ext-install \
+    pdo_pgsql \
+    intl \
+    zip \
+    opcache
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy composer files first for better caching
+COPY composer.json composer.lock ./
+
+# Install dependencies
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
+# Copy application code
+COPY . .
+
+# Generate autoloader and run scripts
+RUN composer dump-autoload --optimize \
+    && composer run-script post-install-cmd --no-interaction || true
+
+# Create var directory and set permissions
+RUN mkdir -p var/cache var/log \
+    && chown -R www-data:www-data var
+
+# PHP configuration for production
+RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini
+
+EXPOSE 9000
+
+CMD ["php-fpm"]
