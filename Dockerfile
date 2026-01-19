@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM php:8.2-fpm-alpine
+FROM php:8.3-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -37,6 +37,9 @@ RUN composer dump-autoload --optimize \
 # Create var directory and set permissions
 RUN mkdir -p var/cache var/log \
     && chown -R www-data:www-data var
+
+# PHP-FPM configuration - listen on all interfaces for Docker networking
+RUN sed -i 's/listen = 127.0.0.1:9000/listen = 0.0.0.0:9000/' /usr/local/etc/php-fpm.d/www.conf
 
 # PHP configuration for production
 RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini \
