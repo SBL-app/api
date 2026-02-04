@@ -28,12 +28,6 @@ security:
             pattern: ^/api/auth/login-api-key$
             stateless: true
             security: false
-        
-        # Route de création d'utilisateur (temporaire)
-        create_user:
-            pattern: ^/api/auth/create-user
-            stateless: true
-            security: false
 
         # Routes Discord OAuth - pas de sécurité
         discord_auth:
@@ -66,7 +60,6 @@ security:
     access_control:
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/login-api-key$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth/create-user, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord/callback$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord/bot$, roles: PUBLIC_ACCESS }

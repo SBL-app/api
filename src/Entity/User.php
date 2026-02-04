@@ -43,6 +43,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $discordAvatar = null;
 
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $apiKeyExpiresAt = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $tokenInvalidatedAt = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -173,6 +179,42 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setDiscordAvatar(?string $discordAvatar): static
     {
         $this->discordAvatar = $discordAvatar;
+        return $this;
+    }
+
+    public function getApiKeyExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->apiKeyExpiresAt;
+    }
+
+    public function setApiKeyExpiresAt(?\DateTimeImmutable $apiKeyExpiresAt): static
+    {
+        $this->apiKeyExpiresAt = $apiKeyExpiresAt;
+        return $this;
+    }
+
+    public function isApiKeyExpired(): bool
+    {
+        if ($this->apiKeyExpiresAt === null) {
+            return false;
+        }
+        return $this->apiKeyExpiresAt < new \DateTimeImmutable();
+    }
+
+    public function getTokenInvalidatedAt(): ?\DateTimeImmutable
+    {
+        return $this->tokenInvalidatedAt;
+    }
+
+    public function setTokenInvalidatedAt(?\DateTimeImmutable $tokenInvalidatedAt): static
+    {
+        $this->tokenInvalidatedAt = $tokenInvalidatedAt;
+        return $this;
+    }
+
+    public function invalidateAllTokens(): static
+    {
+        $this->tokenInvalidatedAt = new \DateTimeImmutable();
         return $this;
     }
 }
