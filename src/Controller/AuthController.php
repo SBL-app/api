@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 
@@ -25,12 +26,22 @@ class AuthController extends AbstractController
         private JWTTokenManagerInterface $jwtManager,
         private UserRepository $userRepository,
         private AuthenticationService $authService,
-        private DiscordOAuthService $discordOAuthService
+        private DiscordOAuthService $discordOAuthService,
+        private RateLimiterFactory $authLoginLimiter,
+        private RateLimiterFactory $authApiKeyLimiter
     ) {}
 
     #[Route('/login', name: 'api_login', methods: ['POST'])]
     public function login(Request $request): JsonResponse
     {
+        // Rate limiting basé sur l'IP
+        $limiter = $this->authLoginLimiter->create($request->getClientIp());
+        if (!$limiter->consume(1)->isAccepted()) {
+            return $this->json([
+                'error' => 'Too many login attempts. Please try again later.'
+            ], 429);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['username']) || !isset($data['password'])) {
@@ -133,6 +144,14 @@ class AuthController extends AbstractController
     #[Route('/login-api-key', name: 'api_login_api_key', methods: ['POST'])]
     public function loginWithApiKey(Request $request): JsonResponse
     {
+        // Rate limiting basé sur l'IP
+        $limiter = $this->authApiKeyLimiter->create($request->getClientIp());
+        if (!$limiter->consume(1)->isAccepted()) {
+            return $this->json([
+                'error' => 'Too many API key authentication attempts. Please try again later.'
+            ], 429);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['api_key'])) {
@@ -180,50 +199,23 @@ class AuthController extends AbstractController
         ]);
     }
 
-    #[Route('/create-user', name: 'api_create_user', methods: ['POST'])]
-    public function createUser(Request $request): JsonResponse
+    #[Route('/logout', name: 'api_logout', methods: ['POST'])]
+    public function logout(): JsonResponse
     {
-        // Cette route est temporaire pour créer des utilisateurs - à sécuriser en production
-        $data = json_decode($request->getContent(), true);
+        /** @var User|null $user */
+        $user = $this->getUser();
 
-        if (!isset($data['username']) || !isset($data['password'])) {
-            return $this->json([
-                'error' => 'Username and password are required'
-            ], 400);
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'User not authenticated'], 401);
         }
 
-        // Vérifier si l'utilisateur existe déjà
-        $existingUser = $this->userRepository->findOneBy(['username' => $data['username']]);
-        if ($existingUser) {
-            return $this->json(['error' => 'User already exists'], 409);
-        }
-
-        $user = new User();
-        $user->setUsername($data['username']);
-        $user->setPassword($this->passwordHasher->hashPassword($user, $data['password']));
-
-        // Définir les rôles
-        $roles = $data['roles'] ?? ['ROLE_API'];
-        $user->setRoles($roles);
-
-        // Générer une clé API optionnelle
-        if (isset($data['generate_api_key']) && $data['generate_api_key']) {
-            $apiKey = bin2hex(random_bytes(32));
-            $user->setApiKey($apiKey);
-        }
-
-        $this->entityManager->persist($user);
+        // Invalider tous les tokens émis avant maintenant
+        $user->invalidateAllTokens();
         $this->entityManager->flush();
 
         return $this->json([
-            'message' => 'User created successfully',
-            'user' => [
-                'id' => $user->getId(),
-                'username' => $user->getUsername(),
-                'roles' => $user->getRoles(),
-                'api_key' => $user->getApiKey()
-            ]
-        ], 201);
+            'message' => 'Successfully logged out. All tokens have been invalidated.'
+        ]);
     }
 
     #[Route('/discord', name: 'api_discord_auth', methods: ['GET'])]

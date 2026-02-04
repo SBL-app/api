@@ -55,6 +55,10 @@ class ApiAuthenticator extends AbstractAuthenticator
                     throw new CustomUserMessageAuthenticationException('API access not authorized');
                 }
 
+                if ($user->isApiKeyExpired()) {
+                    throw new CustomUserMessageAuthenticationException('API key has expired');
+                }
+
                 // Mettre à jour la dernière connexion
                 $user->setLastLogin(new \DateTime());
                 $this->entityManager->flush();

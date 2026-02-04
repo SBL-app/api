@@ -38,10 +38,37 @@ class AuthenticationService
     {
         try {
             $payload = $this->jwtManager->parse($token);
-            return isset($payload['username']) && isset($payload['exp']) && $payload['exp'] > time();
+
+            if (!isset($payload['username']) || !isset($payload['exp']) || $payload['exp'] <= time()) {
+                return false;
+            }
+
+            // Vérifier si le token a été révoqué
+            $user = $this->userRepository->findOneBy(['username' => $payload['username']]);
+            if ($user && $this->isTokenRevoked($payload, $user)) {
+                return false;
+            }
+
+            return true;
         } catch (\Exception $e) {
             return false;
         }
+    }
+
+    /**
+     * Vérifie si un token a été révoqué (émis avant tokenInvalidatedAt)
+     */
+    public function isTokenRevoked(array $payload, User $user): bool
+    {
+        $tokenInvalidatedAt = $user->getTokenInvalidatedAt();
+
+        if ($tokenInvalidatedAt === null) {
+            return false;
+        }
+
+        $tokenIssuedAt = $payload['iat'] ?? 0;
+
+        return $tokenIssuedAt < $tokenInvalidatedAt->getTimestamp();
     }
 
     /**
@@ -79,6 +106,11 @@ class AuthenticationService
                 return null;
             }
 
+            // Vérifier si le token a été révoqué
+            if ($this->isTokenRevoked($payload, $user)) {
+                return null;
+            }
+
             return $user;
         } catch (\Exception $e) {
             return null;
@@ -105,6 +137,10 @@ class AuthenticationService
         }
 
         if (!in_array('ROLE_API', $user->getRoles())) {
+            return null;
+        }
+
+        if ($user->isApiKeyExpired()) {
             return null;
         }
 

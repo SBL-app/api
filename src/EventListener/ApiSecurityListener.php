@@ -14,8 +14,7 @@ class ApiSecurityListener
     private const PROTECTED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
     private const EXCLUDED_PATHS = [
         '/api/auth/login',
-        '/api/auth/login-api-key',
-        '/api/auth/create-user'
+        '/api/auth/login-api-key'
     ];
 
     public function __construct(private Security $security) {}
