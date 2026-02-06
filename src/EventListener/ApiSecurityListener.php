@@ -16,6 +16,10 @@ class ApiSecurityListener
         '/api/auth/login',
         '/api/auth/login-api-key'
     ];
+    private const ROLE_USER_PREFIXES = [
+        '/api/teams/create-with-captain',
+        '/api/teams/my-teams',
+    ];
 
     public function __construct(private Security $security) {}
 
@@ -37,6 +41,11 @@ class ApiSecurityListener
 
         // Ne protéger que les méthodes de modification pour maintenant
         if (!in_array($method, self::PROTECTED_METHODS)) {
+            return;
+        }
+
+        // Routes de gestion d'équipe accessibles à ROLE_USER (pas besoin de ROLE_API)
+        if ($this->isTeamManagementPath($path)) {
             return;
         }
 
@@ -62,5 +71,21 @@ class ApiSecurityListener
             $event->setResponse($response);
             return;
         }
+    }
+
+    private function isTeamManagementPath(string $path): bool
+    {
+        foreach (self::ROLE_USER_PREFIXES as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                return true;
+            }
+        }
+
+        // Match /api/teams/{id}/members and /api/teams/{id}/members/role
+        if (preg_match('#^/api/teams/\d+/members(/role)?$#', $path)) {
+            return true;
+        }
+
+        return false;
     }
 }

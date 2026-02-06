@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -48,6 +50,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $tokenInvalidatedAt = null;
+
+    /**
+     * @var Collection<int, TeamMember>
+     */
+    #[ORM\OneToMany(targetEntity: TeamMember::class, mappedBy: 'user')]
+    private Collection $teamMemberships;
+
+    public function __construct()
+    {
+        $this->teamMemberships = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -216,5 +229,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->tokenInvalidatedAt = new \DateTimeImmutable();
         return $this;
+    }
+
+    /**
+     * @return Collection<int, TeamMember>
+     */
+    public function getTeamMemberships(): Collection
+    {
+        return $this->teamMemberships;
     }
 }
