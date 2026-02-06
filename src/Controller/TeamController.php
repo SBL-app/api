@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\TeamRepository;
+use App\Repository\TeamMemberRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\TeamStatRepository;
 use App\Repository\SeasonRepository;
@@ -10,6 +11,7 @@ use App\Repository\UserRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Team;
+use App\Entity\TeamMember;
 use App\Entity\Player;
 use App\Entity\Registration;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
@@ -146,9 +148,7 @@ class TeamController extends BaseController
 
             $team->setName($data['name']);
 
-            $this->saveEntity($team);
-
-            return $this->json($this->formatEntityData($team));
+            return $this->securedCreateEntity($team);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 400);
         }
@@ -168,9 +168,7 @@ class TeamController extends BaseController
 
             $team->setName($data['name']);
 
-            $this->saveEntity($team);
-
-            return $this->json($this->formatEntityData($team));
+            return $this->securedUpdateEntity($team);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
@@ -193,9 +191,7 @@ class TeamController extends BaseController
                 $team->setName($data['name']);
             }
 
-            $this->saveEntity($team);
-
-            return $this->json($this->formatEntityData($team));
+            return $this->securedUpdateEntity($team);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
@@ -212,9 +208,8 @@ class TeamController extends BaseController
             }
 
             $team = $this->findEntityOrFail('App\Entity\Team', $id, 'Team');
-            $this->deleteEntity($team);
 
-            return $this->deleteSuccessResponse('Team');
+            return $this->securedDeleteEntity($team, 'Team');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
@@ -225,6 +220,7 @@ class TeamController extends BaseController
     public function registerTeam(Request $request, SeasonRepository $seasonRepository, UserRepository $userRepository): JsonResponse
     {
         try {
+            $this->checkModificationPermissions();
             $data = $this->getRequestData($request);
 
             // Validation des champs requis
@@ -322,8 +318,297 @@ class TeamController extends BaseController
                     'name' => $currentSeason->getName()
                 ]
             ], 201);
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->permissionDeniedResponse($e->getMessage());
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    // ==========================================
+    // Team Management Endpoints (ROLE_USER)
+    // ==========================================
+
+    #[Route('/teams/create-with-captain', name: 'app_team_create_with_captain', methods: ['POST'])]
+    public function createTeamWithCaptain(Request $request): JsonResponse
+    {
+        try {
+            $user = $this->getAuthenticatedUser();
+            $data = $this->getRequestData($request);
+
+            if (!isset($data['name']) || empty(trim($data['name']))) {
+                return $this->json(['error' => 'Team name is required'], 400);
+            }
+
+            $name = trim($data['name']);
+            if (mb_strlen($name) < 2 || mb_strlen($name) > 50) {
+                return $this->json(['error' => 'Team name must be between 2 and 50 characters'], 400);
+            }
+
+            $team = new Team();
+            $team->setName($name);
+            $team->setCaptainUser($user);
+
+            $member = new TeamMember();
+            $member->setUser($user);
+            $member->setRole(TeamMember::ROLE_CAPTAIN);
+            $team->addMember($member);
+
+            $this->entityManager->persist($team);
+            $this->entityManager->flush();
+
+            return $this->json([
+                'message' => 'Team created successfully',
+                'team' => [
+                    'id' => $team->getId(),
+                    'name' => $team->getName(),
+                ],
+                'captain' => [
+                    'discord_id' => $user->getDiscordId(),
+                    'discord_username' => $user->getDiscordUsername(),
+                    'role' => TeamMember::ROLE_CAPTAIN,
+                ],
+            ], 201);
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->authenticationRequiredResponse($e->getMessage());
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    #[Route('/teams/my-teams', name: 'app_team_my_teams', methods: ['GET'])]
+    public function getMyTeams(TeamMemberRepository $teamMemberRepository): JsonResponse
+    {
+        try {
+            $user = $this->getAuthenticatedUser();
+            $memberships = $teamMemberRepository->findByUser($user);
+
+            $teamsData = array_map(function (TeamMember $membership) {
+                $team = $membership->getTeam();
+                return [
+                    'team' => [
+                        'id' => $team->getId(),
+                        'name' => $team->getName(),
+                    ],
+                    'role' => $membership->getRole(),
+                    'joined_at' => $membership->getJoinedAt()->format('Y-m-d H:i:s'),
+                    'members_count' => $team->getMembers()->count(),
+                ];
+            }, $memberships);
+
+            return $this->json($teamsData);
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->authenticationRequiredResponse($e->getMessage());
+        }
+    }
+
+    #[Route('/teams/{teamId}/members', name: 'app_team_list_members', methods: ['GET'])]
+    public function listTeamMembers(int $teamId): JsonResponse
+    {
+        try {
+            $this->getAuthenticatedUser();
+            $team = $this->findEntityOrFail(Team::class, $teamId, 'Team');
+
+            $membersData = array_map(function (TeamMember $member) {
+                $user = $member->getUser();
+                return [
+                    'role' => $member->getRole(),
+                    'discord_id' => $user->getDiscordId(),
+                    'discord_username' => $user->getDiscordUsername(),
+                    'joined_at' => $member->getJoinedAt()->format('Y-m-d H:i:s'),
+                ];
+            }, $team->getMembers()->toArray());
+
+            return $this->json([
+                'team' => [
+                    'id' => $team->getId(),
+                    'name' => $team->getName(),
+                ],
+                'members' => array_values($membersData),
+            ]);
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->authenticationRequiredResponse($e->getMessage());
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/teams/{teamId}/members', name: 'app_team_add_member', methods: ['POST'])]
+    public function addTeamMember(int $teamId, Request $request, UserRepository $userRepository, TeamMemberRepository $teamMemberRepository): JsonResponse
+    {
+        try {
+            $currentUser = $this->getAuthenticatedUser();
+            $team = $this->findEntityOrFail(Team::class, $teamId, 'Team');
+            $data = $this->getRequestData($request);
+
+            if (!isset($data['discord_id'])) {
+                return $this->json(['error' => 'discord_id is required'], 400);
+            }
+
+            // Verify current user is captain
+            $currentMembership = $teamMemberRepository->findByTeamAndUser($team, $currentUser);
+            if (!$currentMembership || !$currentMembership->isCaptain()) {
+                return $this->json(['error' => 'Only team captains can add members'], 403);
+            }
+
+            // Find target user
+            $targetUser = $userRepository->findByDiscordId($data['discord_id']);
+            if (!$targetUser) {
+                return $this->json(['error' => 'User not found. They must link their Discord account first.'], 404);
+            }
+
+            // Check if already a member
+            $existingMembership = $teamMemberRepository->findByTeamAndUser($team, $targetUser);
+            if ($existingMembership) {
+                return $this->json(['error' => 'This user is already a member of the team'], 409);
+            }
+
+            $member = new TeamMember();
+            $member->setUser($targetUser);
+            $member->setRole(TeamMember::ROLE_MEMBER);
+            $team->addMember($member);
+
+            $this->entityManager->flush();
+
+            return $this->json([
+                'message' => 'Member added successfully',
+                'member' => [
+                    'discord_id' => $targetUser->getDiscordId(),
+                    'discord_username' => $targetUser->getDiscordUsername(),
+                    'role' => TeamMember::ROLE_MEMBER,
+                    'joined_at' => $member->getJoinedAt()->format('Y-m-d H:i:s'),
+                ],
+            ], 201);
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->authenticationRequiredResponse($e->getMessage());
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/teams/{teamId}/members', name: 'app_team_remove_member', methods: ['DELETE'])]
+    public function removeTeamMember(int $teamId, Request $request, UserRepository $userRepository, TeamMemberRepository $teamMemberRepository): JsonResponse
+    {
+        try {
+            $currentUser = $this->getAuthenticatedUser();
+            $team = $this->findEntityOrFail(Team::class, $teamId, 'Team');
+            $data = $this->getRequestData($request);
+
+            $currentMembership = $teamMemberRepository->findByTeamAndUser($team, $currentUser);
+
+            // Determine if this is self-removal or captain removing someone
+            $targetDiscordId = $data['discord_id'] ?? null;
+            $isSelfRemoval = !$targetDiscordId || $targetDiscordId === $currentUser->getDiscordId();
+
+            if ($isSelfRemoval) {
+                // Self-removal
+                if (!$currentMembership) {
+                    return $this->json(['error' => 'You are not a member of this team'], 400);
+                }
+
+                // If captain and last captain, block
+                if ($currentMembership->isCaptain()) {
+                    $captainCount = $teamMemberRepository->countCaptainsByTeam($team);
+                    if ($captainCount <= 1) {
+                        return $this->json(['error' => 'You are the last captain. Promote another member before leaving.'], 400);
+                    }
+                }
+
+                $team->removeMember($currentMembership);
+                $this->entityManager->remove($currentMembership);
+                $this->entityManager->flush();
+
+                return $this->json(['message' => 'You have left the team']);
+            } else {
+                // Captain removing someone
+                if (!$currentMembership || !$currentMembership->isCaptain()) {
+                    return $this->json(['error' => 'Only team captains can remove members'], 403);
+                }
+
+                $targetUser = $userRepository->findByDiscordId($targetDiscordId);
+                if (!$targetUser) {
+                    return $this->json(['error' => 'User not found'], 404);
+                }
+
+                $targetMembership = $teamMemberRepository->findByTeamAndUser($team, $targetUser);
+                if (!$targetMembership) {
+                    return $this->json(['error' => 'This user is not a member of the team'], 400);
+                }
+
+                $team->removeMember($targetMembership);
+                $this->entityManager->remove($targetMembership);
+                $this->entityManager->flush();
+
+                return $this->json(['message' => 'Member removed successfully']);
+            }
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->authenticationRequiredResponse($e->getMessage());
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
+    #[Route('/teams/{teamId}/members/role', name: 'app_team_change_role', methods: ['PATCH'])]
+    public function changeTeamMemberRole(int $teamId, Request $request, UserRepository $userRepository, TeamMemberRepository $teamMemberRepository): JsonResponse
+    {
+        try {
+            $currentUser = $this->getAuthenticatedUser();
+            $team = $this->findEntityOrFail(Team::class, $teamId, 'Team');
+            $data = $this->getRequestData($request);
+
+            if (!isset($data['discord_id']) || !isset($data['role'])) {
+                return $this->json(['error' => 'discord_id and role are required'], 400);
+            }
+
+            $newRole = $data['role'];
+            if (!in_array($newRole, [TeamMember::ROLE_CAPTAIN, TeamMember::ROLE_MEMBER])) {
+                return $this->json(['error' => 'Invalid role. Must be "captain" or "member"'], 400);
+            }
+
+            // Verify current user is captain
+            $currentMembership = $teamMemberRepository->findByTeamAndUser($team, $currentUser);
+            if (!$currentMembership || !$currentMembership->isCaptain()) {
+                return $this->json(['error' => 'Only team captains can change roles'], 403);
+            }
+
+            // Find target user
+            $targetUser = $userRepository->findByDiscordId($data['discord_id']);
+            if (!$targetUser) {
+                return $this->json(['error' => 'User not found'], 404);
+            }
+
+            $targetMembership = $teamMemberRepository->findByTeamAndUser($team, $targetUser);
+            if (!$targetMembership) {
+                return $this->json(['error' => 'This user is not a member of the team'], 400);
+            }
+
+            // If demoting from captain, check they're not the last captain
+            if ($targetMembership->isCaptain() && $newRole === TeamMember::ROLE_MEMBER) {
+                $captainCount = $teamMemberRepository->countCaptainsByTeam($team);
+                if ($captainCount <= 1) {
+                    return $this->json(['error' => 'Cannot demote the last captain. Promote another member first.'], 400);
+                }
+            }
+
+            $targetMembership->setRole($newRole);
+            $this->entityManager->flush();
+
+            return $this->json([
+                'message' => 'Role updated successfully',
+                'member' => [
+                    'discord_id' => $targetUser->getDiscordId(),
+                    'discord_username' => $targetUser->getDiscordUsername(),
+                    'role' => $targetMembership->getRole(),
+                ],
+            ]);
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->authenticationRequiredResponse($e->getMessage());
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
         }
     }
 }
