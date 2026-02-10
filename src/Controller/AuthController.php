@@ -8,6 +8,7 @@ use App\Service\AuthenticationService;
 use App\Service\DiscordOAuthService;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -28,7 +29,8 @@ class AuthController extends AbstractController
         private AuthenticationService $authService,
         private DiscordOAuthService $discordOAuthService,
         private RateLimiterFactory $authLoginLimiter,
-        private RateLimiterFactory $authApiKeyLimiter
+        private RateLimiterFactory $authApiKeyLimiter,
+        private LoggerInterface $logger
     ) {}
 
     #[Route('/login', name: 'api_login', methods: ['POST'])]
@@ -37,6 +39,7 @@ class AuthController extends AbstractController
         // Rate limiting basé sur l'IP
         $limiter = $this->authLoginLimiter->create($request->getClientIp());
         if (!$limiter->consume(1)->isAccepted()) {
+            $this->logger->warning('Login rate limit exceeded', ['ip' => $request->getClientIp()]);
             return $this->json([
                 'error' => 'Too many login attempts. Please try again later.'
             ], 429);
@@ -53,10 +56,12 @@ class AuthController extends AbstractController
         $user = $this->userRepository->findByUsernameOrApiKey($data['username']);
 
         if (!$user || !$user->isActive()) {
+            $this->logger->warning('Login failed: invalid credentials', ['username' => $data['username']]);
             throw new BadCredentialsException('Invalid credentials');
         }
 
         if (!$this->passwordHasher->isPasswordValid($user, $data['password'])) {
+            $this->logger->warning('Login failed: invalid password', ['username' => $data['username']]);
             throw new BadCredentialsException('Invalid credentials');
         }
 
@@ -65,6 +70,8 @@ class AuthController extends AbstractController
         $this->entityManager->flush();
 
         $token = $this->jwtManager->create($user);
+
+        $this->logger->info('Login successful', ['user_id' => $user->getId(), 'username' => $user->getUsername()]);
 
         return $this->json([
             'token' => $token,
@@ -79,10 +86,12 @@ class AuthController extends AbstractController
         $token = $this->authService->extractTokenFromRequest($request);
 
         if (!$token) {
+            $this->logger->warning('Token refresh failed: missing authorization header');
             return $this->json(['error' => 'Missing or invalid Authorization header'], 401);
         }
 
         if (!$this->authService->canTokenBeRefreshed($token)) {
+            $this->logger->warning('Token refresh failed: token too old to refresh');
             return $this->json(['error' => 'Token is too old to refresh. Please login again.'], 401);
         }
 
@@ -93,6 +102,8 @@ class AuthController extends AbstractController
         }
 
         $newToken = $this->authService->createTokenForUser($user);
+
+        $this->logger->info('Token refreshed', ['user_id' => $user->getId()]);
 
         return $this->json([
             'token' => $newToken,
@@ -134,6 +145,7 @@ class AuthController extends AbstractController
                 'expires_at' => date('Y-m-d H:i:s', $payload['exp'])
             ]);
         } catch (\Exception $e) {
+            $this->logger->error('Token verification failed: parsing error', ['error' => $e->getMessage()]);
             return $this->json([
                 'valid' => false,
                 'error' => 'Token parsing error'
@@ -147,6 +159,7 @@ class AuthController extends AbstractController
         // Rate limiting basé sur l'IP
         $limiter = $this->authApiKeyLimiter->create($request->getClientIp());
         if (!$limiter->consume(1)->isAccepted()) {
+            $this->logger->warning('API key login rate limit exceeded', ['ip' => $request->getClientIp()]);
             return $this->json([
                 'error' => 'Too many API key authentication attempts. Please try again later.'
             ], 429);
@@ -163,6 +176,7 @@ class AuthController extends AbstractController
         $user = $this->authService->validateApiKey($data['api_key']);
 
         if (!$user) {
+            $this->logger->warning('API key login failed: invalid key', ['ip' => $request->getClientIp()]);
             return $this->json(['error' => 'Invalid API key or access not authorized'], 401);
         }
 
@@ -171,6 +185,8 @@ class AuthController extends AbstractController
         $this->entityManager->flush();
 
         $token = $this->authService->createTokenForUser($user);
+
+        $this->logger->info('API key login successful', ['user_id' => $user->getId()]);
 
         return $this->json([
             'token' => $token,
@@ -213,6 +229,8 @@ class AuthController extends AbstractController
         $user->invalidateAllTokens();
         $this->entityManager->flush();
 
+        $this->logger->info('User logged out', ['user_id' => $user->getId()]);
+
         return $this->json([
             'message' => 'Successfully logged out. All tokens have been invalidated.'
         ]);
@@ -235,6 +253,7 @@ class AuthController extends AbstractController
         $error = $request->query->get('error');
 
         if ($error) {
+            $this->logger->warning('Discord OAuth error', ['error' => $error, 'description' => $request->query->get('error_description')]);
             return $this->json([
                 'error' => 'Discord authorization failed',
                 'details' => $request->query->get('error_description')
@@ -260,8 +279,11 @@ class AuthController extends AbstractController
                 $userResponse
             );
 
+            $this->logger->info('Discord login successful', ['user_id' => $user->getId(), 'discord_id' => $user->getDiscordId()]);
+
             return new RedirectResponse($redirectUrl);
         } catch (\Exception $e) {
+            $this->logger->error('Discord authentication failed', ['error' => $e->getMessage()]);
             return $this->json([
                 'error' => 'Discord authentication failed',
                 'details' => $e->getMessage()
@@ -272,21 +294,28 @@ class AuthController extends AbstractController
     #[Route('/discord/bot', name: 'api_discord_bot', methods: ['POST'])]
     public function discordBot(Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        // Lire le secret depuis le header
+        $botSecret = $request->headers->get('X-Bot-Secret');
 
-        if (!isset($data['discord_id']) || !isset($data['bot_secret'])) {
-            return $this->json([
-                'error' => 'discord_id and bot_secret are required'
-            ], 400);
+        if (!$botSecret) {
+            return $this->json(['error' => 'Missing X-Bot-Secret header'], 401);
         }
 
-        if (!$this->discordOAuthService->validateBotSecret($data['bot_secret'])) {
+        if (!$this->discordOAuthService->validateBotSecret($botSecret)) {
+            $this->logger->warning('Discord bot auth failed: invalid secret');
             return $this->json(['error' => 'Invalid bot secret'], 401);
+        }
+
+        $data = json_decode($request->getContent(), true);
+
+        if (!isset($data['discord_id'])) {
+            return $this->json(['error' => 'discord_id is required'], 400);
         }
 
         $user = $this->discordOAuthService->getUserByDiscordId($data['discord_id']);
 
         if (!$user) {
+            $this->logger->warning('Discord bot auth failed: user not found', ['discord_id' => $data['discord_id']]);
             return $this->json(['error' => 'User not found'], 404);
         }
 
@@ -298,6 +327,8 @@ class AuthController extends AbstractController
         $this->entityManager->flush();
 
         $token = $this->jwtManager->create($user);
+
+        $this->logger->info('Discord bot auth successful', ['user_id' => $user->getId(), 'discord_id' => $data['discord_id']]);
 
         return $this->json([
             'token' => $token,

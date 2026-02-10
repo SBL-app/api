@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Service\AuthenticationService;
 use App\Security\SecuredControllerTrait;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,11 +20,13 @@ abstract class BaseController extends AbstractController
 
     protected EntityManagerInterface $entityManager;
     protected AuthenticationService $authService;
+    protected LoggerInterface $logger;
 
-    public function __construct(EntityManagerInterface $entityManager, AuthenticationService $authService)
+    public function __construct(EntityManagerInterface $entityManager, AuthenticationService $authService, LoggerInterface $logger)
     {
         $this->entityManager = $entityManager;
         $this->authService = $authService;
+        $this->logger = $logger;
     }
 
     /**
@@ -108,10 +111,13 @@ abstract class BaseController extends AbstractController
         try {
             $this->checkModificationPermissions();
             $this->saveEntity($entity);
+            $this->logger->info('Entity created', ['entity' => get_class($entity), 'id' => $entity->getId()]);
             return $this->json($this->formatEntityData($entity), 201);
         } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            $this->logger->warning('Permission denied for entity creation', ['entity' => get_class($entity), 'error' => $e->getMessage()]);
             return $this->permissionDeniedResponse($e->getMessage());
         } catch (\Exception $e) {
+            $this->logger->error('Failed to create entity', ['entity' => get_class($entity), 'error' => $e->getMessage()]);
             return $this->json(['error' => $e->getMessage()], 400);
         }
     }
@@ -124,10 +130,13 @@ abstract class BaseController extends AbstractController
         try {
             $this->checkModificationPermissions();
             $this->saveEntity($entity);
+            $this->logger->info('Entity updated', ['entity' => get_class($entity), 'id' => $entity->getId()]);
             return $this->json($this->formatEntityData($entity));
         } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            $this->logger->warning('Permission denied for entity update', ['entity' => get_class($entity), 'error' => $e->getMessage()]);
             return $this->permissionDeniedResponse($e->getMessage());
         } catch (\Exception $e) {
+            $this->logger->error('Failed to update entity', ['entity' => get_class($entity), 'error' => $e->getMessage()]);
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
         }
@@ -140,11 +149,15 @@ abstract class BaseController extends AbstractController
     {
         try {
             $this->checkModificationPermissions();
+            $entityId = $entity->getId();
             $this->deleteEntity($entity);
+            $this->logger->info('Entity deleted', ['entity' => $entityName, 'id' => $entityId]);
             return $this->deleteSuccessResponse($entityName);
         } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            $this->logger->warning('Permission denied for entity deletion', ['entity' => $entityName, 'error' => $e->getMessage()]);
             return $this->permissionDeniedResponse($e->getMessage());
         } catch (\Exception $e) {
+            $this->logger->error('Failed to delete entity', ['entity' => $entityName, 'error' => $e->getMessage()]);
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
         }
@@ -185,6 +198,7 @@ abstract class BaseController extends AbstractController
             $entity = $this->findEntityOrFail($repositoryClass, $id, $entityName);
             return $this->json($this->formatEntityData($entity));
         } catch (\Exception $e) {
+            $this->logger->error('Failed to get entity by ID', ['entity' => $entityName, 'id' => $id, 'error' => $e->getMessage()]);
             $code = $e->getCode() === 404 ? 404 : 500;
             return $this->json(['error' => $e->getMessage()], $code);
         }
