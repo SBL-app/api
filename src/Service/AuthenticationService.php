@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -14,7 +15,8 @@ class AuthenticationService
 {
     public function __construct(
         private JWTTokenManagerInterface $jwtManager,
-        private UserRepository $userRepository
+        private UserRepository $userRepository,
+        private LoggerInterface $logger
     ) {}
 
     /**
@@ -51,6 +53,7 @@ class AuthenticationService
 
             return true;
         } catch (\Exception $e) {
+            $this->logger->error('Token validation failed', ['error' => $e->getMessage()]);
             return false;
         }
     }
@@ -83,6 +86,7 @@ class AuthenticationService
 
             return (time() - $expiration) <= $maxRefreshTime;
         } catch (\Exception $e) {
+            $this->logger->error('Token refresh check failed', ['error' => $e->getMessage()]);
             return false;
         }
     }
@@ -113,6 +117,7 @@ class AuthenticationService
 
             return $user;
         } catch (\Exception $e) {
+            $this->logger->error('Failed to get user from token', ['error' => $e->getMessage()]);
             return null;
         }
     }
@@ -133,14 +138,17 @@ class AuthenticationService
         $user = $this->userRepository->findOneBy(['apiKey' => $apiKey]);
 
         if (!$user || !$user->isActive()) {
+            $this->logger->warning('API key validation failed: user not found or inactive');
             return null;
         }
 
         if (!in_array('ROLE_API', $user->getRoles())) {
+            $this->logger->warning('API key validation failed: missing ROLE_API', ['user_id' => $user->getId()]);
             return null;
         }
 
         if ($user->isApiKeyExpired()) {
+            $this->logger->warning('API key validation failed: key expired', ['user_id' => $user->getId()]);
             return null;
         }
 

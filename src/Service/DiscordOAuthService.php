@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class DiscordOAuthService
@@ -17,6 +18,7 @@ class DiscordOAuthService
         private HttpClientInterface $httpClient,
         private UserRepository $userRepository,
         private EntityManagerInterface $entityManager,
+        private LoggerInterface $logger,
         private string $clientId,
         private string $clientSecret,
         private string $redirectUri,
@@ -58,6 +60,7 @@ class DiscordOAuthService
         ]);
 
         if ($response->getStatusCode() !== 200) {
+            $this->logger->error('Discord token exchange failed', ['status' => $response->getStatusCode()]);
             throw new \RuntimeException('Failed to exchange code for token: ' . $response->getContent(false));
         }
 
@@ -73,6 +76,7 @@ class DiscordOAuthService
         ]);
 
         if ($response->getStatusCode() !== 200) {
+            $this->logger->error('Failed to get Discord user', ['status' => $response->getStatusCode()]);
             throw new \RuntimeException('Failed to get Discord user: ' . $response->getContent(false));
         }
 
@@ -83,8 +87,10 @@ class DiscordOAuthService
     {
         $discordId = $discordUser['id'];
         $user = $this->userRepository->findByDiscordId($discordId);
+        $isNew = false;
 
         if (!$user) {
+            $isNew = true;
             $user = new User();
             $user->setDiscordId($discordId);
             $user->setUsername('discord_' . $discordId);
@@ -100,12 +106,18 @@ class DiscordOAuthService
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
+        $this->logger->info($isNew ? 'Discord user created' : 'Discord user updated', ['discord_id' => $discordId, 'user_id' => $user->getId()]);
+
         return $user;
     }
 
     public function validateBotSecret(string $secret): bool
     {
-        return hash_equals($this->botSecret, $secret);
+        $valid = hash_equals($this->botSecret, $secret);
+        if (!$valid) {
+            $this->logger->warning('Invalid bot secret provided');
+        }
+        return $valid;
     }
 
     public function getUserByDiscordId(string $discordId): ?User
