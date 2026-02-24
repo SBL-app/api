@@ -113,7 +113,7 @@ class GameControllerTest extends ApiTestCase
         $this->entityManager->persist($game);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/games?id=' . $game->getId());
+        $response = $this->jsonRequest('GET', '/api/games/' . $game->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -128,12 +128,12 @@ class GameControllerTest extends ApiTestCase
 
     public function testGetGameByIdNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/games?id=999');
+        $response = $this->jsonRequest('GET', '/api/games/999');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
         $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Game not found', $response['error']);
+        $this->assertEquals('Game with id 999 not found', $response['error']);
     }
 
     public function testGetGamesByDivision(): void

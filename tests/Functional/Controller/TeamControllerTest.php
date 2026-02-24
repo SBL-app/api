@@ -68,7 +68,7 @@ class TeamControllerTest extends ApiTestCase
 
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/teams?id=' . $team->getId());
+        $response = $this->jsonRequest('GET', '/api/teams/' . $team->getId());
 
         $this->assertResponseStatusCode(200);
         $this->assertArrayHasKey('id', $response);
@@ -195,7 +195,7 @@ class TeamControllerTest extends ApiTestCase
         $this->entityManager->persist($team);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/teams?id=' . $team->getId());
+        $response = $this->jsonRequest('GET', '/api/teams/' . $team->getId());
 
         $this->assertResponseStatusCode(200);
         $this->assertEquals('Équipe Sans Capitaine', $response['name']);

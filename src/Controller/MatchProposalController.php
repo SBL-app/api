@@ -48,13 +48,21 @@ class MatchProposalController extends BaseController
         ];
     }
 
+    #[Route('/match-proposals/{id}', name: 'app_match_proposal_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getMatchProposal(int $id): JsonResponse
+    {
+        return $this->getEntityById('App\Entity\MatchProposal', $id, 'MatchProposal');
+    }
+
     #[Route('/match-proposals', name: 'app_match_proposals', methods: ['GET'])]
     public function getMatchProposals(Request $request, MatchProposalRepository $proposalRepository, GameRepository $gameRepository): JsonResponse
     {
         $gameId = $request->query->get('game_id');
         $id = $request->query->get('id');
 
+        // Backward compatibility - deprecated
         if ($id) {
+            $this->logger->warning('Deprecated: Using ?id parameter for match proposal. Use /match-proposals/{id} instead', ['id' => $id]);
             return $this->getEntityById('App\Entity\MatchProposal', $id, 'MatchProposal');
         }
 
@@ -110,6 +118,7 @@ class MatchProposalController extends BaseController
         MatchProposalRepository $proposalRepository
     ): JsonResponse {
         try {
+            $this->checkModificationPermissions();
             $data = $this->getRequestData($request);
 
             // Validation des champs requis
@@ -189,6 +198,8 @@ class MatchProposalController extends BaseController
                 'receiver_discord_id' => $receiver->getDiscordId(),
             ], 201);
 
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->permissionDeniedResponse($e->getMessage());
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 400);
         }
@@ -203,6 +214,7 @@ class MatchProposalController extends BaseController
         GameRepository $gameRepository
     ): JsonResponse {
         try {
+            $this->checkModificationPermissions();
             $proposal = $proposalRepository->find($id);
             if (!$proposal) {
                 return $this->json(['error' => 'Proposal not found'], 404);
@@ -262,6 +274,8 @@ class MatchProposalController extends BaseController
                 'proposal' => $this->formatEntityData($proposal),
             ]);
 
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->permissionDeniedResponse($e->getMessage());
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 400);
         }
@@ -276,9 +290,7 @@ class MatchProposalController extends BaseController
                 return $this->json(['error' => 'Proposal not found'], 404);
             }
 
-            $this->deleteEntity($proposal);
-
-            return $this->deleteSuccessResponse('MatchProposal');
+            return $this->securedDeleteEntity($proposal, 'MatchProposal');
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 400);
         }

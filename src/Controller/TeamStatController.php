@@ -44,6 +44,12 @@ class TeamStatController extends BaseController
         return $this->formatEntityData($teamStat);
     }
 
+    #[Route('/teamStats/{id}', name: 'app_team_stat_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getTeamStat(int $id): JsonResponse
+    {
+        return $this->getEntityById('App\Entity\TeamStat', $id, 'Team stat');
+    }
+
     #[Route('/teamStats', name: 'app_team_stats', methods: ['GET'])]
     public function getTeamStats(Request $request, TeamStatRepository $teamStatRepository): JsonResponse
     {
@@ -109,24 +115,17 @@ class TeamStatController extends BaseController
             $teamStat->setLooseRounds($data['looseRounds'] ?? 0);
             $teamStat->setPoints($data['points'] ?? 0);
 
-            $this->saveEntity($teamStat);
-
-            return $this->json($this->formatEntityData($teamStat));
+            return $this->securedCreateEntity($teamStat);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
         }
     }
 
-    #[Route('/teamStats', name: 'app_team_stats_update', methods: ['PUT'])]
-    public function updateTeamStat(Request $request): JsonResponse
+    #[Route('/teamStats/{id}', name: 'app_team_stats_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
+    public function updateTeamStat(int $id, Request $request): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $teamStat = $this->findEntityOrFail('App\Entity\TeamStat', $id, 'TeamStat');
             $data = $this->getRequestData($request);
 
@@ -142,24 +141,17 @@ class TeamStatController extends BaseController
             $teamStat->setLooseRounds($data['looseRounds'] ?? 0);
             $teamStat->setPoints($data['points'] ?? 0);
 
-            $this->saveEntity($teamStat);
-
-            return $this->json($this->formatEntityData($teamStat));
+            return $this->securedUpdateEntity($teamStat);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
         }
     }
 
-    #[Route('/teamStats', name: 'app_team_stats_patch', methods: ['PATCH'])]
-    public function patchTeamStat(Request $request): JsonResponse
+    #[Route('/teamStats/{id}', name: 'app_team_stats_patch', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function patchTeamStat(int $id, Request $request): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $teamStat = $this->findEntityOrFail('App\Entity\TeamStat', $id, 'TeamStat');
             $data = $this->getRequestData($request);
 
@@ -190,28 +182,20 @@ class TeamStatController extends BaseController
                 $teamStat->setPoints($data['points']);
             }
 
-            $this->saveEntity($teamStat);
-
-            return $this->json($this->formatEntityData($teamStat));
+            return $this->securedUpdateEntity($teamStat);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
         }
     }
 
-    #[Route('/teamStats', name: 'app_team_stats_delete', methods: ['DELETE'])]
-    public function deleteTeamStat(Request $request): JsonResponse
+    #[Route('/teamStats/{id}', name: 'app_team_stats_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function deleteTeamStat(int $id): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $teamStat = $this->findEntityOrFail('App\Entity\TeamStat', $id, 'TeamStat');
-            $this->deleteEntity($teamStat);
 
-            return $this->deleteSuccessResponse('TeamStat');
+            return $this->securedDeleteEntity($teamStat, 'TeamStat');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);

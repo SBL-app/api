@@ -36,6 +36,12 @@ class RegistrationController extends BaseController
         return $this->formatEntityData($registration);
     }
 
+    #[Route('/registrations/{id}', name: 'app_registration_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getRegistration(int $id): JsonResponse
+    {
+        return $this->getEntityById('App\Entity\Registration', $id, 'Registration');
+    }
+
     #[Route('/registrations', name: 'app_registration', methods: ['GET'])]
     public function getRegistrations(Request $request, RegistrationRepository $registrationRepository): JsonResponse
     {
@@ -43,13 +49,10 @@ class RegistrationController extends BaseController
         $seasonId = $request->query->get('season_id');
         $teamId = $request->query->get('team_id');
 
-        // Si un ID est fourni, retourner l'inscription spécifique
+        // Backward compatibility - deprecated
         if ($id) {
-            $registration = $registrationRepository->find($id);
-            if (!$registration) {
-                return $this->json(['error' => 'Registration not found'], 404);
-            }
-            return $this->json($this->formatRegistrationData($registration));
+            $this->logger->warning('Deprecated: Using ?id parameter for registration. Use /registrations/{id} instead', ['id' => $id]);
+            return $this->getEntityById('App\Entity\Registration', $id, 'Registration');
         }
 
         // Si season_id ET team_id sont fournis, retourner l'inscription spécifique
@@ -112,24 +115,17 @@ class RegistrationController extends BaseController
                 $registration->setTeam(null);
             }
 
-            $this->saveEntity($registration);
-
-            return $this->json($this->formatEntityData($registration));
+            return $this->securedCreateEntity($registration);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
         }
     }
 
-    #[Route('/registrations', name: 'app_registration_update', methods: ['PUT'])]
-    public function updateRegistration(Request $request): JsonResponse
+    #[Route('/registrations/{id}', name: 'app_registration_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
+    public function updateRegistration(int $id, Request $request): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
             $data = $this->getRequestData($request);
 
@@ -139,27 +135,20 @@ class RegistrationController extends BaseController
             $registration->setSeason($season);
             $registration->setTeam($team);
 
-            $this->saveEntity($registration);
-
-            return $this->json($this->formatEntityData($registration));
+            return $this->securedUpdateEntity($registration);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
         }
     }
 
-    #[Route('/registrations', name: 'app_registration_patch', methods: ['PATCH'])]
-    public function patchRegistration(Request $request): JsonResponse
+    #[Route('/registrations/{id}', name: 'app_registration_patch', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function patchRegistration(int $id, Request $request): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
             $data = $this->getRequestData($request);
-          
+
             if (isset($data['season'])) {
                 $season = $this->findEntityOrFail('App\Entity\Season', $data['season'], 'Season');
                 $registration->setSeason($season);
@@ -169,28 +158,20 @@ class RegistrationController extends BaseController
                 $registration->setTeam($team);
             }
 
-            $this->saveEntity($registration);
-
-            return $this->json($this->formatEntityData($registration));
+            return $this->securedUpdateEntity($registration);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
         }
     }
 
-    #[Route('/registrations', name: 'app_registration_delete', methods: ['DELETE'])]
-    public function deleteRegistration(Request $request): JsonResponse
+    #[Route('/registrations/{id}', name: 'app_registration_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function deleteRegistration(int $id): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
-            $this->deleteEntity($registration);
-          
-            return $this->deleteSuccessResponse('Registration');
+
+            return $this->securedDeleteEntity($registration, 'Registration');
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);

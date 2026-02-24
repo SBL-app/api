@@ -162,19 +162,33 @@ class SeasonController extends BaseController
         ]);
     }
 
+    #[Route('/season/{id}', name: 'app_season_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getSeason(int $id, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
+    {
+        try {
+            $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+            return $this->json($this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository));
+        } catch (\Exception $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return $this->json(['error' => $e->getMessage()], $code);
+        }
+    }
+
     #[Route('/season', name: 'app_seasons', methods: ['GET'])]
     public function getSeasons(Request $request, SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
         $id = $request->query->get('id');
 
-        // Si un ID est fourni, retourner une seule saison
+        // Backward compatibility - deprecated
         if ($id) {
-            $season = $seasonRepository->find($id);
-            if (!$season) {
-                return $this->json(['error' => 'Season not found'], 404);
+            $this->logger->warning('Deprecated: Using ?id parameter for season. Use /season/{id} instead', ['id' => $id]);
+            try {
+                $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+                return $this->json($this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository));
+            } catch (\Exception $e) {
+                $code = $e->getCode() === 404 ? 404 : 400;
+                return $this->json(['error' => $e->getMessage()], $code);
             }
-
-            return $this->json($this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository));
         }
 
         // Sinon, retourner toutes les saisons avec leurs statistiques
@@ -264,15 +278,10 @@ class SeasonController extends BaseController
         }
     }
 
-    #[Route('/season', name: 'app_season_update', methods: ['PUT'])]
-    public function updateSeason(Request $request): JsonResponse
+    #[Route('/season/{id}', name: 'app_season_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
+    public function updateSeason(int $id, Request $request): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
             $data = $this->getRequestData($request);
             $season->setName($data['name']);
@@ -286,16 +295,10 @@ class SeasonController extends BaseController
         }
     }
 
-    #[Route('/season', name: 'app_season_patch', methods: ['PATCH'])]
-    public function patchSeason(Request $request): JsonResponse
+    #[Route('/season/{id}', name: 'app_season_patch', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function patchSeason(int $id, Request $request): JsonResponse
     {
         try {
-            $this->checkModificationPermissions();
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
             $data = $this->getRequestData($request);
             if (isset($data['name'])) {
@@ -308,26 +311,17 @@ class SeasonController extends BaseController
                 $season->setEndDate(new \DateTime($data['end_date']));
             }
 
-            $this->saveEntity($season);
-
-            return $this->json($this->formatEntityData($season));
-        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
-            return $this->permissionDeniedResponse($e->getMessage());
+            return $this->securedUpdateEntity($season);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(['error' => $e->getMessage()], $code);
         }
     }
 
-    #[Route('/season', name: 'app_season_delete', methods: ['DELETE'])]
-    public function deleteSeason(Request $request): JsonResponse
+    #[Route('/season/{id}', name: 'app_season_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function deleteSeason(int $id): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
 
             return $this->securedDeleteEntity($season, 'Season');
