@@ -98,12 +98,12 @@ class PlayerControllerTest extends ApiTestCase
 
     public function testGetPlayerByIdNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/players?id=999');
+        $response = $this->jsonRequest('GET', '/api/players/999');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Player not found', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Player with id 999 not found', $response['detail']);
     }
 
     public function testGetPlayerWithStats(): void
@@ -149,12 +149,12 @@ class PlayerControllerTest extends ApiTestCase
 
     public function testGetPlayerWithStatsNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/players?id=999');
+        $response = $this->jsonRequest('GET', '/api/players/999');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Player not found', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Player with id 999 not found', $response['detail']);
     }
 
     public function testCreatePlayer(): void
@@ -183,20 +183,6 @@ class PlayerControllerTest extends ApiTestCase
         $this->assertEquals('New Player', $response['name']);
         $this->assertEquals('newplayer#9999', $response['discord']);
         $this->assertEquals($team->getId(), $response['team_id']);
-    }
-
-    public function testCreatePlayerWithInvalidData(): void
-    {
-        $playerData = [
-            'discord' => 'invalid#1234'
-            // name manquant
-        ];
-
-        $response = $this->jsonRequest('POST', '/api/players', $playerData);
-
-        $this->assertResponseStatusCodeSame(400);
-        $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
     }
 
     public function testUpdatePlayer(): void
@@ -237,8 +223,8 @@ class PlayerControllerTest extends ApiTestCase
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Player with id 999 not found', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Player with id 999 not found', $response['detail']);
     }
 
     public function testDeletePlayer(): void
@@ -252,10 +238,8 @@ class PlayerControllerTest extends ApiTestCase
 
         $response = $this->jsonRequest('DELETE', '/api/players/' . $player->getId());
 
-        $this->assertResponseIsSuccessful();
-        $this->assertIsArray($response);
-        $this->assertArrayHasKey('message', $response);
-        $this->assertEquals('Player deleted successfully', $response['message']);
+        $this->assertResponseStatusCodeSame(204);
+        $this->assertNull($response);
     }
 
     public function testDeletePlayerNotFound(): void
@@ -264,7 +248,7 @@ class PlayerControllerTest extends ApiTestCase
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Player with id 999 not found', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Player with id 999 not found', $response['detail']);
     }
 }

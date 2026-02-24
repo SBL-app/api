@@ -9,7 +9,7 @@ class GameStatusControllerTest extends ApiTestCase
 {
     public function testGetGameStatusesEmpty(): void
     {
-        $response = $this->jsonRequest('GET', '/api/gameStatus');
+        $response = $this->jsonRequest('GET', '/api/game-statuses');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -29,7 +29,7 @@ class GameStatusControllerTest extends ApiTestCase
         $this->entityManager->persist($gameStatus2);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/gameStatus');
+        $response = $this->jsonRequest('GET', '/api/game-statuses');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -49,7 +49,7 @@ class GameStatusControllerTest extends ApiTestCase
         $this->entityManager->persist($gameStatus);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/gameStatus/' . $gameStatus->getId());
+        $response = $this->jsonRequest('GET', '/api/game-statuses/' . $gameStatus->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -61,11 +61,11 @@ class GameStatusControllerTest extends ApiTestCase
 
     public function testGetGameStatusByIdNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/gameStatus?id=999');
+        $response = $this->jsonRequest('GET', '/api/game-statuses/999');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
+        $this->assertArrayHasKey('detail', $response);
     }
 
     public function testGetAllGameStatuses(): void
@@ -81,7 +81,7 @@ class GameStatusControllerTest extends ApiTestCase
         $this->entityManager->persist($gameStatus2);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/gameStatus');
+        $response = $this->jsonRequest('GET', '/api/game-statuses');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -95,7 +95,7 @@ class GameStatusControllerTest extends ApiTestCase
 
     public function testGetGameStatusWithNonExistentParameter(): void
     {
-        $response = $this->jsonRequest('GET', '/api/gameStatus?name=Inexistant');
+        $response = $this->jsonRequest('GET', '/api/game-statuses?name=Inexistant');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);

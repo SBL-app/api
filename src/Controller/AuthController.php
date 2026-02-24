@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Exception\ApiProblemException;
 use App\Repository\UserRepository;
 use App\Service\AuthenticationService;
 use App\Service\DiscordOAuthService;
@@ -16,7 +17,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 
 #[Route('/api/auth')]
 class AuthController extends AbstractController
@@ -40,29 +40,28 @@ class AuthController extends AbstractController
         $limiter = $this->authLoginLimiter->create($request->getClientIp());
         if (!$limiter->consume(1)->isAccepted()) {
             $this->logger->warning('Login rate limit exceeded', ['ip' => $request->getClientIp()]);
-            return $this->json([
-                'error' => 'Too many login attempts. Please try again later.'
-            ], 429);
+            throw ApiProblemException::tooManyRequests('Too many login attempts. Please try again later.');
         }
 
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['username']) || !isset($data['password'])) {
-            return $this->json([
-                'error' => 'Username and password are required'
-            ], 400);
+            throw ApiProblemException::validationError('Username and password are required', [
+                ['field' => 'username', 'message' => 'This value should not be blank.'],
+                ['field' => 'password', 'message' => 'This value should not be blank.'],
+            ]);
         }
 
         $user = $this->userRepository->findByUsernameOrApiKey($data['username']);
 
         if (!$user || !$user->isActive()) {
             $this->logger->warning('Login failed: invalid credentials', ['username' => $data['username']]);
-            throw new BadCredentialsException('Invalid credentials');
+            throw ApiProblemException::unauthorized('Invalid credentials');
         }
 
         if (!$this->passwordHasher->isPasswordValid($user, $data['password'])) {
             $this->logger->warning('Login failed: invalid password', ['username' => $data['username']]);
-            throw new BadCredentialsException('Invalid credentials');
+            throw ApiProblemException::unauthorized('Invalid credentials');
         }
 
         // Mettre à jour la dernière connexion
@@ -87,18 +86,18 @@ class AuthController extends AbstractController
 
         if (!$token) {
             $this->logger->warning('Token refresh failed: missing authorization header');
-            return $this->json(['error' => 'Missing or invalid Authorization header'], 401);
+            throw ApiProblemException::unauthorized('Missing or invalid Authorization header');
         }
 
         if (!$this->authService->canTokenBeRefreshed($token)) {
             $this->logger->warning('Token refresh failed: token too old to refresh');
-            return $this->json(['error' => 'Token is too old to refresh. Please login again.'], 401);
+            throw ApiProblemException::unauthorized('Token is too old to refresh. Please login again.');
         }
 
         $user = $this->authService->getUserFromToken($token);
 
         if (!$user) {
-            return $this->json(['error' => 'Invalid token or user not found'], 401);
+            throw ApiProblemException::unauthorized('Invalid token or user not found');
         }
 
         $newToken = $this->authService->createTokenForUser($user);
@@ -118,23 +117,17 @@ class AuthController extends AbstractController
         $token = $this->authService->extractTokenFromRequest($request);
 
         if (!$token) {
-            return $this->json(['error' => 'Missing or invalid Authorization header'], 401);
+            throw ApiProblemException::unauthorized('Missing or invalid Authorization header');
         }
 
         if (!$this->authService->isTokenValid($token)) {
-            return $this->json([
-                'valid' => false,
-                'error' => 'Invalid or expired token'
-            ], 401);
+            throw ApiProblemException::unauthorized('Invalid or expired token');
         }
 
         $user = $this->authService->getUserFromToken($token);
 
         if (!$user) {
-            return $this->json([
-                'valid' => false,
-                'error' => 'User not found or inactive'
-            ], 401);
+            throw ApiProblemException::unauthorized('User not found or inactive');
         }
 
         try {
@@ -146,10 +139,7 @@ class AuthController extends AbstractController
             ]);
         } catch (\Exception $e) {
             $this->logger->error('Token verification failed: parsing error', ['error' => $e->getMessage()]);
-            return $this->json([
-                'valid' => false,
-                'error' => 'Token parsing error'
-            ], 401);
+            throw ApiProblemException::unauthorized('Token parsing error');
         }
     }
 
@@ -160,24 +150,22 @@ class AuthController extends AbstractController
         $limiter = $this->authApiKeyLimiter->create($request->getClientIp());
         if (!$limiter->consume(1)->isAccepted()) {
             $this->logger->warning('API key login rate limit exceeded', ['ip' => $request->getClientIp()]);
-            return $this->json([
-                'error' => 'Too many API key authentication attempts. Please try again later.'
-            ], 429);
+            throw ApiProblemException::tooManyRequests('Too many API key authentication attempts. Please try again later.');
         }
 
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['api_key'])) {
-            return $this->json([
-                'error' => 'API key is required'
-            ], 400);
+            throw ApiProblemException::validationError('API key is required', [
+                ['field' => 'api_key', 'message' => 'This value should not be blank.'],
+            ]);
         }
 
         $user = $this->authService->validateApiKey($data['api_key']);
 
         if (!$user) {
             $this->logger->warning('API key login failed: invalid key', ['ip' => $request->getClientIp()]);
-            return $this->json(['error' => 'Invalid API key or access not authorized'], 401);
+            throw ApiProblemException::unauthorized('Invalid API key or access not authorized');
         }
 
         // Mettre à jour la dernière connexion
@@ -196,25 +184,6 @@ class AuthController extends AbstractController
         ]);
     }
 
-    #[Route('/me', name: 'api_user_profile', methods: ['GET'])]
-    public function getProfile(): JsonResponse
-    {
-        /** @var User|null $user */
-        $user = $this->getUser();
-
-        if (!$user instanceof User) {
-            return $this->json(['error' => 'User not authenticated'], 401);
-        }
-
-        return $this->json([
-            'id' => $user->getId(),
-            'username' => $user->getUsername(),
-            'roles' => $user->getRoles(),
-            'last_login' => $user->getLastLogin()?->format('Y-m-d H:i:s'),
-            'is_active' => $user->isActive()
-        ]);
-    }
-
     #[Route('/logout', name: 'api_logout', methods: ['POST'])]
     public function logout(): JsonResponse
     {
@@ -222,7 +191,7 @@ class AuthController extends AbstractController
         $user = $this->getUser();
 
         if (!$user instanceof User) {
-            return $this->json(['error' => 'User not authenticated'], 401);
+            throw ApiProblemException::unauthorized('User not authenticated');
         }
 
         // Invalider tous les tokens émis avant maintenant
@@ -231,9 +200,7 @@ class AuthController extends AbstractController
 
         $this->logger->info('User logged out', ['user_id' => $user->getId()]);
 
-        return $this->json([
-            'message' => 'Successfully logged out. All tokens have been invalidated.'
-        ]);
+        return new JsonResponse(null, 204);
     }
 
     #[Route('/discord', name: 'api_discord_auth', methods: ['GET'])]
@@ -254,14 +221,11 @@ class AuthController extends AbstractController
 
         if ($error) {
             $this->logger->warning('Discord OAuth error', ['error' => $error, 'description' => $request->query->get('error_description')]);
-            return $this->json([
-                'error' => 'Discord authorization failed',
-                'details' => $request->query->get('error_description')
-            ], 400);
+            throw ApiProblemException::badRequest('Discord authorization failed: ' . $request->query->get('error_description'));
         }
 
         if (!$code) {
-            return $this->json(['error' => 'Missing authorization code'], 400);
+            throw ApiProblemException::badRequest('Missing authorization code');
         }
 
         try {
@@ -284,10 +248,7 @@ class AuthController extends AbstractController
             return new RedirectResponse($redirectUrl);
         } catch (\Exception $e) {
             $this->logger->error('Discord authentication failed', ['error' => $e->getMessage()]);
-            return $this->json([
-                'error' => 'Discord authentication failed',
-                'details' => $e->getMessage()
-            ], 500);
+            throw new ApiProblemException(500, 'Discord authentication failed', '/problems/internal-error', 'Internal Server Error');
         }
     }
 
@@ -298,29 +259,31 @@ class AuthController extends AbstractController
         $botSecret = $request->headers->get('X-Bot-Secret');
 
         if (!$botSecret) {
-            return $this->json(['error' => 'Missing X-Bot-Secret header'], 401);
+            throw ApiProblemException::unauthorized('Missing X-Bot-Secret header');
         }
 
         if (!$this->discordOAuthService->validateBotSecret($botSecret)) {
             $this->logger->warning('Discord bot auth failed: invalid secret');
-            return $this->json(['error' => 'Invalid bot secret'], 401);
+            throw ApiProblemException::unauthorized('Invalid bot secret');
         }
 
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['discord_id'])) {
-            return $this->json(['error' => 'discord_id is required'], 400);
+            throw ApiProblemException::validationError('discord_id is required', [
+                ['field' => 'discord_id', 'message' => 'This value should not be blank.'],
+            ]);
         }
 
         $user = $this->discordOAuthService->getUserByDiscordId($data['discord_id']);
 
         if (!$user) {
             $this->logger->warning('Discord bot auth failed: user not found', ['discord_id' => $data['discord_id']]);
-            return $this->json(['error' => 'User not found'], 404);
+            throw ApiProblemException::notFound('User not found');
         }
 
         if (!$user->isActive()) {
-            return $this->json(['error' => 'User account is inactive'], 403);
+            throw ApiProblemException::forbidden('User account is inactive');
         }
 
         $user->setLastLogin(new \DateTime());

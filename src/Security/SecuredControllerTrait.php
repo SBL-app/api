@@ -4,7 +4,6 @@ namespace App\Security;
 
 use App\Entity\User;
 use App\Service\AuthenticationService;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
@@ -61,19 +60,4 @@ trait SecuredControllerTrait
         return $user;
     }
 
-    /**
-     * Retourne une réponse d'erreur standardisée pour les permissions
-     */
-    protected function permissionDeniedResponse(string $message = 'Insufficient permissions'): JsonResponse
-    {
-        return $this->json(['error' => $message], 403);
-    }
-
-    /**
-     * Retourne une réponse d'erreur standardisée pour l'authentification
-     */
-    protected function authenticationRequiredResponse(string $message = 'Authentication required'): JsonResponse
-    {
-        return $this->json(['error' => $message], 401);
-    }
 }

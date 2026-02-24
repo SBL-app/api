@@ -83,11 +83,11 @@ class RegistrationControllerTest extends ApiTestCase
 
     public function testGetRegistrationByIdNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/registrations?id=999');
+        $response = $this->jsonRequest('GET', '/api/registrations/999');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
+        $this->assertArrayHasKey('detail', $response);
     }
 
     public function testGetRegistrationsByTeam(): void

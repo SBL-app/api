@@ -84,12 +84,12 @@ class TeamControllerTest extends ApiTestCase
 
     public function testGetTeamByIdNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/teams?id=999');
+        $response = $this->jsonRequest('GET', '/api/teams/999');
 
         $this->assertResponseStatusCode(404);
         $this->assertNotNull($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Team with id 999 not found', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Team with id 999 not found', $response['detail']);
     }
 
     public function testGetTeamWithDetails(): void
@@ -135,7 +135,7 @@ class TeamControllerTest extends ApiTestCase
 
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/teams/details?team_id=' . $team->getId());
+        $response = $this->jsonRequest('GET', '/api/teams/' . $team->getId() . '?expand=players,stats');
 
         $this->assertResponseStatusCode(200);
         $this->assertNotNull($response);
@@ -170,22 +170,12 @@ class TeamControllerTest extends ApiTestCase
 
     public function testGetTeamDetailsNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/teams/details?team_id=999');
+        $response = $this->jsonRequest('GET', '/api/teams/999?expand=players,stats');
 
         $this->assertResponseStatusCode(404);
         $this->assertNotNull($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Team with id 999 not found', $response['error']);
-    }
-
-    public function testGetTeamDetailsMissingId(): void
-    {
-        $response = $this->jsonRequest('GET', '/api/teams/details');
-
-        $this->assertResponseStatusCode(400);
-        $this->assertNotNull($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Team ID is required', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Team with id 999 not found', $response['detail']);
     }
 
     public function testTeamWithoutCaptain(): void
