@@ -99,13 +99,20 @@ class TeamController extends BaseController
         ];
     }
 
+    #[Route('/teams/{id}', name: 'app_team_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getTeam(int $id): JsonResponse
+    {
+        return $this->getEntityById('App\Entity\Team', $id, 'Team');
+    }
+
     #[Route('/teams', name: 'app_teams', methods: ['GET'])]
     public function getTeams(Request $request, TeamRepository $teamRepository): JsonResponse
     {
         $id = $request->query->get('id');
 
-        // Si un ID est fourni, retourner l'équipe spécifique
+        // Backward compatibility - deprecated
         if ($id) {
+            $this->logger->warning('Deprecated: Using ?id parameter for team. Use /teams/{id} instead', ['id' => $id]);
             return $this->getEntityById('App\Entity\Team', $id, 'Team');
         }
 
@@ -154,15 +161,10 @@ class TeamController extends BaseController
         }
     }
 
-    #[Route('/teams', name: 'app_team_update', methods: ['PUT'])]
-    public function updateTeam(Request $request): JsonResponse
+    #[Route('/teams/{id}', name: 'app_team_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
+    public function updateTeam(int $id, Request $request): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $team = $this->findEntityOrFail('App\Entity\Team', $id, 'Team');
             $data = $this->getRequestData($request);
 
@@ -175,15 +177,10 @@ class TeamController extends BaseController
         }
     }
 
-    #[Route('/teams', name: 'app_team_patch', methods: ['PATCH'])]
-    public function patchTeam(Request $request): JsonResponse
+    #[Route('/teams/{id}', name: 'app_team_patch', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function patchTeam(int $id, Request $request): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $team = $this->findEntityOrFail('App\Entity\Team', $id, 'Team');
             $data = $this->getRequestData($request);
 
@@ -198,15 +195,10 @@ class TeamController extends BaseController
         }
     }
 
-    #[Route('/teams', name: 'app_team_delete', methods: ['DELETE'])]
-    public function deleteTeam(Request $request): JsonResponse
+    #[Route('/teams/{id}', name: 'app_team_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function deleteTeam(int $id): JsonResponse
     {
         try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
             $team = $this->findEntityOrFail('App\Entity\Team', $id, 'Team');
 
             return $this->securedDeleteEntity($team, 'Team');

@@ -70,7 +70,7 @@ class RegistrationControllerTest extends ApiTestCase
         $this->entityManager->persist($registration);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/registrations?id=' . $registration->getId());
+        $response = $this->jsonRequest('GET', '/api/registrations/' . $registration->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);

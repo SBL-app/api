@@ -55,7 +55,7 @@ class SeasonControllerTest extends ApiTestCase
         $this->entityManager->persist($season);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/season?id=' . $season->getId());
+        $response = $this->jsonRequest('GET', '/api/season/' . $season->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -72,12 +72,12 @@ class SeasonControllerTest extends ApiTestCase
 
     public function testGetSeasonByIdNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/season?id=999');
+        $response = $this->jsonRequest('GET', '/api/season/999');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
         $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Season not found', $response['error']);
+        $this->assertEquals('Season with id 999 not found', $response['error']);
     }
 
     public function testGetSeasonTeams(): void

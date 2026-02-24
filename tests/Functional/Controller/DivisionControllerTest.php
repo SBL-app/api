@@ -74,7 +74,7 @@ class DivisionControllerTest extends ApiTestCase
 
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/division?id=' . $division->getId());
+        $response = $this->jsonRequest('GET', '/api/division/' . $division->getId());
 
         $this->assertResponseStatusCode(200);
         $this->assertJsonResponseStructure([
@@ -91,11 +91,11 @@ class DivisionControllerTest extends ApiTestCase
 
     public function testGetDivisionByIdNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/division?id=999');
+        $response = $this->jsonRequest('GET', '/api/division/999');
 
         $this->assertResponseStatusCode(404);
         $this->assertJsonResponseStructure(['error'], $response);
-        $this->assertEquals('Division not found', $response['error']);
+        $this->assertEquals('Division with id 999 not found', $response['error']);
     }
 
     public function testGetDivisionBySeasonEmpty(): void
@@ -197,7 +197,7 @@ class DivisionControllerTest extends ApiTestCase
         $this->entityManager->persist($division);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/division?id=' . $division->getId());
+        $response = $this->jsonRequest('GET', '/api/division/' . $division->getId());
 
         $this->assertResponseStatusCode(200);
         $this->assertJsonResponseStructure([
@@ -213,12 +213,7 @@ class DivisionControllerTest extends ApiTestCase
         $this->assertEquals('', $response['season_name']);
     }
 
-    public function testGetDivisionInvalidId(): void
-    {
-        $response = $this->jsonRequest('GET', '/api/division?id=invalid');
-
-        $this->assertResponseStatusCode(404);
-        $this->assertJsonResponseStructure(['error'], $response);
-        $this->assertEquals('Division not found', $response['error']);
-    }
+    // Test removed: testGetDivisionInvalidId is no longer relevant with RESTful routes
+    // /api/division/invalid won't match the route constraint requirements: ['id' => '\d+']
+    // and will return a 404 from Symfony directly
 }

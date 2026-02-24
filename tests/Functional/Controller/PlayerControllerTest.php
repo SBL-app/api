@@ -79,7 +79,7 @@ class PlayerControllerTest extends ApiTestCase
         $this->entityManager->persist($player);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/players?id=' . $player->getId());
+        $response = $this->jsonRequest('GET', '/api/players/' . $player->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -132,7 +132,7 @@ class PlayerControllerTest extends ApiTestCase
         $this->entityManager->persist($player);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/players?id=' . $player->getId());
+        $response = $this->jsonRequest('GET', '/api/players/' . $player->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -218,7 +218,7 @@ class PlayerControllerTest extends ApiTestCase
             'discord' => 'updated#5678'
         ];
 
-        $response = $this->jsonRequest('PUT', '/api/players?id=' . $player->getId(), $updateData);
+        $response = $this->jsonRequest('PUT', '/api/players/' . $player->getId(), $updateData);
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -233,12 +233,12 @@ class PlayerControllerTest extends ApiTestCase
             'name' => 'Updated Name'
         ];
 
-        $response = $this->jsonRequest('PUT', '/api/players?id=999', $updateData);
+        $response = $this->jsonRequest('PUT', '/api/players/999', $updateData);
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
         $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Player not found', $response['error']);
+        $this->assertEquals('Player with id 999 not found', $response['error']);
     }
 
     public function testDeletePlayer(): void
@@ -250,7 +250,7 @@ class PlayerControllerTest extends ApiTestCase
         $this->entityManager->persist($player);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('DELETE', '/api/players?id=' . $player->getId());
+        $response = $this->jsonRequest('DELETE', '/api/players/' . $player->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -260,11 +260,11 @@ class PlayerControllerTest extends ApiTestCase
 
     public function testDeletePlayerNotFound(): void
     {
-        $response = $this->jsonRequest('DELETE', '/api/players?id=999');
+        $response = $this->jsonRequest('DELETE', '/api/players/999');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
         $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Player not found', $response['error']);
+        $this->assertEquals('Player with id 999 not found', $response['error']);
     }
 }

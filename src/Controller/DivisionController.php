@@ -49,6 +49,12 @@ class DivisionController extends BaseController
         return $this->formatEntityData($division);
     }
 
+    #[Route("/division/{id}", name: "app_division_get", methods: ["GET"], requirements: ["id" => "\d+"])]
+    public function getDivision(int $id): JsonResponse
+    {
+        return $this->getEntityById("App\Entity\Division", $id, "Division");
+    }
+
     #[Route("/division", name: "app_divisions", methods: ["GET"])]
     public function getDivisions(
         Request $request,
@@ -56,14 +62,10 @@ class DivisionController extends BaseController
     ): JsonResponse {
         $id = $request->query->get("id");
 
-        // Si un ID est fourni, retourner une seule division
+        // Backward compatibility - deprecated
         if ($id) {
-            $division = $divisionRepository->find($id);
-            if (!$division) {
-                return $this->json(["error" => "Division not found"], 404);
-            }
-
-            return $this->json($this->formatDivisionData($division));
+            $this->logger->warning("Deprecated: Using ?id parameter for division. Use /division/{id} instead", ["id" => $id]);
+            return $this->getEntityById("App\Entity\Division", $id, "Division");
         }
 
         // Sinon, retourner toutes les divisions
@@ -366,24 +368,17 @@ class DivisionController extends BaseController
                 $division->setSeason(null);
             }
 
-            $this->saveEntity($division);
-
-            return $this->json($this->formatEntityData($division));
+            return $this->securedCreateEntity($division);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(["error" => $e->getMessage()], $code);
         }
     }
 
-    #[Route("/division", name: "app_division_update", methods: ["PUT"])]
-    public function updateDivision(Request $request): JsonResponse
+    #[Route("/division/{id}", name: "app_division_update", methods: ["PUT"], requirements: ["id" => "\d+"])]
+    public function updateDivision(int $id, Request $request): JsonResponse
     {
         try {
-            $id = $request->query->get("id");
-            if (!$id) {
-                return $this->missingParameterError("id");
-            }
-
             $division = $this->findEntityOrFail(
                 "App\Entity\Division",
                 $id,
@@ -402,24 +397,17 @@ class DivisionController extends BaseController
                 $division->setSeason($season);
             }
 
-            $this->saveEntity($division);
-
-            return $this->json($this->formatEntityData($division));
+            return $this->securedUpdateEntity($division);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(["error" => $e->getMessage()], $code);
         }
     }
 
-    #[Route("/division", name: "app_division_patch", methods: ["PATCH"])]
-    public function patchDivision(Request $request): JsonResponse
+    #[Route("/division/{id}", name: "app_division_patch", methods: ["PATCH"], requirements: ["id" => "\d+"])]
+    public function patchDivision(int $id, Request $request): JsonResponse
     {
         try {
-            $id = $request->query->get("id");
-            if (!$id) {
-                return $this->missingParameterError("id");
-            }
-
             $division = $this->findEntityOrFail(
                 "App\Entity\Division",
                 $id,
@@ -439,32 +427,24 @@ class DivisionController extends BaseController
                 $division->setSeason($season);
             }
 
-            $this->saveEntity($division);
-
-            return $this->json($this->formatEntityData($division));
+            return $this->securedUpdateEntity($division);
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(["error" => $e->getMessage()], $code);
         }
     }
 
-    #[Route("/division", name: "app_division_delete", methods: ["DELETE"])]
-    public function deleteDivision(Request $request): JsonResponse
+    #[Route("/division/{id}", name: "app_division_delete", methods: ["DELETE"], requirements: ["id" => "\d+"])]
+    public function deleteDivision(int $id): JsonResponse
     {
         try {
-            $id = $request->query->get("id");
-            if (!$id) {
-                return $this->missingParameterError("id");
-            }
-
             $division = $this->findEntityOrFail(
                 "App\Entity\Division",
                 $id,
                 "Division",
             );
-            $this->deleteEntity($division);
 
-            return $this->deleteSuccessResponse("Division");
+            return $this->securedDeleteEntity($division, "Division");
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(["error" => $e->getMessage()], $code);
@@ -491,6 +471,7 @@ class DivisionController extends BaseController
         GameStatusRepository $gameStatusRepository,
     ): JsonResponse {
         try {
+            $this->checkModificationPermissions();
             $data = $this->getRequestData($request);
 
             // Validation des paramètres requis
@@ -599,6 +580,8 @@ class DivisionController extends BaseController
                 "total_weeks" => count($schedule),
                 "games" => $createdGames,
             ]);
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            return $this->permissionDeniedResponse($e->getMessage());
         } catch (\Exception $e) {
             $code = $e->getCode() === 404 ? 404 : 400;
             return $this->json(["error" => $e->getMessage()], $code);

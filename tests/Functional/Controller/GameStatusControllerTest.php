@@ -49,7 +49,7 @@ class GameStatusControllerTest extends ApiTestCase
         $this->entityManager->persist($gameStatus);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/gameStatus?id=' . $gameStatus->getId());
+        $response = $this->jsonRequest('GET', '/api/gameStatus/' . $gameStatus->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
