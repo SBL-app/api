@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Exception\ApiProblemException;
 use App\Service\AuthenticationService;
 use App\Security\SecuredControllerTrait;
 use Psr\Log\LoggerInterface;
@@ -12,7 +13,6 @@ use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Classe de base pour tous les contrôleurs de l'API
- * Implémente les principes SOLID et DRY
  */
 abstract class BaseController extends AbstractController
 {
@@ -40,20 +40,9 @@ abstract class BaseController extends AbstractController
         }
         $data = json_decode($content, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \InvalidArgumentException('Invalid JSON format');
+            throw ApiProblemException::badRequest('Invalid JSON format');
         }
         return $data ?? [];
-    }
-
-    /**
-     * Valide qu'une entité existe
-     */
-    protected function validateEntity($entity, string $entityName, $id): JsonResponse|null
-    {
-        if (!$entity) {
-            return $this->json(['error' => "{$entityName} with id {$id} not found"], 404);
-        }
-        return null;
     }
 
     /**
@@ -61,7 +50,10 @@ abstract class BaseController extends AbstractController
      */
     protected function missingParameterError(string $parameterName): JsonResponse
     {
-        return $this->json(['error' => "{$parameterName} is required"], 400);
+        throw ApiProblemException::validationError(
+            "{$parameterName} is required",
+            [['field' => $parameterName, 'message' => 'This value should not be blank.']]
+        );
     }
 
     /**
@@ -69,7 +61,7 @@ abstract class BaseController extends AbstractController
      */
     protected function notFoundError(string $entityName): JsonResponse
     {
-        return $this->json(['error' => "{$entityName} not found"], 404);
+        throw ApiProblemException::notFound("{$entityName} not found");
     }
 
     /**
@@ -77,11 +69,11 @@ abstract class BaseController extends AbstractController
      */
     protected function deleteSuccessResponse(string $entityName): JsonResponse
     {
-        return $this->json(['message' => "{$entityName} deleted successfully"]);
+        return new JsonResponse(null, 204);
     }
 
     /**
-     * Trouve une entité par son ID ou retourne une erreur
+     * Trouve une entité par son ID ou lance une exception
      */
     protected function findEntityOrFail(string $repositoryClass, $id, string $entityName)
     {
@@ -89,7 +81,7 @@ abstract class BaseController extends AbstractController
         $entity = $repository->find($id);
 
         if (!$entity) {
-            throw new \Exception("{$entityName} with id {$id} not found", 404);
+            throw ApiProblemException::notFound("{$entityName} with id {$id} not found");
         }
         return $entity;
     }
@@ -106,19 +98,20 @@ abstract class BaseController extends AbstractController
     /**
      * Méthode sécurisée pour créer une entité
      */
-    protected function securedCreateEntity($entity): JsonResponse
+    protected function securedCreateEntity($entity, ?Request $request = null): JsonResponse
     {
         try {
             $this->checkModificationPermissions();
             $this->saveEntity($entity);
             $this->logger->info('Entity created', ['entity' => get_class($entity), 'id' => $entity->getId()]);
-            return $this->json($this->formatEntityData($entity), 201);
+            $response = $this->json($this->formatEntityData($entity), 201);
+            if ($request) {
+                $response->headers->set('Location', $request->getPathInfo() . '/' . $entity->getId());
+            }
+            return $response;
         } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
             $this->logger->warning('Permission denied for entity creation', ['entity' => get_class($entity), 'error' => $e->getMessage()]);
-            return $this->permissionDeniedResponse($e->getMessage());
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to create entity', ['entity' => get_class($entity), 'error' => $e->getMessage()]);
-            return $this->json(['error' => $e->getMessage()], 400);
+            throw ApiProblemException::forbidden($e->getMessage());
         }
     }
 
@@ -134,11 +127,7 @@ abstract class BaseController extends AbstractController
             return $this->json($this->formatEntityData($entity));
         } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
             $this->logger->warning('Permission denied for entity update', ['entity' => get_class($entity), 'error' => $e->getMessage()]);
-            return $this->permissionDeniedResponse($e->getMessage());
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to update entity', ['entity' => get_class($entity), 'error' => $e->getMessage()]);
-            $code = $e->getCode() === 404 ? 404 : 400;
-            return $this->json(['error' => $e->getMessage()], $code);
+            throw ApiProblemException::forbidden($e->getMessage());
         }
     }
 
@@ -155,11 +144,7 @@ abstract class BaseController extends AbstractController
             return $this->deleteSuccessResponse($entityName);
         } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
             $this->logger->warning('Permission denied for entity deletion', ['entity' => $entityName, 'error' => $e->getMessage()]);
-            return $this->permissionDeniedResponse($e->getMessage());
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to delete entity', ['entity' => $entityName, 'error' => $e->getMessage()]);
-            $code = $e->getCode() === 404 ? 404 : 400;
-            return $this->json(['error' => $e->getMessage()], $code);
+            throw ApiProblemException::forbidden($e->getMessage());
         }
     }
 
@@ -194,13 +179,7 @@ abstract class BaseController extends AbstractController
      */
     protected function getEntityById(string $repositoryClass, $id, string $entityName): JsonResponse
     {
-        try {
-            $entity = $this->findEntityOrFail($repositoryClass, $id, $entityName);
-            return $this->json($this->formatEntityData($entity));
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to get entity by ID', ['entity' => $entityName, 'id' => $id, 'error' => $e->getMessage()]);
-            $code = $e->getCode() === 404 ? 404 : 500;
-            return $this->json(['error' => $e->getMessage()], $code);
-        }
+        $entity = $this->findEntityOrFail($repositoryClass, $id, $entityName);
+        return $this->json($this->formatEntityData($entity));
     }
 }

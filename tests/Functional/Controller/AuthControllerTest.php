@@ -49,8 +49,8 @@ class AuthControllerTest extends ApiTestCase
         $this->assertResponseStatusCodeSame(400);
         $response = json_decode($this->client->getResponse()->getContent(), true);
 
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Username and password are required', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Username and password are required', $response['detail']);
     }
 
     public function testLoginInvalidCredentials(): void
@@ -108,8 +108,8 @@ class AuthControllerTest extends ApiTestCase
         $this->assertResponseStatusCodeSame(401);
         $response = json_decode($this->client->getResponse()->getContent(), true);
 
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Missing or invalid Authorization header', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Missing or invalid Authorization header', $response['detail']);
     }
 
     public function testRefreshTokenMissingToken(): void
@@ -119,8 +119,8 @@ class AuthControllerTest extends ApiTestCase
         $this->assertResponseStatusCodeSame(401);
         $response = json_decode($this->client->getResponse()->getContent(), true);
 
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Missing or invalid Authorization header', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Missing or invalid Authorization header', $response['detail']);
     }
 
     public function testLoginAndVerifyTokenWorkflow(): void

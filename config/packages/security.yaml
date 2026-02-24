@@ -64,9 +64,9 @@ security:
         - { path: ^/api/auth/discord/callback$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord/bot$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth, roles: ROLE_USER }
+        # User profile endpoints accessible to any authenticated user
+        - { path: ^/api/users/me, roles: ROLE_USER, methods: [GET] }
         # Team management endpoints accessible to any authenticated user
-        - { path: ^/api/teams/create-with-captain$, roles: ROLE_USER, methods: [POST] }
-        - { path: ^/api/teams/my-teams$, roles: ROLE_USER, methods: [GET] }
         - { path: ^/api/teams/\d+/members, roles: ROLE_USER }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [GET] }

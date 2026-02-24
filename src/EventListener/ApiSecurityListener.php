@@ -17,8 +17,7 @@ class ApiSecurityListener
         '/api/auth/login-api-key'
     ];
     private const ROLE_USER_PREFIXES = [
-        '/api/teams/create-with-captain',
-        '/api/teams/my-teams',
+        '/api/users/me',
     ];
 
     public function __construct(private Security $security) {}
@@ -45,7 +44,7 @@ class ApiSecurityListener
         }
 
         // Routes de gestion d'équipe accessibles à ROLE_USER (pas besoin de ROLE_API)
-        if ($this->isTeamManagementPath($path)) {
+        if ($this->isUserAccessPath($path)) {
             return;
         }
 
@@ -73,7 +72,7 @@ class ApiSecurityListener
         }
     }
 
-    private function isTeamManagementPath(string $path): bool
+    private function isUserAccessPath(string $path): bool
     {
         foreach (self::ROLE_USER_PREFIXES as $prefix) {
             if (str_starts_with($path, $prefix)) {
