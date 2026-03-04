@@ -1,0 +1,15 @@
+meta {
+  name: Get Season Completion
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/seasons/1/completion
+  body: none
+  auth: none
+}
+
+params:query {
+  ~decimal: 2
+}

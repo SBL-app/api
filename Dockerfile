@@ -4,6 +4,7 @@ FROM php:8.3-fpm-alpine
 # Install system dependencies
 RUN apk add --no-cache \
     postgresql-dev \
+    postgresql-client \
     icu-dev \
     libzip-dev \
     zip \
@@ -49,4 +50,7 @@ RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini \
 
 EXPOSE 9000
 
-CMD ["php-fpm"]
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

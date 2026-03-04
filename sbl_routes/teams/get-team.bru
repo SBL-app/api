@@ -1,0 +1,15 @@
+meta {
+  name: Get Team
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/teams/1
+  body: none
+  auth: none
+}
+
+params:query {
+  ~expand: players,stats
+}

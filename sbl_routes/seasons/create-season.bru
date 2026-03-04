@@ -1,0 +1,27 @@
+meta {
+  name: Create Season
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/seasons
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Saison 1",
+    "start_date": "2026-01-01",
+    "end_date": "2026-06-30"
+  }
+}

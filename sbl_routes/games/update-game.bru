@@ -1,0 +1,33 @@
+meta {
+  name: Update Game
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/games/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "team1": 1,
+    "team2": 2,
+    "division": 1,
+    "status": 2,
+    "week": 1,
+    "date": "2026-01-06",
+    "score1": 2,
+    "score2": 1,
+    "winner": "team1"
+  }
+}

@@ -1,0 +1,26 @@
+meta {
+  name: Update Division
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{base_url}}/api/divisions/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Division A Updated",
+    "season": 1
+  }
+}

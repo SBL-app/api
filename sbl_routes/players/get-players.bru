@@ -1,0 +1,15 @@
+meta {
+  name: Get Players
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/players
+  body: none
+  auth: none
+}
+
+params:query {
+  ~team_id: 1
+}
