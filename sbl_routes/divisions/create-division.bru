@@ -1,0 +1,26 @@
+meta {
+  name: Create Division
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/divisions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Division A",
+    "season": 1
+  }
+}

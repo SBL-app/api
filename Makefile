@@ -35,6 +35,38 @@ install-dev:
 	composer install --prefer-dist --optimize-autoloader
 	@echo "✅ Dépendances de développement installées"
 
+# Base de données locale via Docker
+db-start:
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "⏳ Attente que PostgreSQL soit prêt..."
+	@until docker exec sbl-postgres-dev pg_isready -U sbl -q; do sleep 1; done
+	@echo "✅ PostgreSQL prêt"
+
+db-stop:
+	docker compose -f docker-compose.dev.yml down
+	@echo "✅ PostgreSQL arrêté"
+
+db-schema:
+	@echo "🏗️  Création du schéma PostgreSQL depuis les entités..."
+	-php bin/console doctrine:schema:drop --force
+	php bin/console doctrine:schema:create
+	php bin/console doctrine:migrations:sync-metadata-storage
+	php bin/console doctrine:migrations:version --add --all --no-interaction
+	@echo "✅ Schéma créé"
+
+db-seed: db-schema
+	@echo "📦 Injection des données de migration..."
+	docker exec -i sbl-postgres-dev psql -U sbl -d sbl < migration_postgres.sql
+	@echo "✅ Données injectées"
+
+db-setup: db-start db-seed
+	@echo "✅ Base de données locale prête avec les données"
+
+db-reset:
+	docker compose -f docker-compose.dev.yml down -v
+	$(MAKE) db-setup
+	@echo "✅ Base de données réinitialisée"
+
 # Configuration de la base de données
 setup-db:
 	php bin/console doctrine:database:create --if-not-exists
