@@ -5,7 +5,11 @@ meta {
 }
 
 get {
-  url: {{base_url}}/api/seasons/1/teams
+  url: {{base_url}}/api/seasons/:id/teams
   body: none
   auth: none
+}
+
+params:path {
+  id: 
 }
