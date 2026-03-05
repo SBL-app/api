@@ -5,11 +5,15 @@ meta {
 }
 
 get {
-  url: {{base_url}}/api/seasons/1/completion
+  url: {{base_url}}/api/seasons/:id/completion
   body: none
   auth: none
 }
 
 params:query {
   ~decimal: 2
+}
+
+params:path {
+  id: 
 }
