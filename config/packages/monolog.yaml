@@ -59,6 +59,7 @@ when@prod:
                 handler: mail_dedup
                 excluded_http_codes: [404, 405]
                 buffer_size: 50
+                channels: ["!event", "!doctrine", "!deprecation"]
             mail_dedup:
                 type: deduplication
                 handler: mail_sender
