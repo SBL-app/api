@@ -17,3 +17,5 @@
 /phpunit.xml
 /.phpunit.cache/
 ###< phpunit/phpunit ###
+
+/migration_postgres.sql

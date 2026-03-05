@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sbl-postgres-dev
+    environment:
+      POSTGRES_USER: sbl
+      POSTGRES_PASSWORD: sbl_dev
+      POSTGRES_DB: sbl
+    ports:
+      - "5433:5432"
+    volumes:
+      - sbl-postgres-dev-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sbl"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  sbl-postgres-dev-data:

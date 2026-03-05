@@ -15,7 +15,7 @@ class DivisionControllerTest extends ApiTestCase
 {
     public function testGetDivisionsEmpty(): void
     {
-        $response = $this->jsonRequest('GET', '/api/division');
+        $response = $this->jsonRequest('GET', '/api/divisions');
 
         $this->assertResponseStatusCode(200);
         $this->assertIsArray($response);
@@ -41,7 +41,7 @@ class DivisionControllerTest extends ApiTestCase
 
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/division');
+        $response = $this->jsonRequest('GET', '/api/divisions');
 
         $this->assertResponseStatusCode(200);
         $this->assertIsArray($response);
@@ -74,7 +74,7 @@ class DivisionControllerTest extends ApiTestCase
 
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/division?id=' . $division->getId());
+        $response = $this->jsonRequest('GET', '/api/divisions/' . $division->getId());
 
         $this->assertResponseStatusCode(200);
         $this->assertJsonResponseStructure([
@@ -91,29 +91,20 @@ class DivisionControllerTest extends ApiTestCase
 
     public function testGetDivisionByIdNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/division?id=999');
+        $response = $this->jsonRequest('GET', '/api/divisions/999');
 
         $this->assertResponseStatusCode(404);
-        $this->assertJsonResponseStructure(['error'], $response);
-        $this->assertEquals('Division not found', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Division with id 999 not found', $response['detail']);
     }
 
     public function testGetDivisionBySeasonEmpty(): void
     {
-        $response = $this->jsonRequest('GET', '/api/division/season?id=999');
+        // Season 999 doesn't exist, so we get 404 for the season itself
+        $response = $this->jsonRequest('GET', '/api/seasons/999/divisions');
 
         $this->assertResponseStatusCode(404);
-        $this->assertJsonResponseStructure(['error'], $response);
-        $this->assertEquals('No divisions found for this season', $response['error']);
-    }
-
-    public function testGetDivisionBySeasonMissingId(): void
-    {
-        $response = $this->jsonRequest('GET', '/api/division/season');
-
-        $this->assertResponseStatusCode(400);
-        $this->assertJsonResponseStructure(['error'], $response);
-        $this->assertEquals('Season ID is required', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
     }
 
     public function testGetDivisionBySeasonWithTeams(): void
@@ -158,7 +149,7 @@ class DivisionControllerTest extends ApiTestCase
 
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/division/season?id=' . $season->getId());
+        $response = $this->jsonRequest('GET', '/api/seasons/' . $season->getId() . '/divisions');
 
         $this->assertResponseStatusCode(200);
         $this->assertIsArray($response);
@@ -197,7 +188,7 @@ class DivisionControllerTest extends ApiTestCase
         $this->entityManager->persist($division);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/division?id=' . $division->getId());
+        $response = $this->jsonRequest('GET', '/api/divisions/' . $division->getId());
 
         $this->assertResponseStatusCode(200);
         $this->assertJsonResponseStructure([
@@ -211,14 +202,5 @@ class DivisionControllerTest extends ApiTestCase
         $this->assertEquals('Division Sans Saison', $response['name']);
         $this->assertNull($response['season_id']);
         $this->assertEquals('', $response['season_name']);
-    }
-
-    public function testGetDivisionInvalidId(): void
-    {
-        $response = $this->jsonRequest('GET', '/api/division?id=invalid');
-
-        $this->assertResponseStatusCode(404);
-        $this->assertJsonResponseStructure(['error'], $response);
-        $this->assertEquals('Division not found', $response['error']);
     }
 }

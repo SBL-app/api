@@ -1,0 +1,15 @@
+meta {
+  name: Get Season Teams
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/seasons/:id/teams
+  body: none
+  auth: none
+}
+
+params:path {
+  id: 
+}

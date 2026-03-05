@@ -1,0 +1,25 @@
+meta {
+  name: Patch Game Status
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{base_url}}/api/game-statuses/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "annulé"
+  }
+}

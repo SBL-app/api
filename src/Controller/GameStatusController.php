@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Exception\ApiProblemException;
 use App\Repository\GameStatusRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -23,17 +24,15 @@ class GameStatusController extends BaseController
         ];
     }
 
-    #[Route('/gameStatus', name: 'app_game_status', methods: ['GET'])]
-    public function getGameStatuses(Request $request, GameStatusRepository $gameStatusRepository): JsonResponse
+    #[Route('/game-statuses/{id}', name: 'app_game_status_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getGameStatus(int $id): JsonResponse
     {
-        $id = $request->query->get('id');
+        return $this->getEntityById('App\Entity\GameStatus', $id, 'Game status');
+    }
 
-        // Si un ID est fourni, retourner le statut spécifique
-        if ($id) {
-            return $this->getEntityById('App\Entity\GameStatus', $id, 'Game status');
-        }
-
-        // Sinon, retourner tous les statuts
+    #[Route('/game-statuses', name: 'app_game_status', methods: ['GET'])]
+    public function getGameStatuses(GameStatusRepository $gameStatusRepository): JsonResponse
+    {
         $gameStatuses = $gameStatusRepository->findAll();
         $data = array_map(function ($gameStatus) {
             return $this->formatEntityData($gameStatus);
@@ -41,86 +40,46 @@ class GameStatusController extends BaseController
         return $this->json($data);
     }
 
-    #[Route('/gameStatus', name: 'app_game_status_create', methods: ['POST'])]
+    #[Route('/game-statuses', name: 'app_game_status_create', methods: ['POST'])]
     public function createGameStatus(Request $request): JsonResponse
     {
-        try {
-            $data = $this->getRequestData($request);
-            $gameStatus = new GameStatus();
+        $data = $this->getRequestData($request);
+        $gameStatus = new GameStatus();
 
+        $gameStatus->setName($data['name']);
+
+        return $this->securedCreateEntity($gameStatus, $request);
+    }
+
+    #[Route('/game-statuses/{id}', name: 'app_game_status_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
+    public function updateGameStatus(int $id, Request $request): JsonResponse
+    {
+        $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
+        $data = $this->getRequestData($request);
+
+        $gameStatus->setName($data['name']);
+
+        return $this->securedUpdateEntity($gameStatus);
+    }
+
+    #[Route('/game-statuses/{id}', name: 'app_game_status_patch', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function patchGameStatus(int $id, Request $request): JsonResponse
+    {
+        $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
+        $data = $this->getRequestData($request);
+
+        if (isset($data['name'])) {
             $gameStatus->setName($data['name']);
-
-            $this->saveEntity($gameStatus);
-
-            return $this->json($this->formatEntityData($gameStatus));
-        } catch (\Exception $e) {
-            return $this->json(['error' => $e->getMessage()], 400);
         }
+
+        return $this->securedUpdateEntity($gameStatus);
     }
 
-    #[Route('/gameStatus', name: 'app_game_status_update', methods: ['PUT'])]
-    public function updateGameStatus(Request $request): JsonResponse
+    #[Route('/game-statuses/{id}', name: 'app_game_status_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function deleteGameStatus(int $id): JsonResponse
     {
-        try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
+        $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
 
-            $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
-            $data = $this->getRequestData($request);
-
-            $gameStatus->setName($data['name']);
-
-            $this->saveEntity($gameStatus);
-
-            return $this->json($this->formatEntityData($gameStatus));
-        } catch (\Exception $e) {
-            $code = $e->getCode() === 404 ? 404 : 400;
-            return $this->json(['error' => $e->getMessage()], $code);
-        }
-    }
-
-    #[Route('/gameStatus', name: 'app_game_status_patch', methods: ['PATCH'])]
-    public function patchGameStatus(Request $request): JsonResponse
-    {
-        try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
-            $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
-            $data = $this->getRequestData($request);
-
-            if (isset($data['name'])) {
-                $gameStatus->setName($data['name']);
-            }
-
-            $this->saveEntity($gameStatus);
-
-            return $this->json($this->formatEntityData($gameStatus));
-        } catch (\Exception $e) {
-            $code = $e->getCode() === 404 ? 404 : 400;
-            return $this->json(['error' => $e->getMessage()], $code);
-        }
-    }
-
-    #[Route('/gameStatus', name: 'app_game_status_delete', methods: ['DELETE'])]
-    public function deleteGameStatus(Request $request): JsonResponse
-    {
-        try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
-            $gameStatus = $this->findEntityOrFail('App\Entity\GameStatus', $id, 'GameStatus');
-            $this->deleteEntity($gameStatus);
-            return $this->deleteSuccessResponse('GameStatus');
-        } catch (\Exception $e) {
-            $code = $e->getCode() === 404 ? 404 : 400;
-            return $this->json(['error' => $e->getMessage()], $code);
-        }
+        return $this->securedDeleteEntity($gameStatus, 'GameStatus');
     }
 }

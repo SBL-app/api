@@ -9,7 +9,7 @@ class SeasonControllerTest extends ApiTestCase
 {
     public function testGetSeasonsEmpty(): void
     {
-        $response = $this->jsonRequest('GET', '/api/season');
+        $response = $this->jsonRequest('GET', '/api/seasons');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -27,7 +27,7 @@ class SeasonControllerTest extends ApiTestCase
         $this->entityManager->persist($season);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/season');
+        $response = $this->jsonRequest('GET', '/api/seasons');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -55,7 +55,7 @@ class SeasonControllerTest extends ApiTestCase
         $this->entityManager->persist($season);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/season?id=' . $season->getId());
+        $response = $this->jsonRequest('GET', '/api/seasons/' . $season->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -72,12 +72,12 @@ class SeasonControllerTest extends ApiTestCase
 
     public function testGetSeasonByIdNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/season?id=999');
+        $response = $this->jsonRequest('GET', '/api/seasons/999');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Season not found', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
+        $this->assertEquals('Season with id 999 not found', $response['detail']);
     }
 
     public function testGetSeasonTeams(): void
@@ -91,7 +91,7 @@ class SeasonControllerTest extends ApiTestCase
         $this->entityManager->persist($season);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/season/teams?id=' . $season->getId());
+        $response = $this->jsonRequest('GET', '/api/seasons/' . $season->getId() . '/teams');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -100,15 +100,14 @@ class SeasonControllerTest extends ApiTestCase
 
     public function testGetSeasonTeamsNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/season/teams?id=999');
+        $response = $this->jsonRequest('GET', '/api/seasons/999/teams');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Season not found', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
     }
 
-    public function testGetSeasonPercentage(): void
+    public function testGetSeasonCompletion(): void
     {
         // Créer une saison de test
         $season = new Season();
@@ -119,7 +118,7 @@ class SeasonControllerTest extends ApiTestCase
         $this->entityManager->persist($season);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/season/pourcent?id=' . $season->getId());
+        $response = $this->jsonRequest('GET', '/api/seasons/' . $season->getId() . '/completion');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -129,13 +128,12 @@ class SeasonControllerTest extends ApiTestCase
         $this->assertArrayHasKey('pourcent', $response);
     }
 
-    public function testGetSeasonPercentageNotFound(): void
+    public function testGetSeasonCompletionNotFound(): void
     {
-        $response = $this->jsonRequest('GET', '/api/season/pourcent?id=999');
+        $response = $this->jsonRequest('GET', '/api/seasons/999/completion');
 
         $this->assertResponseStatusCodeSame(404);
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
-        $this->assertEquals('Season not found', $response['error']);
+        $this->assertArrayHasKey('detail', $response);
     }
 }

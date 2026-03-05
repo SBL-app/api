@@ -12,7 +12,7 @@ class TeamStatControllerTest extends ApiTestCase
 {
     public function testGetTeamStatsEmpty(): void
     {
-        $response = $this->jsonRequest('GET', '/api/teamStats');
+        $response = $this->jsonRequest('GET', '/api/team-stats');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -49,7 +49,7 @@ class TeamStatControllerTest extends ApiTestCase
         $this->entityManager->persist($teamStat);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/teamStats');
+        $response = $this->jsonRequest('GET', '/api/team-stats');
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -69,11 +69,12 @@ class TeamStatControllerTest extends ApiTestCase
 
     public function testGetTeamStatByNonExistentTeam(): void
     {
-        $response = $this->jsonRequest('GET', '/api/teamStats?team_id=999');
+        // Empty collection returns 200 with []
+        $response = $this->jsonRequest('GET', '/api/team-stats?team_id=999');
 
-        $this->assertResponseStatusCodeSame(404);
+        $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
-        $this->assertArrayHasKey('error', $response);
+        $this->assertEmpty($response);
     }
 
     public function testGetTeamStatsByTeam(): void
@@ -106,7 +107,7 @@ class TeamStatControllerTest extends ApiTestCase
         $this->entityManager->persist($teamStat);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/teamStats?team_id=' . $team->getId());
+        $response = $this->jsonRequest('GET', '/api/team-stats?team_id=' . $team->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
@@ -146,7 +147,7 @@ class TeamStatControllerTest extends ApiTestCase
         $this->entityManager->persist($teamStat);
         $this->entityManager->flush();
 
-        $response = $this->jsonRequest('GET', '/api/teamStats?division_id=' . $division->getId());
+        $response = $this->jsonRequest('GET', '/api/team-stats?division_id=' . $division->getId());
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);

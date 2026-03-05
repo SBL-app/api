@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Exception\ApiProblemException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Game;
@@ -70,13 +71,12 @@ class GameController extends BaseController
     /**
      * Valide et associe les entités liées à un match
      */
-    private function setGameRelations(Game $game, array $data): ?JsonResponse
+    private function setGameRelations(Game $game, array $data): void
     {
-        // Validation et association des équipes
         if (isset($data['team1'])) {
             $team1 = $this->entityManager->getRepository('App\Entity\Team')->find($data['team1']);
             if ($data['team1'] && !$team1) {
-                return $this->json(['error' => 'Invalid team1 id'], 400);
+                throw ApiProblemException::badRequest('Invalid team1 id');
             }
             $game->setTeam1($team1);
         }
@@ -84,358 +84,221 @@ class GameController extends BaseController
         if (isset($data['team2'])) {
             $team2 = $this->entityManager->getRepository('App\Entity\Team')->find($data['team2']);
             if ($data['team2'] && !$team2) {
-                return $this->json(['error' => 'Invalid team2 id'], 400);
+                throw ApiProblemException::badRequest('Invalid team2 id');
             }
             $game->setTeam2($team2);
         }
 
-        // Validation et association du statut
         if (isset($data['status'])) {
             $status = $this->entityManager->getRepository('App\Entity\GameStatus')->find($data['status']);
             if ($data['status'] && !$status) {
-                return $this->json(['error' => 'Invalid status id'], 400);
+                throw ApiProblemException::badRequest('Invalid status id');
             }
             $game->setStatus($status);
         }
 
-        // Validation et association de la division
         if (isset($data['division'])) {
             $division = $this->entityManager->getRepository('App\Entity\Division')->find($data['division']);
             if ($data['division'] && !$division) {
-                return $this->json(['error' => 'Invalid division id'], 400);
+                throw ApiProblemException::badRequest('Invalid division id');
             }
             $game->setDivision($division);
         }
-
-        return null; // Pas d'erreur
     }
 
-    #[Route('/games/week', name: 'app_games_by_week', methods: ['GET'])]
-    public function getGamesByWeek(Request $request, GameRepository $gameRepository, DivisionRepository $divisionRepository): JsonResponse
+    #[Route('/games/{id}', name: 'app_game_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getGame(int $id): JsonResponse
     {
-        $week = $request->query->get('week');
-        $seasonId = $request->query->get('season_id');
-
-        if (!$week) {
-            return $this->json(['error' => 'week parameter is required'], 400);
-        }
-
-        $criteria = ['week' => (int)$week];
-
-        // Si season_id est fourni, filtrer par saison via les divisions
-        if ($seasonId) {
-            $divisions = $divisionRepository->findBy(['season' => $seasonId]);
-            if (empty($divisions)) {
-                return $this->json(['error' => 'No divisions found for this season'], 404);
-            }
-
-            $games = [];
-            foreach ($divisions as $division) {
-                $divisionGames = $gameRepository->findBy(['week' => (int)$week, 'division' => $division]);
-                $games = array_merge($games, $divisionGames);
-            }
-        } else {
-            $games = $gameRepository->findBy($criteria);
-        }
-
-        if (empty($games)) {
-            return $this->json(['error' => 'No games found for this week'], 404);
-        }
-
-        $data = array_map(fn($game) => $this->formatGameData($game), $games);
-        return $this->json($data);
+        return $this->getEntityById('App\Entity\Game', $id, 'Game');
     }
 
-    #[Route('/games/unscheduled', name: 'app_games_unscheduled', methods: ['GET'])]
-    public function getUnscheduledGames(Request $request, GameRepository $gameRepository, DivisionRepository $divisionRepository): JsonResponse
+    /**
+     * GET /api/games - Liste des matchs avec filtres optionnels
+     *
+     * Filtres supportés :
+     * - ?week=X : filtrer par semaine
+     * - ?season_id=X : filtrer par saison (via divisions)
+     * - ?scheduled=false : uniquement les matchs non planifiés (date null)
+     * - ?team_id=X : filtrer par équipe
+     * - ?division_id=X : filtrer par division
+     */
+    #[Route('/games', name: 'app_games', methods: ['GET'])]
+    public function getGames(Request $request, GameRepository $gameRepository, DivisionRepository $divisionRepository): JsonResponse
     {
-        $week = $request->query->get('week');
-        $seasonId = $request->query->get('season_id');
-
-        if (!$week || !$seasonId) {
-            return $this->json(['error' => 'week and season_id parameters are required'], 400);
-        }
-
-        $divisions = $divisionRepository->findBy(['season' => $seasonId]);
-        if (empty($divisions)) {
-            return $this->json(['error' => 'No divisions found for this season'], 404);
-        }
-
-        $unscheduledGames = [];
-        foreach ($divisions as $division) {
-            $games = $gameRepository->findBy(['week' => (int)$week, 'division' => $division]);
-            foreach ($games as $game) {
-                // Un match est non planifié si sa date est null
-                if ($game->getDate() === null) {
-                    $unscheduledGames[] = $game;
-                }
-            }
-        }
-
-        $data = array_map(fn($game) => $this->formatGameData($game), $unscheduledGames);
-        return $this->json($data);
-    }
-
-    #[Route('/games/{id}/schedule', name: 'app_game_schedule', methods: ['PATCH'])]
-    public function scheduleGame(Request $request, int $id, GameRepository $gameRepository): JsonResponse
-    {
-        try {
-            $game = $gameRepository->find($id);
-            if (!$game) {
-                return $this->json(['error' => 'Game not found'], 404);
-            }
-
-            $data = $this->getRequestData($request);
-
-            if (!isset($data['date'])) {
-                return $this->json(['error' => 'date is required'], 400);
-            }
-
-            $game->setDate(new \DateTime($data['date']));
-            $this->saveEntity($game);
-
-            return $this->json($this->formatGameData($game));
-        } catch (\Exception $e) {
-            return $this->json(['error' => $e->getMessage()], 400);
-        }
-    }
-
-    #[Route('/games', name: 'app_game', methods: ['GET'])]
-    public function getGames(Request $request, GameRepository $gameRepository): JsonResponse
-    {
-        $id = $request->query->get('id');
         $divisionId = $request->query->get('division_id');
         $teamId = $request->query->get('team_id');
+        $week = $request->query->get('week');
+        $seasonId = $request->query->get('season_id');
+        $scheduled = $request->query->get('scheduled');
 
-        // Si un ID est fourni, retourner le match spécifique
-        if ($id) {
-            $game = $gameRepository->find($id);
-            if (!$game) {
-                return $this->json(['error' => 'Game not found'], 404);
+        // Filtre par semaine (anciennement /games/week et /games/unscheduled)
+        if ($week) {
+            $games = [];
+
+            if ($seasonId) {
+                $divisions = $divisionRepository->findBy(['season' => $seasonId]);
+                foreach ($divisions as $division) {
+                    $divisionGames = $gameRepository->findBy(['week' => (int)$week, 'division' => $division]);
+                    $games = array_merge($games, $divisionGames);
+                }
+            } else {
+                $games = $gameRepository->findBy(['week' => (int)$week]);
             }
-            return $this->json($this->formatGameData($game));
+
+            // Filtre scheduled=false → uniquement les matchs sans date
+            if ($scheduled === 'false') {
+                $games = array_filter($games, fn($game) => $game->getDate() === null);
+                $games = array_values($games);
+            }
+
+            $data = array_map(fn($game) => $this->formatGameData($game), $games);
+            return $this->json($data);
         }
 
         // Si team_id est fourni (avec ou sans division_id)
         if ($teamId) {
             $games = $this->getGamesByTeam($gameRepository, (int)$teamId, $divisionId ? (int)$divisionId : null);
-
-            if (empty($games)) {
-                $errorMessage = $divisionId
-                    ? 'No games found for this team in this division'
-                    : 'No games found for this team';
-                return $this->json(['error' => $errorMessage], 404);
-            }
-
-            $data = array_map(function ($game) {
-                return $this->formatGameData($game);
-            }, $games);
+            $data = array_map(fn($game) => $this->formatGameData($game), $games);
             return $this->json($data);
         }
 
-        // Si seulement division_id est fourni, retourner les matchs de cette division
+        // Si seulement division_id est fourni
         if ($divisionId) {
             $games = $gameRepository->findBy(['division' => $divisionId]);
-            if (empty($games)) {
-                return $this->json(['error' => 'No games found for this division'], 404);
-            }
-            $data = array_map(function ($game) {
-                return $this->formatGameData($game);
-            }, $games);
+            $data = array_map(fn($game) => $this->formatGameData($game), $games);
             return $this->json($data);
         }
 
         // Sinon, retourner tous les matchs
         $games = $gameRepository->findAll();
-        $data = array_map(function ($game) {
-            return $this->formatGameData($game);
-        }, $games);
+        $data = array_map(fn($game) => $this->formatGameData($game), $games);
         return $this->json($data);
     }
 
     #[Route('/games', name: 'app_game_create', methods: ['POST'])]
     public function createGame(Request $request): JsonResponse
     {
-        try {
-            $data = $this->getRequestData($request);
-            $game = new Game();
+        $data = $this->getRequestData($request);
+        $game = new Game();
 
-            // Définition des propriétés de base
-            $game->setDate(isset($data['date']) ? new \DateTime($data['date']) : null);
-            $game->setWeek($data['week'] ?? null);
+        $game->setDate(isset($data['date']) ? new \DateTime($data['date']) : null);
+        $game->setWeek($data['week'] ?? null);
 
-            // Gestion des forfaits
-            if (isset($data['is_forfeit']) && $data['is_forfeit']) {
-                $game->setIsForfeit(true);
-                if (isset($data['forfeit_team'])) {
-                    $forfeitTeam = (int)$data['forfeit_team'];
-                    if ($forfeitTeam !== 1 && $forfeitTeam !== 2) {
-                        return $this->json(['error' => 'forfeit_team must be 1 or 2'], 400);
-                    }
-                    $game->setForfeitTeam($forfeitTeam);
-                }
-                if (isset($data['forfeit_reason'])) {
-                    $game->setForfeitReason($data['forfeit_reason']);
-                }
-            } else {
-                // Scores normaux seulement si ce n'est pas un forfait
-                $game->setScore1($data['score1'] ?? null);
-                $game->setScore2($data['score2'] ?? null);
-                $game->setWinner($data['winner'] ?? null);
-            }
-
-            // Validation et association des entités liées
-            $error = $this->setGameRelations($game, $data);
-            if ($error) {
-                return $error;
-            }
-
-            $this->saveEntity($game);
-
-            return $this->json($this->formatGameData($game));
-        } catch (\Exception $e) {
-            return $this->json(['error' => $e->getMessage()], 400);
-        }
-    }
-
-    #[Route('/games', name: 'app_game_update', methods: ['PUT'])]
-    public function updateGame(Request $request): JsonResponse
-    {
-        try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
-            $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
-            $data = $this->getRequestData($request);
-
-            // Mise à jour des propriétés de base
-            $game->setDate(new \DateTime($data['date']));
-            $game->setWeek($data['week']);
-
-            // Gestion des forfaits
-            if (isset($data['is_forfeit']) && $data['is_forfeit']) {
-                $game->setIsForfeit(true);
-                if (isset($data['forfeit_team'])) {
-                    $forfeitTeam = (int)$data['forfeit_team'];
-                    if ($forfeitTeam !== 1 && $forfeitTeam !== 2) {
-                        return $this->json(['error' => 'forfeit_team must be 1 or 2'], 400);
-                    }
-                    $game->setForfeitTeam($forfeitTeam);
-                }
-                if (isset($data['forfeit_reason'])) {
-                    $game->setForfeitReason($data['forfeit_reason']);
-                }
-            } else {
-                // Réinitialiser les données de forfait et utiliser les scores normaux
-                $game->setIsForfeit(false);
-                $game->setForfeitTeam(null);
-                $game->setForfeitReason(null);
-                $game->setScore1($data['score1']);
-                $game->setScore2($data['score2']);
-                $game->setWinner($data['winner']);
-            }
-
-            // Validation et association des entités liées (mode strict pour PUT)
-            $team1 = $this->findEntityOrFail('App\Entity\Team', $data['team1'], 'Team1');
-            $team2 = $this->findEntityOrFail('App\Entity\Team', $data['team2'], 'Team2');
-            $status = $this->findEntityOrFail('App\Entity\GameStatus', $data['status'], 'GameStatus');
-            $division = $this->findEntityOrFail('App\Entity\Division', $data['division'], 'Division');
-
-            $game->setTeam1($team1);
-            $game->setTeam2($team2);
-            $game->setStatus($status);
-            $game->setDivision($division);
-
-            $this->saveEntity($game);
-
-            return $this->json($this->formatGameData($game));
-        } catch (\Exception $e) {
-            $code = $e->getCode() === 404 ? 404 : 400;
-            return $this->json(['error' => $e->getMessage()], $code);
-        }
-    }
-
-    #[Route('/games', name: 'app_game_patch', methods: ['PATCH'])]
-    public function patchGame(Request $request): JsonResponse
-    {
-        try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
-            }
-
-            $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
-            $data = $this->getRequestData($request);
-
-            // Mise à jour conditionnelle des propriétés
-            if (isset($data['date'])) {
-                $game->setDate(new \DateTime($data['date']));
-            }
-            if (isset($data['week'])) {
-                $game->setWeek($data['week']);
-            }
-
-            // Gestion des forfaits
-            if (isset($data['is_forfeit'])) {
-                $game->setIsForfeit((bool)$data['is_forfeit']);
-            }
+        if (isset($data['is_forfeit']) && $data['is_forfeit']) {
+            $game->setIsForfeit(true);
             if (isset($data['forfeit_team'])) {
                 $forfeitTeam = (int)$data['forfeit_team'];
-                if ($forfeitTeam !== 1 && $forfeitTeam !== 2 && $forfeitTeam !== null) {
-                    return $this->json(['error' => 'forfeit_team must be 1, 2, or null'], 400);
+                if ($forfeitTeam !== 1 && $forfeitTeam !== 2) {
+                    throw ApiProblemException::badRequest('forfeit_team must be 1 or 2');
                 }
                 $game->setForfeitTeam($forfeitTeam);
             }
             if (isset($data['forfeit_reason'])) {
                 $game->setForfeitReason($data['forfeit_reason']);
             }
-
-            // Mise à jour des scores seulement si ce n'est pas un forfait ou si on désactive le forfait
-            if (!$game->isForfeit()) {
-                if (isset($data['score1'])) {
-                    $game->setScore1($data['score1']);
-                }
-                if (isset($data['score2'])) {
-                    $game->setScore2($data['score2']);
-                }
-                if (isset($data['winner'])) {
-                    $game->setWinner($data['winner']);
-                }
-            }
-
-            // Validation et association des entités liées
-            $error = $this->setGameRelations($game, $data);
-            if ($error) {
-                return $error;
-            }
-
-            $this->saveEntity($game);
-
-            return $this->json($this->formatGameData($game));
-        } catch (\Exception $e) {
-            $code = $e->getCode() === 404 ? 404 : 400;
-            return $this->json(['error' => $e->getMessage()], $code);
+        } else {
+            $game->setScore1($data['score1'] ?? null);
+            $game->setScore2($data['score2'] ?? null);
+            $game->setWinner($data['winner'] ?? null);
         }
+
+        $this->setGameRelations($game, $data);
+
+        return $this->securedCreateEntity($game, $request);
     }
 
-    #[Route('/games', name: 'app_game_delete', methods: ['DELETE'])]
-    public function deleteGame(Request $request): JsonResponse
+    #[Route('/games/{id}', name: 'app_game_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
+    public function updateGame(int $id, Request $request): JsonResponse
     {
-        try {
-            $id = $request->query->get('id');
-            if (!$id) {
-                return $this->missingParameterError('id');
+        $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
+        $data = $this->getRequestData($request);
+
+        $game->setDate(new \DateTime($data['date']));
+        $game->setWeek($data['week']);
+
+        if (isset($data['is_forfeit']) && $data['is_forfeit']) {
+            $game->setIsForfeit(true);
+            if (isset($data['forfeit_team'])) {
+                $forfeitTeam = (int)$data['forfeit_team'];
+                if ($forfeitTeam !== 1 && $forfeitTeam !== 2) {
+                    throw ApiProblemException::badRequest('forfeit_team must be 1 or 2');
+                }
+                $game->setForfeitTeam($forfeitTeam);
             }
-
-            $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
-            $this->deleteEntity($game);
-
-            return $this->deleteSuccessResponse('Game');
-        } catch (\Exception $e) {
-            $code = $e->getCode() === 404 ? 404 : 500;
-            return $this->json(['error' => $e->getMessage()], $code);
+            if (isset($data['forfeit_reason'])) {
+                $game->setForfeitReason($data['forfeit_reason']);
+            }
+        } else {
+            $game->setIsForfeit(false);
+            $game->setForfeitTeam(null);
+            $game->setForfeitReason(null);
+            $game->setScore1($data['score1']);
+            $game->setScore2($data['score2']);
+            $game->setWinner($data['winner']);
         }
+
+        $team1 = $this->findEntityOrFail('App\Entity\Team', $data['team1'], 'Team1');
+        $team2 = $this->findEntityOrFail('App\Entity\Team', $data['team2'], 'Team2');
+        $status = $this->findEntityOrFail('App\Entity\GameStatus', $data['status'], 'GameStatus');
+        $division = $this->findEntityOrFail('App\Entity\Division', $data['division'], 'Division');
+
+        $game->setTeam1($team1);
+        $game->setTeam2($team2);
+        $game->setStatus($status);
+        $game->setDivision($division);
+
+        return $this->securedUpdateEntity($game);
+    }
+
+    #[Route('/games/{id}', name: 'app_game_patch', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function patchGame(int $id, Request $request): JsonResponse
+    {
+        $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
+        $data = $this->getRequestData($request);
+
+        if (isset($data['date'])) {
+            $game->setDate(new \DateTime($data['date']));
+        }
+        if (isset($data['week'])) {
+            $game->setWeek($data['week']);
+        }
+
+        if (isset($data['is_forfeit'])) {
+            $game->setIsForfeit((bool)$data['is_forfeit']);
+        }
+        if (isset($data['forfeit_team'])) {
+            $forfeitTeam = (int)$data['forfeit_team'];
+            if ($forfeitTeam !== 1 && $forfeitTeam !== 2 && $forfeitTeam !== null) {
+                throw ApiProblemException::badRequest('forfeit_team must be 1, 2, or null');
+            }
+            $game->setForfeitTeam($forfeitTeam);
+        }
+        if (isset($data['forfeit_reason'])) {
+            $game->setForfeitReason($data['forfeit_reason']);
+        }
+
+        if (!$game->isForfeit()) {
+            if (isset($data['score1'])) {
+                $game->setScore1($data['score1']);
+            }
+            if (isset($data['score2'])) {
+                $game->setScore2($data['score2']);
+            }
+            if (isset($data['winner'])) {
+                $game->setWinner($data['winner']);
+            }
+        }
+
+        $this->setGameRelations($game, $data);
+
+        return $this->securedUpdateEntity($game);
+    }
+
+    #[Route('/games/{id}', name: 'app_game_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function deleteGame(int $id): JsonResponse
+    {
+        $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
+
+        return $this->securedDeleteEntity($game, 'Game');
     }
 }
