@@ -70,4 +70,3 @@ when@prod:
                 from_email: "%env(MAILER_FROM)%"
                 subject: "[SBL API] Erreur en production"
                 level: error
-                mailer: mailer.mailer
