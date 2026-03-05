@@ -247,8 +247,11 @@ class AuthController extends AbstractController
 
             return new RedirectResponse($redirectUrl);
         } catch (\Exception $e) {
-            $this->logger->error('Discord authentication failed', ['error' => $e->getMessage()]);
-            throw new ApiProblemException(500, 'Discord authentication failed', '/problems/internal-error', 'Internal Server Error');
+            $this->logger->error('Discord authentication failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw new ApiProblemException(500, 'Discord authentication failed: ' . $e->getMessage(), '/problems/internal-error', 'Internal Server Error');
         }
     }
 
