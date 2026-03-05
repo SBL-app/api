@@ -105,3 +105,4 @@ Game ← MatchProposal → User (proposer, receiver)
 - Query parameter expansion: some endpoints support `?expand=players,stats` for nested data
 - Rate limiting on auth endpoints via `config/packages/rate_limiter.yaml`
 - Logging via Monolog (`config/packages/monolog.yaml`), app logs use `app` channel
+- Email alerts in prod: `MAILER_DSN`, `MAILER_FROM`, `MAILER_TO` — handlers chain: `mail_buffer → mail_dedup → mail_sender` (see `config/packages/monolog.yaml`)
