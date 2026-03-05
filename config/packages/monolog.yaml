@@ -52,3 +52,22 @@ when@prod:
                 channels: [deprecation]
                 path: php://stderr
                 formatter: monolog.formatter.json
+            # --- Alertes email ---
+            mail_buffer:
+                type: fingers_crossed
+                action_level: error
+                handler: mail_dedup
+                excluded_http_codes: [404, 405]
+                buffer_size: 50
+            mail_dedup:
+                type: deduplication
+                handler: mail_sender
+                store: "%kernel.cache_dir%/monolog_dedup.log"
+                time: 300
+            mail_sender:
+                type: symfony_mailer
+                to_email: "%env(MAILER_TO)%"
+                from_email: "%env(MAILER_FROM)%"
+                subject: "[SBL API] Erreur en production"
+                level: error
+                mailer: mailer.mailer
