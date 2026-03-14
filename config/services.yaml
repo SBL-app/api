@@ -9,6 +9,9 @@ parameters:
     discord.redirect_uri: '%env(DISCORD_REDIRECT_URI)%'
     discord.bot_secret: '%env(DISCORD_BOT_SECRET)%'
     discord.frontend_url: '%env(FRONTEND_URL)%'
+    vapid.public_key: '%env(VAPID_PUBLIC_KEY)%'
+    vapid.private_key: '%env(VAPID_PRIVATE_KEY)%'
+    vapid.subject: '%env(VAPID_SUBJECT)%'
 
 services:
     # default configuration for services in *this* file
@@ -36,3 +39,9 @@ services:
             $redirectUri: '%discord.redirect_uri%'
             $botSecret: '%discord.bot_secret%'
             $frontendUrl: '%discord.frontend_url%'
+
+    App\Service\PushNotificationService:
+        arguments:
+            $vapidPublicKey: '%vapid.public_key%'
+            $vapidPrivateKey: '%vapid.private_key%'
+            $vapidSubject: '%vapid.subject%'

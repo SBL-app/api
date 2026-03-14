@@ -52,6 +52,9 @@ class Game
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $forfeitReason = null;
 
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $reminderSentAt = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -217,6 +220,18 @@ class Game
     public function setForfeitReason(?string $forfeitReason): static
     {
         $this->forfeitReason = $forfeitReason;
+
+        return $this;
+    }
+
+    public function getReminderSentAt(): ?\DateTimeInterface
+    {
+        return $this->reminderSentAt;
+    }
+
+    public function setReminderSentAt(?\DateTimeInterface $reminderSentAt): static
+    {
+        $this->reminderSentAt = $reminderSentAt;
 
         return $this;
     }

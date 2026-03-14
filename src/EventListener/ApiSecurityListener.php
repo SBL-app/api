@@ -18,6 +18,7 @@ class ApiSecurityListener
     ];
     private const ROLE_USER_PREFIXES = [
         '/api/users/me',
+        '/api/push/subscribe',
     ];
 
     public function __construct(private Security $security) {}

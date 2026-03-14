@@ -8,6 +8,7 @@ use App\Repository\MatchProposalRepository;
 use App\Repository\GameRepository;
 use App\Repository\UserRepository;
 use App\Repository\TeamRepository;
+use App\Service\PushNotificationService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -125,7 +126,8 @@ class MatchProposalController extends BaseController
         GameRepository $gameRepository,
         UserRepository $userRepository,
         TeamRepository $teamRepository,
-        MatchProposalRepository $proposalRepository
+        MatchProposalRepository $proposalRepository,
+        PushNotificationService $pushNotificationService,
     ): JsonResponse {
         try {
             $this->checkModificationPermissions();
@@ -199,6 +201,13 @@ class MatchProposalController extends BaseController
 
         $this->saveEntity($proposal);
 
+        $pushNotificationService->sendToUser(
+            $receiver,
+            'Nouveau match proposé',
+            sprintf('%s vous propose un match le %s', $proposerTeam->getName(), $proposal->getProposedDate()->format('d/m/Y à H:i')),
+            '/matches/proposals',
+        );
+
         $response = $this->json([
             'proposal' => $this->formatEntityData($proposal),
             'receiver_discord_id' => $receiver->getDiscordId(),
@@ -213,7 +222,8 @@ class MatchProposalController extends BaseController
         int $id,
         MatchProposalRepository $proposalRepository,
         UserRepository $userRepository,
-        GameRepository $gameRepository
+        GameRepository $gameRepository,
+        PushNotificationService $pushNotificationService,
     ): JsonResponse {
         try {
             $this->checkModificationPermissions();
@@ -266,6 +276,35 @@ class MatchProposalController extends BaseController
         }
 
         $this->entityManager->flush();
+
+        if (isset($data['status'])) {
+            $game = $proposal->getGame();
+            $receiver = $proposal->getReceiver();
+            $receiverTeamName = null;
+
+            if ($game->getTeam1()?->getCaptainUser()?->getId() === $receiver?->getId()) {
+                $receiverTeamName = $game->getTeam1()?->getName();
+            } elseif ($game->getTeam2()?->getCaptainUser()?->getId() === $receiver?->getId()) {
+                $receiverTeamName = $game->getTeam2()?->getName();
+            }
+            $receiverTeamName ??= $receiver?->getDiscordUsername() ?? 'L\'adversaire';
+
+            if ($data['status'] === MatchProposal::STATUS_ACCEPTED) {
+                $pushNotificationService->sendToUser(
+                    $proposal->getProposer(),
+                    'Proposition acceptée',
+                    sprintf('%s a accepté votre proposition de match', $receiverTeamName),
+                    '/matches/proposals',
+                );
+            } elseif ($data['status'] === MatchProposal::STATUS_REJECTED) {
+                $pushNotificationService->sendToUser(
+                    $proposal->getProposer(),
+                    'Proposition refusée',
+                    sprintf('%s a refusé votre proposition de match', $receiverTeamName),
+                    '/matches/proposals',
+                );
+            }
+        }
 
         return $this->json($this->formatEntityData($proposal));
     }

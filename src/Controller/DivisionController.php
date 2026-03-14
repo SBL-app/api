@@ -8,6 +8,7 @@ use App\Repository\TeamStatRepository;
 use App\Repository\TeamRepository;
 use App\Repository\SeasonRepository;
 use App\Repository\GameStatusRepository;
+use App\Service\PushNotificationService;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -39,6 +40,7 @@ class DivisionController extends BaseController
             "season_name" => $entity->getSeason()
                 ? $entity->getSeason()->getName()
                 : "",
+            "is_finalized" => $entity->isFinalized(),
         ];
     }
 
@@ -349,8 +351,12 @@ class DivisionController extends BaseController
     }
 
     #[Route("/divisions/{id}", name: "app_division_patch", methods: ["PATCH"], requirements: ["id" => "\d+"])]
-    public function patchDivision(int $id, Request $request): JsonResponse
-    {
+    public function patchDivision(
+        int $id,
+        Request $request,
+        TeamStatRepository $teamStatRepository,
+        PushNotificationService $pushNotificationService,
+    ): JsonResponse {
         $division = $this->findEntityOrFail(
             "App\Entity\Division",
             $id,
@@ -370,7 +376,42 @@ class DivisionController extends BaseController
             $division->setSeason($season);
         }
 
-        return $this->securedUpdateEntity($division);
+        $shouldNotify = isset($data["is_finalized"])
+            && $data["is_finalized"] === true
+            && !$division->isFinalized();
+
+        if ($shouldNotify) {
+            $division->setIsFinalized(true);
+        }
+
+        $response = $this->securedUpdateEntity($division);
+
+        if ($shouldNotify) {
+            $teamStats = $teamStatRepository->findBy(['division' => $division]);
+            $users = [];
+            foreach ($teamStats as $teamStat) {
+                foreach ($teamStat->getTeam()->getMembers() as $member) {
+                    if ($member->getUser() !== null) {
+                        $users[] = $member->getUser();
+                    }
+                }
+            }
+            try {
+                $pushNotificationService->sendToUsers(
+                    $users,
+                    'Résultats finaux — ' . $division->getName(),
+                    'Les résultats de la division ' . $division->getName() . ' sont disponibles',
+                    '/divisions/' . $division->getId(),
+                );
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to send push notifications for division finalization', [
+                    'division_id' => $division->getId(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $response;
     }
 
     #[Route("/divisions/{id}", name: "app_division_delete", methods: ["DELETE"], requirements: ["id" => "\d+"])]

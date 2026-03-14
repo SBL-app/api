@@ -19,6 +19,9 @@ class Division
     #[ORM\ManyToOne]
     private ?Season $season = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isFinalized = false;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -44,6 +47,18 @@ class Division
     public function setSeason(?Season $seasonId): static
     {
         $this->season = $seasonId;
+
+        return $this;
+    }
+
+    public function isFinalized(): bool
+    {
+        return $this->isFinalized;
+    }
+
+    public function setIsFinalized(bool $isFinalized): static
+    {
+        $this->isFinalized = $isFinalized;
 
         return $this;
     }
