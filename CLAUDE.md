@@ -36,9 +36,10 @@ make clean                # Clear cache/logs/coverage
 ### Controller Hierarchy
 
 All API controllers extend `BaseController` which provides:
-- `parseJsonBody()` — extracts and validates JSON request bodies
-- `persistEntity()` / `removeEntity()` — Doctrine persistence wrappers
-- `formatResponse()` — standardized JSON responses
+- `getRequestData(Request)` — extracts and validates JSON request bodies
+- `saveEntity()` / `deleteEntity()` — Doctrine persistence wrappers
+- `findEntityOrFail()` — find entity by ID or throw ApiProblemException
+- `securedCreateEntity()` / `securedUpdateEntity()` / `securedDeleteEntity()` — permission-checked persistence
 - `formatEntityData()` — abstract method each controller implements to serialize its entity
 
 `BaseController` uses `SecuredControllerTrait` (from `src/Security/`) which adds:
@@ -59,6 +60,7 @@ All API controllers extend `BaseController` which provides:
 - GET `/api/*` → `PUBLIC_ACCESS` (read-only is public)
 - POST/PUT/PATCH/DELETE `/api/*` → requires `ROLE_API`
 - `/api/users/me`, `/api/teams/*/members` → requires `ROLE_USER`
+- `/api/push/subscribe` → requires `ROLE_USER`
 
 **`ApiAccessVoter`** (`src/Security/`) handles fine-grained access: `READ` for any authenticated user, `WRITE` for `ROLE_API` or `ROLE_ADMIN`.
 
@@ -68,9 +70,17 @@ All API controllers extend `BaseController` which provides:
 
 `ApiProblemExceptionListener` (`src/EventListener/`) catches exceptions on `/api` routes and returns Problem+JSON responses.
 
+### Push Notifications
+
+`PushNotificationService` (`src/Service/`) sends Web Push notifications via VAPID keys (minishlink/web-push).
+
+**Scheduler** : `MatchReminderSchedule` runs hourly via Symfony Messenger to send match reminders 24h before game time. Docker service `scheduler` runs `messenger:consume scheduler_default`.
+
+**Integration points** : notifications are sent from `MatchProposalController` (new/accepted/rejected proposals) and `DivisionController` (division finalization). All notification calls are wrapped in try/catch to avoid blocking main actions.
+
 ### Testing
 
-- **Unit** (`tests/Unit/Entity/`) — entity logic and validation
+- **Unit** (`tests/Unit/Entity/`, `tests/Unit/MessageHandler/`) — entity logic, handler logic with mocks
 - **Integration** (`tests/Integration/Repository/`) — repository queries against SQLite
 - **Functional** (`tests/Functional/Controller/`) — full HTTP request/response tests
 
@@ -82,6 +92,7 @@ Test environment uses SQLite (configured in `.env.test`).
 
 - `AuthenticationService` (`src/Service/`) — JWT creation/validation, token revocation, API key validation
 - `DiscordOAuthService` (`src/Service/`) — OAuth2 flow, Discord user sync, bot secret validation
+- `PushNotificationService` (`src/Service/`) — Web Push notifications via VAPID, expired subscription cleanup
 
 ### Routing
 
@@ -96,7 +107,98 @@ Season → Division → Game (team1, team2, gameStatus)
 Season → Registration → Team
 Division → TeamStat → Team
 Game ← MatchProposal → User (proposer, receiver)
+Game ← MatchReport → Team (requested by User)
+User ← PushSubscription (endpoint, VAPID keys)
 ```
+
+## Features
+
+### 1. Authentication (`AuthController`)
+- Login by username/password → JWT token
+- Login by API key (bot/service access)
+- JWT token verify, refresh, logout (with token revocation)
+- Discord OAuth2 flow (authorize, callback, user sync)
+- Discord bot authentication via shared secret (`X-Bot-Secret` header)
+- Rate limiting on auth endpoints
+
+### 2. User Profile (`UserController`)
+- `GET /api/users/me` — current user profile
+- `GET /api/users/me/teams` — teams the user belongs to
+
+### 3. Teams (`TeamController`)
+- CRUD on teams (`/api/teams`)
+- Team member management (`/api/teams/{id}/members`) — add, remove, change roles
+- Roles: `ROLE_CAPTAIN`, `ROLE_MEMBER`
+- Captain can manage team members
+
+### 4. Players (`PlayerController`)
+- CRUD on players (`/api/players`)
+
+### 5. Seasons (`SeasonController`)
+- CRUD on seasons (`/api/seasons`)
+- `GET /api/seasons/current` — active season based on dates
+- `GET /api/seasons/current/week` — current week number
+- `GET /api/seasons/{id}/completion` — season completion stats
+- `GET /api/seasons/{id}/teams` — teams registered for a season
+
+### 6. Divisions (`DivisionController`)
+- CRUD on divisions (`/api/divisions`)
+- `GET /api/seasons/{id}/divisions` — divisions with team standings
+- `GET /api/divisions/{id}/teams` — teams with players ranked by points
+- `GET /api/divisions/{id}/games` — games grouped by week
+- `GET /api/divisions/{id}/details` — full division view (ranking + games + teams)
+- `POST /api/divisions/{id}/schedule` — generate round-robin or double round-robin schedule
+- `PATCH /api/divisions/{id}` with `is_finalized: true` — finalize and notify all team members via push
+
+### 7. Games (`GameController`)
+- CRUD on games (`/api/games`)
+- Filters: `?team_id=`, `?division_id=`, `?season_id=`, `?week=`
+- Forfeit management: `is_forfeit`, `forfeit_team`, `forfeit_reason` with automatic 4-0 score
+
+### 8. Game Statuses (`GameStatusController`)
+- CRUD on game statuses (`/api/game-statuses`) — e.g. "scheduled", "played", "reported"
+
+### 9. Team Stats (`TeamStatController`)
+- CRUD on team statistics (`/api/team-stats`)
+- Filter by `?division_id=`
+- Stats: wins, losses, ties, winRounds, looseRounds, points
+
+### 10. Registrations (`RegistrationController`)
+- CRUD on season registrations (`/api/registrations`)
+- Links teams to seasons
+
+### 11. Match Proposals (`MatchProposalController`)
+- CRUD on match date proposals (`/api/match-proposals`)
+- Captains propose dates, opponent captain accepts/rejects
+- Counter-proposals supported (status: pending → accepted/rejected/counter)
+- Accepted proposal updates the game date, rejects other pending proposals
+- Push notifications on new proposals and responses
+- Filters: `?game_id=`, `?receiver_id=`, `?discord_id=`, `?status=`
+
+### 12. Match Reports (`MatchReportController`)
+- `POST /api/games/{id}/report` — captain postpones a match (uses 1 of 2 allowed per season)
+- `POST /api/games/{id}/admin-report` — admin forces postponement for both teams (punishment)
+- `GET /api/games/{id}/reports` — list reports for a game
+- `GET /api/teams/{id}/reports?season_id=X` — team reports with count and remaining
+- Reported match: date set to null, status changed to "reported"
+
+### 13. Push Notifications (`PushSubscriptionController`)
+- `GET /api/push/vapid-public-key` — public VAPID key for frontend
+- `POST /api/push/subscribe` — subscribe to push notifications (ROLE_USER)
+- `DELETE /api/push/subscribe` — unsubscribe
+- Automatic cleanup of expired subscriptions on send failure
+
+### 14. Match Reminders (Scheduler)
+- Hourly cron via Symfony Scheduler + Messenger
+- Sends push notifications to all team members 24h before a game
+- Tracks `game.reminder_sent_at` to avoid duplicate reminders
+
+### 15. Logging & Email Alerts
+- Monolog with rotating file handlers (INFO 14 days, ERROR 30 days)
+- Email alerts on ERROR/CRITICAL via `fingers_crossed` → `deduplication` → `symfony_mailer`
+- 404/405 excluded from email alerts
+- Test command: `php bin/console app:test-email-alert`
+- Env: `MAILER_DSN`, `MAILER_FROM`, `MAILER_TO`
 
 ## Conventions
 
@@ -105,4 +207,6 @@ Game ← MatchProposal → User (proposer, receiver)
 - Query parameter expansion: some endpoints support `?expand=players,stats` for nested data
 - Rate limiting on auth endpoints via `config/packages/rate_limiter.yaml`
 - Logging via Monolog (`config/packages/monolog.yaml`), app logs use `app` channel
-- Email alerts in prod: `MAILER_DSN`, `MAILER_FROM`, `MAILER_TO` — handlers chain: `mail_buffer → mail_dedup → mail_sender` (see `config/packages/monolog.yaml`)
+- Email alerts in prod: handlers chain `mail_buffer → mail_dedup → mail_sender`
+- Push notification calls always wrapped in try/catch to avoid blocking main logic
+- Env: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` for Web Push
