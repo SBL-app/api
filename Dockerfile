@@ -7,6 +7,7 @@ RUN apk add --no-cache \
     postgresql-client \
     icu-dev \
     libzip-dev \
+    gmp-dev \
     zip \
     unzip \
     git \
@@ -14,7 +15,8 @@ RUN apk add --no-cache \
     pdo_pgsql \
     intl \
     zip \
-    opcache
+    opcache \
+    gmp
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -51,6 +53,7 @@ RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini \
 EXPOSE 9000
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY docker-scheduler-entrypoint.sh /usr/local/bin/docker-scheduler-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-scheduler-entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

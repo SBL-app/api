@@ -16,28 +16,20 @@ class GameRepository extends ServiceEntityRepository
         parent::__construct($registry, Game::class);
     }
 
-    //    /**
-    //     * @return Game[] Returns an array of Game objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('g')
-    //            ->andWhere('g.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('g.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
-
-    //    public function findOneBySomeField($value): ?Game
-    //    {
-    //        return $this->createQueryBuilder('g')
-    //            ->andWhere('g.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    /**
+     * Trouve les matchs dont la date est entre $from et $to et dont le rappel n'a pas encore été envoyé.
+     *
+     * @return Game[]
+     */
+    public function findGamesForReminder(\DateTimeInterface $from, \DateTimeInterface $to): array
+    {
+        return $this->createQueryBuilder('g')
+            ->where('g.date > :from')
+            ->andWhere('g.date <= :to')
+            ->andWhere('g.reminderSentAt IS NULL')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getResult();
+    }
 }

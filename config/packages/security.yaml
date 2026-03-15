@@ -68,6 +68,8 @@ security:
         - { path: ^/api/users/me, roles: ROLE_USER, methods: [GET] }
         # Team management endpoints accessible to any authenticated user
         - { path: ^/api/teams/\d+/members, roles: ROLE_USER }
+        # Push subscription endpoints accessible to any authenticated user (ROLE_USER, not ROLE_API)
+        - { path: ^/api/push/subscribe, roles: ROLE_USER }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [GET] }
 
