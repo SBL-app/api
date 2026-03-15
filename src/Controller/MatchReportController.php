@@ -6,8 +6,6 @@ use App\Entity\MatchReport;
 use App\Exception\ApiProblemException;
 use App\Repository\GameStatusRepository;
 use App\Repository\MatchReportRepository;
-use App\Repository\SeasonRepository;
-use App\Repository\TeamRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -84,7 +82,7 @@ class MatchReportController extends BaseController
             $game->setStatus($reportedStatus);
         }
 
-        $this->saveEntity($report);
+        $this->entityManager->persist($report);
         $this->entityManager->persist($game);
         $this->entityManager->flush();
 
@@ -169,8 +167,6 @@ class MatchReportController extends BaseController
         int $id,
         Request $request,
         MatchReportRepository $reportRepository,
-        TeamRepository $teamRepository,
-        SeasonRepository $seasonRepository,
     ): JsonResponse {
         $team = $this->findEntityOrFail('App\Entity\Team', $id, 'Team');
 

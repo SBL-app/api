@@ -33,6 +33,7 @@ final class Version20260315100000 extends AbstractMigration
         $this->addSql('CREATE INDEX IDX_match_report_game ON match_report (game_id)');
         $this->addSql('CREATE INDEX IDX_match_report_team ON match_report (team_id)');
         $this->addSql('COMMENT ON COLUMN match_report.created_at IS \'(DC2Type:datetime_immutable)\'');
+        $this->addSql("INSERT INTO game_status (name) SELECT 'reported' WHERE NOT EXISTS (SELECT 1 FROM game_status WHERE name = 'reported')");
     }
 
     public function down(Schema $schema): void
