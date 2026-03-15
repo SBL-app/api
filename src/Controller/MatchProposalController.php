@@ -201,12 +201,18 @@ class MatchProposalController extends BaseController
 
         $this->saveEntity($proposal);
 
-        $pushNotificationService->sendToUser(
-            $receiver,
-            'Nouveau match proposé',
-            sprintf('%s vous propose un match le %s', $proposerTeam->getName(), $proposal->getProposedDate()->format('d/m/Y à H:i')),
-            '/matches/proposals',
-        );
+        try {
+            $pushNotificationService->sendToUser(
+                $receiver,
+                'Nouveau match proposé',
+                sprintf('%s vous propose un match le %s', $proposerTeam->getName(), $proposal->getProposedDate()->format('d/m/Y à H:i')),
+                '/matches/proposals',
+            );
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to send push notification', [
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $response = $this->json([
             'proposal' => $this->formatEntityData($proposal),
@@ -289,20 +295,26 @@ class MatchProposalController extends BaseController
             }
             $receiverTeamName ??= $receiver?->getDiscordUsername() ?? 'L\'adversaire';
 
-            if ($data['status'] === MatchProposal::STATUS_ACCEPTED) {
-                $pushNotificationService->sendToUser(
-                    $proposal->getProposer(),
-                    'Proposition acceptée',
-                    sprintf('%s a accepté votre proposition de match', $receiverTeamName),
-                    '/matches/proposals',
-                );
-            } elseif ($data['status'] === MatchProposal::STATUS_REJECTED) {
-                $pushNotificationService->sendToUser(
-                    $proposal->getProposer(),
-                    'Proposition refusée',
-                    sprintf('%s a refusé votre proposition de match', $receiverTeamName),
-                    '/matches/proposals',
-                );
+            try {
+                if ($data['status'] === MatchProposal::STATUS_ACCEPTED) {
+                    $pushNotificationService->sendToUser(
+                        $proposal->getProposer(),
+                        'Proposition acceptée',
+                        sprintf('%s a accepté votre proposition de match', $receiverTeamName),
+                        '/matches/proposals',
+                    );
+                } elseif ($data['status'] === MatchProposal::STATUS_REJECTED) {
+                    $pushNotificationService->sendToUser(
+                        $proposal->getProposer(),
+                        'Proposition refusée',
+                        sprintf('%s a refusé votre proposition de match', $receiverTeamName),
+                        '/matches/proposals',
+                    );
+                }
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to send push notification', [
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
