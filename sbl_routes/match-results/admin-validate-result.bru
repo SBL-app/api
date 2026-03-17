@@ -1,0 +1,26 @@
+meta {
+  name: Admin Validate Match Result
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{base_url}}/api/games/1/results/1/admin-validate
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "score1": 2,
+    "score2": 2
+  }
+}

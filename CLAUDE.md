@@ -76,7 +76,9 @@ All API controllers extend `BaseController` which provides:
 
 **Scheduler** : `MatchReminderSchedule` runs hourly via Symfony Messenger to send match reminders 24h before game time. Docker service `scheduler` runs `messenger:consume scheduler_default`.
 
-**Integration points** : notifications are sent from `MatchProposalController` (new/accepted/rejected proposals) and `DivisionController` (division finalization). All notification calls are wrapped in try/catch to avoid blocking main actions.
+**Integration points** : notifications are sent from `MatchProposalController` (new/accepted/rejected proposals), `MatchResultController` (submitted/validated/contested results), and `DivisionController` (division finalization). All notification calls are wrapped in try/catch to avoid blocking main actions.
+
+**Graceful degradation** : `PushNotificationService` handles invalid VAPID keys gracefully (catches constructor errors, disables sending). This allows the service to be injected in test/dev environments without valid keys.
 
 ### Testing
 
@@ -108,6 +110,7 @@ Season → Registration → Team
 Division → TeamStat → Team
 Game ← MatchProposal → User (proposer, receiver)
 Game ← MatchReport → Team (requested by User)
+Game ← MatchResult → Team, User (score submission + validation)
 User ← PushSubscription (endpoint, VAPID keys)
 ```
 
@@ -156,7 +159,7 @@ User ← PushSubscription (endpoint, VAPID keys)
 - Forfeit management: `is_forfeit`, `forfeit_team`, `forfeit_reason` with automatic 4-0 score
 
 ### 8. Game Statuses (`GameStatusController`)
-- CRUD on game statuses (`/api/game-statuses`) — e.g. "scheduled", "played", "reported"
+- CRUD on game statuses (`/api/game-statuses`) — e.g. "scheduled", "played", "reported", "pending_result", "contested"
 
 ### 9. Team Stats (`TeamStatController`)
 - CRUD on team statistics (`/api/team-stats`)
@@ -182,18 +185,28 @@ User ← PushSubscription (endpoint, VAPID keys)
 - `GET /api/teams/{id}/reports?season_id=X` — team reports with count and remaining
 - Reported match: date set to null, status changed to "reported"
 
-### 13. Push Notifications (`PushSubscriptionController`)
+### 13. Match Results (`MatchResultController`)
+- `POST /api/games/{id}/submit-result` — captain submits match score (double validation required)
+- `PATCH /api/games/{id}/results/{resultId}/validate` — opposing captain validates the submitted score
+- `PATCH /api/games/{id}/results/{resultId}/contest` — opposing captain contests with reason
+- `PATCH /api/games/{id}/results/{resultId}/admin-validate` — admin force-validates (can override scores)
+- `GET /api/games/{id}/results` — list all submitted results for a game
+- Flow: submit (pending) → validate (played) or contest (contested) → admin-validate if contested
+- Validated result applies scores to game, calculates winner, sets status "played"
+- Push notifications on submit/validate/contest
+
+### 14. Push Notifications (`PushSubscriptionController`)
 - `GET /api/push/vapid-public-key` — public VAPID key for frontend
 - `POST /api/push/subscribe` — subscribe to push notifications (ROLE_USER)
 - `DELETE /api/push/subscribe` — unsubscribe
 - Automatic cleanup of expired subscriptions on send failure
 
-### 14. Match Reminders (Scheduler)
+### 15. Match Reminders (Scheduler)
 - Hourly cron via Symfony Scheduler + Messenger
 - Sends push notifications to all team members 24h before a game
 - Tracks `game.reminder_sent_at` to avoid duplicate reminders
 
-### 15. Logging & Email Alerts
+### 16. Logging & Email Alerts
 - Monolog with rotating file handlers (INFO 14 days, ERROR 30 days)
 - Email alerts on ERROR/CRITICAL via `fingers_crossed` → `deduplication` → `symfony_mailer`
 - 404/405 excluded from email alerts

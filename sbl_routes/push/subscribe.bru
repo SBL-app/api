@@ -1,0 +1,29 @@
+meta {
+  name: Subscribe to Push Notifications
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/push/subscribe
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "endpoint": "https://fcm.googleapis.com/fcm/send/example",
+    "keys": {
+      "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8REfWRY",
+      "auth": "tBHItJI5svbpC7yN7AN7Aw"
+    }
+  }
+}
