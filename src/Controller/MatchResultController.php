@@ -33,6 +33,7 @@ class MatchResultController extends BaseController
             'contest_reason' => $entity->getContestReason(),
             'validated_at' => $entity->getValidatedAt()?->format('Y-m-d H:i:s'),
             'created_at' => $entity->getCreatedAt()->format('Y-m-d H:i:s'),
+            'reminder_sent_at' => $entity->getReminderSentAt()?->format('Y-m-d H:i:s'),
         ];
     }
 

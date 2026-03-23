@@ -110,7 +110,7 @@ Season → Registration → Team
 Division → TeamStat → Team
 Game ← MatchProposal → User (proposer, receiver)
 Game ← MatchReport → Team (requested by User)
-Game ← MatchResult → Team, User (score submission + validation)
+Game ← MatchResult → Team, User (score submission + validation + reminderSentAt)
 User ← PushSubscription (endpoint, VAPID keys)
 ```
 
@@ -194,6 +194,8 @@ User ← PushSubscription (endpoint, VAPID keys)
 - Flow: submit (pending) → validate (played) or contest (contested) → admin-validate if contested
 - Validated result applies scores to game, calculates winner, sets status "played"
 - Push notifications on submit/validate/contest
+- Timeout configurable : rappel hebdomadaire (jour+heure) puis auto-contestation à la deadline
+- Env: `MATCH_RESULT_REMINDER_DAY`, `MATCH_RESULT_REMINDER_HOUR`, `MATCH_RESULT_DEADLINE_DAY`, `MATCH_RESULT_DEADLINE_HOUR`
 
 ### 14. Push Notifications (`PushSubscriptionController`)
 - `GET /api/push/vapid-public-key` — public VAPID key for frontend
