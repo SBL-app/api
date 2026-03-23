@@ -12,6 +12,10 @@ parameters:
     vapid.public_key: '%env(VAPID_PUBLIC_KEY)%'
     vapid.private_key: '%env(VAPID_PRIVATE_KEY)%'
     vapid.subject: '%env(VAPID_SUBJECT)%'
+    match_result.reminder_day: '%env(MATCH_RESULT_REMINDER_DAY)%'
+    match_result.reminder_hour: '%env(int:MATCH_RESULT_REMINDER_HOUR)%'
+    match_result.deadline_day: '%env(MATCH_RESULT_DEADLINE_DAY)%'
+    match_result.deadline_hour: '%env(int:MATCH_RESULT_DEADLINE_HOUR)%'
 
 services:
     # default configuration for services in *this* file
@@ -45,3 +49,10 @@ services:
             $vapidPublicKey: '%vapid.public_key%'
             $vapidPrivateKey: '%vapid.private_key%'
             $vapidSubject: '%vapid.subject%'
+
+    App\MessageHandler\MatchResultTimeoutHandler:
+        arguments:
+            $matchResultReminderDay: '%match_result.reminder_day%'
+            $matchResultReminderHour: '%match_result.reminder_hour%'
+            $matchResultDeadlineDay: '%match_result.deadline_day%'
+            $matchResultDeadlineHour: '%match_result.deadline_hour%'
