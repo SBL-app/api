@@ -29,4 +29,25 @@ class MatchResultRepository extends ServiceEntityRepository
             'status' => MatchResult::STATUS_PENDING,
         ]);
     }
+
+    /**
+     * @return MatchResult[]
+     */
+    public function findPendingResults(): array
+    {
+        return $this->findBy(['status' => MatchResult::STATUS_PENDING]);
+    }
+
+    /**
+     * @return MatchResult[]
+     */
+    public function findPendingWithoutReminder(): array
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.status = :status')
+            ->andWhere('r.reminderSentAt IS NULL')
+            ->setParameter('status', MatchResult::STATUS_PENDING)
+            ->getQuery()
+            ->getResult();
+    }
 }

@@ -168,6 +168,66 @@ class MatchResultRepositoryTest extends ApiTestCase
         $this->assertNull($pending);
     }
 
+    public function testFindPendingResults(): void
+    {
+        $base = $this->createBaseEntities();
+        $user = $this->createUser('submitter');
+
+        $pendingResult = new MatchResult();
+        $pendingResult->setGame($base['game']);
+        $pendingResult->setSubmittedBy($user);
+        $pendingResult->setTeam($base['team1']);
+        $pendingResult->setScore1(3);
+        $pendingResult->setScore2(1);
+        $this->entityManager->persist($pendingResult);
+
+        $validatedResult = new MatchResult();
+        $validatedResult->setGame($base['game']);
+        $validatedResult->setSubmittedBy($user);
+        $validatedResult->setTeam($base['team2']);
+        $validatedResult->setScore1(2);
+        $validatedResult->setScore2(2);
+        $validatedResult->validate();
+        $this->entityManager->persist($validatedResult);
+
+        $this->entityManager->flush();
+
+        $pending = $this->repository->findPendingResults();
+
+        $this->assertCount(1, $pending);
+        $this->assertSame(MatchResult::STATUS_PENDING, $pending[0]->getStatus());
+    }
+
+    public function testFindPendingWithoutReminder(): void
+    {
+        $base = $this->createBaseEntities();
+        $user = $this->createUser('submitter');
+
+        $pendingNoReminder = new MatchResult();
+        $pendingNoReminder->setGame($base['game']);
+        $pendingNoReminder->setSubmittedBy($user);
+        $pendingNoReminder->setTeam($base['team1']);
+        $pendingNoReminder->setScore1(3);
+        $pendingNoReminder->setScore2(1);
+        $this->entityManager->persist($pendingNoReminder);
+
+        $pendingWithReminder = new MatchResult();
+        $pendingWithReminder->setGame($base['game']);
+        $pendingWithReminder->setSubmittedBy($user);
+        $pendingWithReminder->setTeam($base['team2']);
+        $pendingWithReminder->setScore1(2);
+        $pendingWithReminder->setScore2(0);
+        $pendingWithReminder->setReminderSentAt(new \DateTimeImmutable());
+        $this->entityManager->persist($pendingWithReminder);
+
+        $this->entityManager->flush();
+
+        $results = $this->repository->findPendingWithoutReminder();
+
+        $this->assertCount(1, $results);
+        $this->assertNull($results[0]->getReminderSentAt());
+    }
+
     public function testFindByGameDoesNotReturnResultsFromOtherGames(): void
     {
         $base = $this->createBaseEntities();
