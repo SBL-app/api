@@ -185,4 +185,22 @@ class MatchResultTest extends TestCase
         $this->assertSame('Score is wrong', $result->getContestReason());
         $this->assertSame($result, $returnValue, 'contest should return fluent interface');
     }
+
+    public function testReminderSentAtIsNullByDefault(): void
+    {
+        $result = new MatchResult();
+
+        $this->assertNull($result->getReminderSentAt());
+    }
+
+    public function testSetAndGetReminderSentAt(): void
+    {
+        $result = new MatchResult();
+        $date = new \DateTimeImmutable();
+
+        $returnValue = $result->setReminderSentAt($date);
+
+        $this->assertSame($date, $result->getReminderSentAt());
+        $this->assertSame($result, $returnValue, 'setReminderSentAt should return fluent interface');
+    }
 }
