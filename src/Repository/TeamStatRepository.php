@@ -2,6 +2,8 @@
 
 namespace App\Repository;
 
+use App\Entity\Division;
+use App\Entity\Team;
 use App\Entity\TeamStat;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -14,6 +16,14 @@ class TeamStatRepository extends ServiceEntityRepository
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, TeamStat::class);
+    }
+
+    public function findByTeamAndDivision(Team $team, Division $division): ?TeamStat
+    {
+        return $this->findOneBy([
+            'team' => $team,
+            'division' => $division,
+        ]);
     }
 
     //    /**
