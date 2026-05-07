@@ -20,3 +20,4 @@
 
 /migration_postgres.sql
 /.claude/worktrees/
+/app/config/parameters.yml
