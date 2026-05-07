@@ -161,12 +161,18 @@ class GameResultControllerTest extends ApiTestCase
     public function testSubmitResultDuplicateFails(): void
     {
         $ctx = $this->createMatchContext();
-        $this->client->loginUser($ctx['captain1'], 'api');
 
-        $this->jsonRequest('POST', '/api/games/' . $ctx['game']->getId() . '/result', [
-            'score1' => 2,
-            'score2' => 1,
-        ]);
+        // Directly persist a pending result to simulate an already-submitted one
+        $existingResult = new GameResult();
+        $existingResult->setGame($ctx['game']);
+        $existingResult->setSubmittedByTeam($ctx['team1']);
+        $existingResult->setSubmittedBy($ctx['captain1']);
+        $existingResult->setScore1(2);
+        $existingResult->setScore2(1);
+        $this->entityManager->persist($existingResult);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($ctx['captain1'], 'api');
 
         $response = $this->jsonRequest('POST', '/api/games/' . $ctx['game']->getId() . '/result', [
             'score1' => 2,
