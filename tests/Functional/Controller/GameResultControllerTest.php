@@ -127,6 +127,7 @@ class GameResultControllerTest extends ApiTestCase
             'division' => $division,
             'stat1' => $stat1,
             'stat2' => $stat2,
+            'playedStatus' => $playedStatus,
         ];
     }
 
@@ -202,5 +203,18 @@ class GameResultControllerTest extends ApiTestCase
         ]);
 
         $this->assertResponseStatusCode(403);
+    }
+
+    public function testSubmitResultMissingScoreFails(): void
+    {
+        $ctx = $this->createMatchContext();
+        $this->client->loginUser($ctx['captain1'], 'api');
+
+        $response = $this->jsonRequest('POST', '/api/games/' . $ctx['game']->getId() . '/result', [
+            'score1' => 2,
+            // score2 intentionally missing
+        ]);
+
+        $this->assertResponseStatusCode(400);
     }
 }

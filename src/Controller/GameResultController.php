@@ -79,6 +79,10 @@ class GameResultController extends BaseController
             throw ApiProblemException::badRequest('score1 and score2 are required');
         }
 
+        if ((int) $data['score1'] < 0 || (int) $data['score2'] < 0) {
+            throw ApiProblemException::badRequest('score1 and score2 must be non-negative');
+        }
+
         $result = new GameResult();
         $result->setGame($game);
         $result->setSubmittedByTeam($team);
