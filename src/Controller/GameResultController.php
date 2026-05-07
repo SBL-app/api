@@ -114,6 +114,10 @@ class GameResultController extends BaseController
             throw ApiProblemException::notFound('No pending result found for this game');
         }
 
+        if ($game->getStatus()?->getName() === 'played') {
+            throw ApiProblemException::conflict('This game result has already been confirmed');
+        }
+
         if ($result->getSubmittedByTeam()->isCaptain($user)) {
             throw ApiProblemException::forbidden('You cannot confirm your own submitted result');
         }
@@ -145,9 +149,10 @@ class GameResultController extends BaseController
         $game->setWinner($winner);
 
         $playedStatus = $gameStatusRepository->findOneBy(['name' => 'played']);
-        if ($playedStatus) {
-            $game->setStatus($playedStatus);
+        if (!$playedStatus) {
+            throw ApiProblemException::badRequest('Game status "played" not found in database');
         }
+        $game->setStatus($playedStatus);
 
         $this->applyStatsUpdate($teamStatRepository, $game, $score1, $score2, $winner);
 
@@ -177,6 +182,11 @@ class GameResultController extends BaseController
 
         $team1 = $game->getTeam1();
         $team2 = $game->getTeam2();
+
+        if (!$team1 || !$team2) {
+            throw ApiProblemException::badRequest('Game must have two teams');
+        }
+
         $opposingTeam = $result->getSubmittedByTeam() === $team1 ? $team2 : $team1;
 
         if (!$opposingTeam->isCaptain($user)) {
@@ -237,9 +247,10 @@ class GameResultController extends BaseController
         $game->setWinner($winner);
 
         $playedStatus = $gameStatusRepository->findOneBy(['name' => 'played']);
-        if ($playedStatus) {
-            $game->setStatus($playedStatus);
+        if (!$playedStatus) {
+            throw ApiProblemException::badRequest('Game status "played" not found in database');
         }
+        $game->setStatus($playedStatus);
 
         $this->applyStatsUpdate($teamStatRepository, $game, $score1, $score2, $winner);
 
@@ -269,24 +280,24 @@ class GameResultController extends BaseController
         }
 
         if ($winner === 1) {
-            $stat1->setWins($stat1->getWins() + 1);
-            $stat1->setPoints($stat1->getPoints() + 3);
-            $stat2->setLosses($stat2->getLosses() + 1);
+            $stat1->setWins(($stat1->getWins() ?? 0) + 1);
+            $stat1->setPoints(($stat1->getPoints() ?? 0) + 3);
+            $stat2->setLosses(($stat2->getLosses() ?? 0) + 1);
         } elseif ($winner === 2) {
-            $stat2->setWins($stat2->getWins() + 1);
-            $stat2->setPoints($stat2->getPoints() + 3);
-            $stat1->setLosses($stat1->getLosses() + 1);
+            $stat2->setWins(($stat2->getWins() ?? 0) + 1);
+            $stat2->setPoints(($stat2->getPoints() ?? 0) + 3);
+            $stat1->setLosses(($stat1->getLosses() ?? 0) + 1);
         } else {
             $stat1->setTies(($stat1->getTies() ?? 0) + 1);
-            $stat1->setPoints($stat1->getPoints() + 1);
+            $stat1->setPoints(($stat1->getPoints() ?? 0) + 1);
             $stat2->setTies(($stat2->getTies() ?? 0) + 1);
-            $stat2->setPoints($stat2->getPoints() + 1);
+            $stat2->setPoints(($stat2->getPoints() ?? 0) + 1);
         }
 
-        $stat1->setWinRounds($stat1->getWinRounds() + $score1);
-        $stat1->setLooseRounds($stat1->getLooseRounds() + $score2);
-        $stat2->setWinRounds($stat2->getWinRounds() + $score2);
-        $stat2->setLooseRounds($stat2->getLooseRounds() + $score1);
+        $stat1->setWinRounds(($stat1->getWinRounds() ?? 0) + $score1);
+        $stat1->setLooseRounds(($stat1->getLooseRounds() ?? 0) + $score2);
+        $stat2->setWinRounds(($stat2->getWinRounds() ?? 0) + $score2);
+        $stat2->setLooseRounds(($stat2->getLooseRounds() ?? 0) + $score1);
 
         $this->entityManager->persist($stat1);
         $this->entityManager->persist($stat2);

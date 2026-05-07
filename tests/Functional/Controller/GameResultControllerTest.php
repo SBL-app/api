@@ -412,6 +412,22 @@ class GameResultControllerTest extends ApiTestCase
         $this->assertEquals(0, $game->getScore2());
         $this->assertEquals(1, $game->getWinner());
         $this->assertEquals('played', $game->getStatus()->getName());
+
+        // Stats team1 (gagnante avec score 2-0)
+        $stat1 = $this->entityManager->find('App\Entity\TeamStat', $ctx['stat1']->getId());
+        $this->assertEquals(1, $stat1->getWins());
+        $this->assertEquals(0, $stat1->getLosses());
+        $this->assertEquals(3, $stat1->getPoints());
+        $this->assertEquals(2, $stat1->getWinRounds());
+        $this->assertEquals(0, $stat1->getLooseRounds());
+
+        // Stats team2 (perdante)
+        $stat2 = $this->entityManager->find('App\Entity\TeamStat', $ctx['stat2']->getId());
+        $this->assertEquals(0, $stat2->getWins());
+        $this->assertEquals(1, $stat2->getLosses());
+        $this->assertEquals(0, $stat2->getPoints());
+        $this->assertEquals(0, $stat2->getWinRounds());
+        $this->assertEquals(2, $stat2->getLooseRounds());
     }
 
     public function testAdminResolveRequiresDisputedResult(): void
