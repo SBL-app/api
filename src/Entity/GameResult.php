@@ -42,8 +42,8 @@ class GameResult
     #[ORM\ManyToOne]
     private ?User $respondedBy = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $respondedAt = null;
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $respondedAt = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
@@ -76,8 +76,8 @@ class GameResult
     public function getRespondedBy(): ?User { return $this->respondedBy; }
     public function setRespondedBy(?User $user): static { $this->respondedBy = $user; return $this; }
 
-    public function getRespondedAt(): ?\DateTimeInterface { return $this->respondedAt; }
-    public function setRespondedAt(?\DateTimeInterface $at): static { $this->respondedAt = $at; return $this; }
+    public function getRespondedAt(): ?\DateTimeImmutable { return $this->respondedAt; }
+    public function setRespondedAt(?\DateTimeImmutable $at): static { $this->respondedAt = $at; return $this; }
 
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 
@@ -89,7 +89,7 @@ class GameResult
     {
         $this->status = self::STATUS_CONFIRMED;
         $this->respondedBy = $respondedBy;
-        $this->respondedAt = new \DateTime();
+        $this->respondedAt = new \DateTimeImmutable();
         return $this;
     }
 
@@ -97,7 +97,7 @@ class GameResult
     {
         $this->status = self::STATUS_DISPUTED;
         $this->respondedBy = $respondedBy;
-        $this->respondedAt = new \DateTime();
+        $this->respondedAt = new \DateTimeImmutable();
         return $this;
     }
 }

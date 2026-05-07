@@ -9,6 +9,11 @@ use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * @extends ServiceEntityRepository<GameResult>
+ *
+ * @method GameResult|null find($id, $lockMode = null, $lockVersion = null)
+ * @method GameResult|null findOneBy(array $criteria, array $orderBy = null)
+ * @method GameResult[]    findAll()
+ * @method GameResult[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  */
 class GameResultRepository extends ServiceEntityRepository
 {
