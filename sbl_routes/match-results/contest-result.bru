@@ -1,0 +1,25 @@
+meta {
+  name: Contest Match Result
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{base_url}}/api/games/1/results/1/contest
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "reason": "The score was actually 2-2"
+  }
+}

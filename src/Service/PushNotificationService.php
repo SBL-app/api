@@ -11,7 +11,7 @@ use Psr\Log\LoggerInterface;
 
 class PushNotificationService
 {
-    private WebPush $webPush;
+    private ?WebPush $webPush = null;
 
     public function __construct(
         private PushSubscriptionRepository $subscriptionRepository,
@@ -21,13 +21,17 @@ class PushNotificationService
         string $vapidPrivateKey,
         string $vapidSubject,
     ) {
-        $this->webPush = new WebPush([
-            'VAPID' => [
-                'subject' => $vapidSubject,
-                'publicKey' => $vapidPublicKey,
-                'privateKey' => $vapidPrivateKey,
-            ],
-        ]);
+        try {
+            $this->webPush = new WebPush([
+                'VAPID' => [
+                    'subject' => $vapidSubject,
+                    'publicKey' => $vapidPublicKey,
+                    'privateKey' => $vapidPrivateKey,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->warning('WebPush disabled: invalid VAPID keys', ['error' => $e->getMessage()]);
+        }
     }
 
     public function sendToUser(User $user, string $title, string $body, string $url = '/'): void
@@ -44,6 +48,11 @@ class PushNotificationService
             'icon' => '/img/sbl-logo.png',
             'badge' => '/img/sbl-logo.png',
         ]);
+
+        if ($this->webPush === null) {
+            $this->logger->warning('Push notifications disabled, skipping send');
+            return;
+        }
 
         $subscriptionMap = [];
 
