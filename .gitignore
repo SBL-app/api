@@ -19,3 +19,4 @@
 ###< phpunit/phpunit ###
 
 /migration_postgres.sql
+/.claude/worktrees/
