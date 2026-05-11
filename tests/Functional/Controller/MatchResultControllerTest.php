@@ -9,6 +9,7 @@ use App\Entity\MatchResult;
 use App\Entity\Season;
 use App\Entity\Team;
 use App\Entity\TeamMember;
+use App\Entity\TeamStat;
 use App\Entity\User;
 use App\Tests\Functional\ApiTestCase;
 
@@ -387,5 +388,122 @@ class MatchResultControllerTest extends ApiTestCase
         $this->assertArrayHasKey('status', $response[0]);
         $this->assertArrayHasKey('contest_reason', $response[0]);
         $this->assertArrayHasKey('created_at', $response[0]);
+    }
+
+    // ========================================================================
+    // Automatic TeamStat update after result validation
+    // ========================================================================
+
+    private function createMatchContextWithStats(): array
+    {
+        $ctx = $this->createMatchContext();
+
+        $stat1 = new TeamStat();
+        $stat1->setTeam($ctx['team1']);
+        $stat1->setDivision($ctx['game']->getDivision());
+        $stat1->setWins(0);
+        $stat1->setLosses(0);
+        $stat1->setTies(0);
+        $stat1->setPoints(0);
+        $stat1->setWinRounds(0);
+        $stat1->setLooseRounds(0);
+        $this->entityManager->persist($stat1);
+
+        $stat2 = new TeamStat();
+        $stat2->setTeam($ctx['team2']);
+        $stat2->setDivision($ctx['game']->getDivision());
+        $stat2->setWins(0);
+        $stat2->setLosses(0);
+        $stat2->setTies(0);
+        $stat2->setPoints(0);
+        $stat2->setWinRounds(0);
+        $stat2->setLooseRounds(0);
+        $this->entityManager->persist($stat2);
+
+        $this->entityManager->flush();
+
+        return array_merge($ctx, ['stat1' => $stat1, 'stat2' => $stat2]);
+    }
+
+    public function testValidateResultUpdatesTeamStats(): void
+    {
+        $ctx = $this->createMatchContextWithStats();
+        $result = $this->createPendingResult($ctx);
+
+        $this->client->loginUser($ctx['captain2'], 'api');
+        $this->jsonRequest('PATCH', '/api/games/' . $ctx['game']->getId() . '/results/' . $result->getId() . '/validate');
+
+        $this->assertResponseStatusCode(200);
+
+        $this->entityManager->clear();
+
+        $stat1 = $this->entityManager->find(TeamStat::class, $ctx['stat1']->getId());
+        $stat2 = $this->entityManager->find(TeamStat::class, $ctx['stat2']->getId());
+
+        // captain1 a soumis score 3-1, team1 gagne
+        $this->assertEquals(1, $stat1->getWins());
+        $this->assertEquals(0, $stat1->getLosses());
+        $this->assertEquals(3, $stat1->getPoints());
+        $this->assertEquals(3, $stat1->getWinRounds());
+        $this->assertEquals(1, $stat1->getLooseRounds());
+
+        $this->assertEquals(0, $stat2->getWins());
+        $this->assertEquals(1, $stat2->getLosses());
+        $this->assertEquals(0, $stat2->getPoints());
+        $this->assertEquals(1, $stat2->getWinRounds());
+        $this->assertEquals(3, $stat2->getLooseRounds());
+    }
+
+    public function testAdminValidateResultUpdatesTeamStats(): void
+    {
+        $ctx = $this->createMatchContextWithStats();
+        $result = $this->createPendingResult($ctx);
+
+        $this->client->loginUser($ctx['admin'], 'api');
+        $this->jsonRequest('PATCH', '/api/games/' . $ctx['game']->getId() . '/results/' . $result->getId() . '/admin-validate', [
+            'score1' => 1,
+            'score2' => 3,
+        ]);
+
+        $this->assertResponseStatusCode(200);
+
+        $this->entityManager->clear();
+
+        $stat1 = $this->entityManager->find(TeamStat::class, $ctx['stat1']->getId());
+        $stat2 = $this->entityManager->find(TeamStat::class, $ctx['stat2']->getId());
+
+        // admin a corrigé le score à 1-3, team2 gagne
+        $this->assertEquals(0, $stat1->getWins());
+        $this->assertEquals(1, $stat1->getLosses());
+        $this->assertEquals(0, $stat1->getPoints());
+
+        $this->assertEquals(1, $stat2->getWins());
+        $this->assertEquals(0, $stat2->getLosses());
+        $this->assertEquals(3, $stat2->getPoints());
+    }
+
+    public function testValidateResultCreatesTeamStatIfMissing(): void
+    {
+        $ctx = $this->createMatchContext();
+        $result = $this->createPendingResult($ctx);
+
+        // Aucune TeamStat n'existe → le service doit en créer
+        $this->client->loginUser($ctx['captain2'], 'api');
+        $this->jsonRequest('PATCH', '/api/games/' . $ctx['game']->getId() . '/results/' . $result->getId() . '/validate');
+
+        $this->assertResponseStatusCode(200);
+
+        $this->entityManager->clear();
+
+        $division = $ctx['game']->getDivision();
+
+        $statRepo = $this->entityManager->getRepository(TeamStat::class);
+        $stat1 = $statRepo->findOneBy(['team' => $ctx['team1'], 'division' => $division]);
+        $stat2 = $statRepo->findOneBy(['team' => $ctx['team2'], 'division' => $division]);
+
+        $this->assertNotNull($stat1);
+        $this->assertNotNull($stat2);
+        $this->assertEquals(1, $stat1->getWins());
+        $this->assertEquals(1, $stat2->getLosses());
     }
 }

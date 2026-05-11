@@ -26,6 +26,14 @@ class TeamStatRepository extends ServiceEntityRepository
         ]);
     }
 
+    /**
+     * @return TeamStat[]
+     */
+    public function findByDivision(Division $division): array
+    {
+        return $this->findBy(['division' => $division]);
+    }
+
     //    /**
     //     * @return TeamStat[] Returns an array of TeamStat objects
     //     */

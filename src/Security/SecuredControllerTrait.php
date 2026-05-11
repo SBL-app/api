@@ -3,6 +3,7 @@
 namespace App\Security;
 
 use App\Entity\User;
+use App\Exception\ApiProblemException;
 use App\Service\AuthenticationService;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
@@ -41,7 +42,7 @@ trait SecuredControllerTrait
         }
 
         if (!$this->authService->userHasRole($user, $role)) {
-            throw new AccessDeniedException("Role $role required");
+            throw ApiProblemException::forbidden("Role $role required");
         }
     }
 

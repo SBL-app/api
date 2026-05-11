@@ -7,6 +7,7 @@ use App\Entity\MatchResult;
 use App\Exception\ApiProblemException;
 use App\Repository\MatchResultRepository;
 use App\Service\PushNotificationService;
+use App\Service\TeamStatCalculatorService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -129,6 +130,7 @@ class MatchResultController extends BaseController
         int $id,
         int $resultId,
         PushNotificationService $pushNotificationService,
+        TeamStatCalculatorService $statCalculator,
     ): JsonResponse {
         $user = $this->getAuthenticatedUser();
 
@@ -176,6 +178,12 @@ class MatchResultController extends BaseController
         $this->entityManager->persist($result);
         $this->entityManager->persist($game);
         $this->entityManager->flush();
+
+        try {
+            $statCalculator->updateStatsAfterGame($game);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to update team stats', ['error' => $e->getMessage()]);
+        }
 
         // Notifier le soumetteur que le resultat a ete valide
         $submitter = $result->getSubmittedBy();
@@ -281,6 +289,7 @@ class MatchResultController extends BaseController
         int $id,
         int $resultId,
         Request $request,
+        TeamStatCalculatorService $statCalculator,
     ): JsonResponse {
         $this->checkUserRole('ROLE_ADMIN');
 
@@ -317,6 +326,12 @@ class MatchResultController extends BaseController
         $this->entityManager->persist($result);
         $this->entityManager->persist($game);
         $this->entityManager->flush();
+
+        try {
+            $statCalculator->updateStatsAfterGame($game);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to update team stats', ['error' => $e->getMessage()]);
+        }
 
         return $this->json($this->formatEntityData($result));
     }

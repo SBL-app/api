@@ -9,6 +9,7 @@ use App\Repository\TeamRepository;
 use App\Repository\SeasonRepository;
 use App\Repository\GameStatusRepository;
 use App\Service\PushNotificationService;
+use App\Service\TeamStatCalculatorService;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -596,6 +597,21 @@ class DivisionController extends BaseController
     /**
      * Génère les matchs retour pour un Double Round Robin
      */
+    /**
+     * POST /api/divisions/{id}/recalculate-stats - Recalcul complet des stats d'une division (admin)
+     */
+    #[Route('/divisions/{id}/recalculate-stats', name: 'api_division_recalculate_stats', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function recalculateStats(int $id, TeamStatCalculatorService $statCalculator): JsonResponse
+    {
+        $this->checkUserRole('ROLE_ADMIN');
+
+        $division = $this->findEntityOrFail('App\Entity\Division', $id, 'Division');
+
+        $statCalculator->recalculateDivisionStats($division);
+
+        return $this->json(['message' => 'Stats recalculated successfully']);
+    }
+
     private function generateReturnSchedule(array $schedule): array
     {
         $returnSchedule = [];

@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Division;
 use App\Entity\Game;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -29,6 +30,21 @@ class GameRepository extends ServiceEntityRepository
             ->andWhere('g.reminderSentAt IS NULL')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return Game[]
+     */
+    public function findPlayedByDivision(Division $division): array
+    {
+        return $this->createQueryBuilder('g')
+            ->join('g.status', 's')
+            ->where('g.division = :division')
+            ->andWhere('s.name = :status')
+            ->setParameter('division', $division)
+            ->setParameter('status', 'played')
             ->getQuery()
             ->getResult();
     }
