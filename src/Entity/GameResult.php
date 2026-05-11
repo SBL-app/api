@@ -100,4 +100,11 @@ class GameResult
         $this->respondedAt = new \DateTimeImmutable();
         return $this;
     }
+
+    public function autoDispute(): static
+    {
+        $this->status = self::STATUS_DISPUTED;
+        $this->respondedAt = new \DateTimeImmutable();
+        return $this;
+    }
 }
