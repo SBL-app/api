@@ -16,6 +16,7 @@ parameters:
     match_result.reminder_hour: '%env(int:MATCH_RESULT_REMINDER_HOUR)%'
     match_result.deadline_day: '%env(MATCH_RESULT_DEADLINE_DAY)%'
     match_result.deadline_hour: '%env(int:MATCH_RESULT_DEADLINE_HOUR)%'
+    score_validation.timeout_days: '%env(int:SCORE_VALIDATION_TIMEOUT_DAYS)%'
 
 services:
     # default configuration for services in *this* file
@@ -56,3 +57,7 @@ services:
             $matchResultReminderHour: '%match_result.reminder_hour%'
             $matchResultDeadlineDay: '%match_result.deadline_day%'
             $matchResultDeadlineHour: '%match_result.deadline_hour%'
+
+    App\MessageHandler\GameResultTimeoutHandler:
+        arguments:
+            $scoreValidationTimeoutDays: '%score_validation.timeout_days%'

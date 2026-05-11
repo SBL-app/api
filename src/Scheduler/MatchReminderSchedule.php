@@ -2,6 +2,7 @@
 
 namespace App\Scheduler;
 
+use App\Message\GameResultTimeoutMessage;
 use App\Message\MatchReminderMessage;
 use App\Message\MatchResultTimeoutMessage;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
@@ -16,6 +17,7 @@ class MatchReminderSchedule implements ScheduleProviderInterface
     {
         return (new Schedule())
             ->add(RecurringMessage::cron('0 * * * *', new MatchReminderMessage()))
-            ->add(RecurringMessage::cron('0 * * * *', new MatchResultTimeoutMessage()));
+            ->add(RecurringMessage::cron('0 * * * *', new MatchResultTimeoutMessage()))
+            ->add(RecurringMessage::cron('0 * * * *', new GameResultTimeoutMessage()));
     }
 }

@@ -38,6 +38,22 @@ class GameResultRepository extends ServiceEntityRepository
         ]);
     }
 
+    /**
+     * @return GameResult[]
+     */
+    public function findExpiredPending(int $timeoutDays): array
+    {
+        $cutoff = new \DateTimeImmutable("-{$timeoutDays} days");
+
+        return $this->createQueryBuilder('gr')
+            ->where('gr.status = :status')
+            ->andWhere('gr.createdAt < :cutoff')
+            ->setParameter('status', GameResult::STATUS_PENDING_VALIDATION)
+            ->setParameter('cutoff', $cutoff)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function findLatestByGame(Game $game): ?GameResult
     {
         return $this->createQueryBuilder('gr')
