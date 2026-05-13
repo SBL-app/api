@@ -7,6 +7,7 @@ use App\Entity\MatchResult;
 use App\Exception\ApiProblemException;
 use App\Repository\MatchResultRepository;
 use App\Service\PushNotificationService;
+use App\Service\SeasonClosureService;
 use App\Service\TeamStatCalculatorService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -131,6 +132,7 @@ class MatchResultController extends BaseController
         int $resultId,
         PushNotificationService $pushNotificationService,
         TeamStatCalculatorService $statCalculator,
+        SeasonClosureService $seasonClosureService,
     ): JsonResponse {
         $user = $this->getAuthenticatedUser();
 
@@ -183,6 +185,15 @@ class MatchResultController extends BaseController
             $statCalculator->updateStatsAfterGame($game);
         } catch (\Throwable $e) {
             $this->logger->error('Failed to update team stats', ['error' => $e->getMessage()]);
+        }
+
+        try {
+            $seasonClosureService->onGamePlayed($game);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to check season closure after game validation', [
+                'game_id' => $game->getId(),
+                'error' => $e->getMessage(),
+            ]);
         }
 
         // Notifier le soumetteur que le resultat a ete valide
@@ -290,6 +301,7 @@ class MatchResultController extends BaseController
         int $resultId,
         Request $request,
         TeamStatCalculatorService $statCalculator,
+        SeasonClosureService $seasonClosureService,
     ): JsonResponse {
         $this->checkUserRole('ROLE_ADMIN');
 
@@ -331,6 +343,15 @@ class MatchResultController extends BaseController
             $statCalculator->updateStatsAfterGame($game);
         } catch (\Throwable $e) {
             $this->logger->error('Failed to update team stats', ['error' => $e->getMessage()]);
+        }
+
+        try {
+            $seasonClosureService->onGamePlayed($game);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to check season closure after admin game validation', [
+                'game_id' => $game->getId(),
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $this->json($this->formatEntityData($result));
