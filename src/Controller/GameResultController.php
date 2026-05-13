@@ -8,6 +8,7 @@ use App\Exception\ApiProblemException;
 use App\Repository\GameResultRepository;
 use App\Repository\GameStatusRepository;
 use App\Repository\TeamStatRepository;
+use App\Service\SeasonClosureService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -105,6 +106,7 @@ class GameResultController extends BaseController
         GameResultRepository $resultRepository,
         GameStatusRepository $gameStatusRepository,
         TeamStatRepository $teamStatRepository,
+        SeasonClosureService $seasonClosureService,
     ): JsonResponse {
         $user = $this->getAuthenticatedUser();
         $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
@@ -160,6 +162,15 @@ class GameResultController extends BaseController
         $this->entityManager->persist($game);
         $this->entityManager->flush();
 
+        try {
+            $seasonClosureService->onGamePlayed($game);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to check season closure after game confirmation', [
+                'game_id' => $game->getId(),
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return $this->json($this->formatEntityData($result));
     }
 
@@ -208,6 +219,7 @@ class GameResultController extends BaseController
         GameResultRepository $resultRepository,
         GameStatusRepository $gameStatusRepository,
         TeamStatRepository $teamStatRepository,
+        SeasonClosureService $seasonClosureService,
     ): JsonResponse {
         $this->checkUserRole('ROLE_ADMIN');
 
@@ -257,6 +269,15 @@ class GameResultController extends BaseController
         $this->entityManager->persist($result);
         $this->entityManager->persist($game);
         $this->entityManager->flush();
+
+        try {
+            $seasonClosureService->onGamePlayed($game);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to check season closure after admin game resolution', [
+                'game_id' => $game->getId(),
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return $this->json($this->formatEntityData($result));
     }
