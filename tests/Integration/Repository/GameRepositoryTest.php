@@ -2,6 +2,7 @@
 
 namespace App\Tests\Integration\Repository;
 
+use App\Entity\Bracket;
 use App\Entity\Division;
 use App\Entity\Game;
 use App\Entity\GameStatus;
@@ -103,5 +104,35 @@ class GameRepositoryTest extends ApiTestCase
         $results = $this->gameRepository->findGamesForReminder($now, $in24h);
 
         $this->assertCount(0, $results);
+    }
+
+    public function testFindByBracketReturnsGamesOrderedByRoundThenPosition(): void
+    {
+        $bracket = new Bracket();
+        $bracket->setName('B')->setQualifiedCount(2);
+        $this->entityManager->persist($bracket);
+
+        $status = new GameStatus();
+        $status->setName('scheduled');
+        $this->entityManager->persist($status);
+
+        $final = new Game();
+        $final->setBracket($bracket)->setRound(2)->setBracketPosition(0)
+            ->setStatus($status)->setScore1(0)->setScore2(0);
+        $this->entityManager->persist($final);
+
+        $semi = new Game();
+        $semi->setBracket($bracket)->setRound(1)->setBracketPosition(1)
+            ->setStatus($status)->setScore1(0)->setScore2(0);
+        $this->entityManager->persist($semi);
+
+        $this->entityManager->flush();
+
+        $games = $this->entityManager->getRepository(\App\Entity\Game::class)
+            ->findByBracket($bracket);
+
+        $this->assertCount(2, $games);
+        $this->assertSame(1, $games[0]->getRound());
+        $this->assertSame(2, $games[1]->getRound());
     }
 }
