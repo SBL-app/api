@@ -75,6 +75,12 @@ security:
 
 when@test:
     security:
+        # En test, le firewall API est rendu stateful pour que loginUser()
+        # (basé sur la session) persiste sur plusieurs requêtes d'un même test.
+        # En prod/dev il reste stateless + JWT (config ci-dessus).
+        firewalls:
+            api:
+                stateless: false
         password_hashers:
             # By default, password hashers are resource intensive and take time. This is
             # important to generate secure password hashes. In tests however, secure hashes
