@@ -17,7 +17,7 @@ class Game
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $date = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     private ?int $week = null;
 
     #[ORM\ManyToOne]
@@ -40,7 +40,7 @@ class Game
     private ?GameStatus $status = null;
 
     #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Division $division = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
@@ -54,6 +54,33 @@ class Game
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $reminderSentAt = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Bracket $bracket = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $round = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $bracketPosition = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $isThirdPlaceMatch = false;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Game $winnerToGame = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $winnerToSlot = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Game $loserToGame = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $loserToSlot = null;
 
     public function getId(): ?int
     {
@@ -232,6 +259,102 @@ class Game
     public function setReminderSentAt(?\DateTimeInterface $reminderSentAt): static
     {
         $this->reminderSentAt = $reminderSentAt;
+
+        return $this;
+    }
+
+    public function getBracket(): ?Bracket
+    {
+        return $this->bracket;
+    }
+
+    public function setBracket(?Bracket $bracket): static
+    {
+        $this->bracket = $bracket;
+
+        return $this;
+    }
+
+    public function getRound(): ?int
+    {
+        return $this->round;
+    }
+
+    public function setRound(?int $round): static
+    {
+        $this->round = $round;
+
+        return $this;
+    }
+
+    public function getBracketPosition(): ?int
+    {
+        return $this->bracketPosition;
+    }
+
+    public function setBracketPosition(?int $bracketPosition): static
+    {
+        $this->bracketPosition = $bracketPosition;
+
+        return $this;
+    }
+
+    public function isThirdPlaceMatch(): bool
+    {
+        return $this->isThirdPlaceMatch;
+    }
+
+    public function setIsThirdPlaceMatch(bool $isThirdPlaceMatch): static
+    {
+        $this->isThirdPlaceMatch = $isThirdPlaceMatch;
+
+        return $this;
+    }
+
+    public function getWinnerToGame(): ?Game
+    {
+        return $this->winnerToGame;
+    }
+
+    public function setWinnerToGame(?Game $winnerToGame): static
+    {
+        $this->winnerToGame = $winnerToGame;
+
+        return $this;
+    }
+
+    public function getWinnerToSlot(): ?int
+    {
+        return $this->winnerToSlot;
+    }
+
+    public function setWinnerToSlot(?int $winnerToSlot): static
+    {
+        $this->winnerToSlot = $winnerToSlot;
+
+        return $this;
+    }
+
+    public function getLoserToGame(): ?Game
+    {
+        return $this->loserToGame;
+    }
+
+    public function setLoserToGame(?Game $loserToGame): static
+    {
+        $this->loserToGame = $loserToGame;
+
+        return $this;
+    }
+
+    public function getLoserToSlot(): ?int
+    {
+        return $this->loserToSlot;
+    }
+
+    public function setLoserToSlot(?int $loserToSlot): static
+    {
+        $this->loserToSlot = $loserToSlot;
 
         return $this;
     }
