@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM php:8.3-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -32,6 +32,9 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 # Copy application code
 COPY . .
+
+# Symfony requires .env to exist even when all vars come from Docker environment
+RUN touch .env
 
 # Generate autoloader and run scripts
 RUN composer dump-autoload --optimize \
