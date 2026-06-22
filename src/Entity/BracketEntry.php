@@ -6,6 +6,7 @@ use App\Repository\BracketEntryRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: BracketEntryRepository::class)]
+#[ORM\UniqueConstraint(name: 'unique_bracket_seed', columns: ['bracket_id', 'seed'])]
 class BracketEntry
 {
     #[ORM\Id]
