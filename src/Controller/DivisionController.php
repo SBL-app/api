@@ -9,6 +9,7 @@ use App\Repository\TeamRepository;
 use App\Repository\SeasonRepository;
 use App\Repository\GameStatusRepository;
 use App\Service\PushNotificationService;
+use App\Service\SeasonClosureService;
 use App\Service\TeamStatCalculatorService;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -355,8 +356,8 @@ class DivisionController extends BaseController
     public function patchDivision(
         int $id,
         Request $request,
-        TeamStatRepository $teamStatRepository,
-        PushNotificationService $pushNotificationService,
+        GameRepository $gameRepository,
+        SeasonClosureService $seasonClosureService,
     ): JsonResponse {
         $division = $this->findEntityOrFail(
             "App\Entity\Division",
@@ -382,34 +383,16 @@ class DivisionController extends BaseController
             && !$division->isFinalized();
 
         if ($shouldNotify) {
+            if ($gameRepository->count(['division' => $division]) === 0 || $gameRepository->hasNonPlayedGameInDivision($division)) {
+                throw ApiProblemException::conflict('Cannot finalize division: some games are not yet played');
+            }
             $division->setIsFinalized(true);
         }
 
         $response = $this->securedUpdateEntity($division);
 
         if ($shouldNotify) {
-            $teamStats = $teamStatRepository->findBy(['division' => $division]);
-            $users = [];
-            foreach ($teamStats as $teamStat) {
-                foreach ($teamStat->getTeam()->getMembers() as $member) {
-                    if ($member->getUser() !== null) {
-                        $users[] = $member->getUser();
-                    }
-                }
-            }
-            try {
-                $pushNotificationService->sendToUsers(
-                    $users,
-                    'Résultats finaux — ' . $division->getName(),
-                    'Les résultats de la division ' . $division->getName() . ' sont disponibles',
-                    '/divisions/' . $division->getId(),
-                );
-            } catch (\Throwable $e) {
-                $this->logger->error('Failed to send push notifications for division finalization', [
-                    'division_id' => $division->getId(),
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $seasonClosureService->notifyDivisionFinalized($division);
         }
 
         return $response;

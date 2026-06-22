@@ -25,6 +25,9 @@ class Season
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $endDate = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isFinalized = false;
+
     /**
      * @var Collection<int, Registration>
      */
@@ -103,6 +106,18 @@ class Season
                 $registration->setSeason(null);
             }
         }
+
+        return $this;
+    }
+
+    public function isFinalized(): bool
+    {
+        return $this->isFinalized;
+    }
+
+    public function setIsFinalized(bool $isFinalized): static
+    {
+        $this->isFinalized = $isFinalized;
 
         return $this;
     }

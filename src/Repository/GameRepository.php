@@ -48,4 +48,19 @@ class GameRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function hasNonPlayedGameInDivision(Division $division): bool
+    {
+        $count = (int) $this->createQueryBuilder('g')
+            ->select('COUNT(g.id)')
+            ->leftJoin('g.status', 's')
+            ->where('g.division = :division')
+            ->andWhere('s.name != :status OR s.id IS NULL')
+            ->setParameter('division', $division)
+            ->setParameter('status', 'played')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $count > 0;
+    }
 }

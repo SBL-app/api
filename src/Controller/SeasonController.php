@@ -29,7 +29,8 @@ class SeasonController extends BaseController
             'id' => $entity->getId(),
             'name' => $entity->getName(),
             'start_date' => $entity->getStartDate()->format('d-m-Y'),
-            'end_date' => $entity->getEndDate()->format('d-m-Y')
+            'end_date' => $entity->getEndDate()->format('d-m-Y'),
+            'is_finalized' => $entity->isFinalized(),
         ];
     }
     /**
@@ -39,7 +40,7 @@ class SeasonController extends BaseController
     {
         $totalGames = 0;
         $finishedGames = 0;
-        $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
+        $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'played']);
         $divisions = $divisionRepository->findBy(['season' => $season]);
 
         foreach ($divisions as $division) {
@@ -70,7 +71,8 @@ class SeasonController extends BaseController
             'id' => $season->getId(),
             'name' => $season->getName(),
             'start_date' => $season->getStartDate()->format('d-m-Y'),
-            'end_date' => $season->getEndDate()->format('d-m-Y')
+            'end_date' => $season->getEndDate()->format('d-m-Y'),
+            'is_finalized' => $season->isFinalized(),
         ];
 
         // Si les repositories sont fournis, ajouter les statistiques
