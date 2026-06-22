@@ -133,5 +133,45 @@ class BracketGeneratorServiceTest extends TestCase
             $this->assertSame('played', $g->getStatus()->getName());
             $this->assertNotNull($g->getWinner());
         }
+
+        foreach ($byeResolved as $g) {
+            $nextGame = $g->getWinnerToGame();
+            $this->assertNotNull($nextGame, 'Bye game must point to a next game');
+            $expectedTeam = $g->getTeam1() ?? $g->getTeam2();
+            if ($g->getWinnerToSlot() === 1) {
+                $this->assertSame($expectedTeam, $nextGame->getTeam1());
+            } else {
+                $this->assertSame($expectedTeam, $nextGame->getTeam2());
+            }
+        }
+    }
+
+    public function testGenerateThrowsWithFewerThanTwoEntries(): void
+    {
+        $persisted = [];
+        $service = $this->makeService($persisted);
+        [$bracket, $entries] = $this->makeBracket(1, false);
+
+        $this->expectException(\App\Exception\ApiProblemException::class);
+        $service->generateFromEntries($bracket, $entries);
+    }
+
+    public function testGenerateTwoTeamsSingleFinal(): void
+    {
+        $persisted = [];
+        $service = $this->makeService($persisted);
+        [$bracket, $entries] = $this->makeBracket(2, false);
+
+        $service->generateFromEntries($bracket, $entries);
+
+        $games = array_values(array_filter($persisted, fn ($e) => $e instanceof Game));
+        $this->assertCount(1, $games);
+
+        $game = $games[0];
+        $this->assertSame(1, $game->getRound());
+        $this->assertNotNull($game->getTeam1());
+        $this->assertNotNull($game->getTeam2());
+        $this->assertFalse($game->isThirdPlaceMatch());
+        $this->assertSame(Bracket::STATUS_READY, $bracket->getStatus());
     }
 }

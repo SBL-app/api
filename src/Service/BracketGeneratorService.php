@@ -146,6 +146,14 @@ class BracketGeneratorService
         }
 
         // Byes : round 1 avec une seule équipe -> résolu et propagé
+        $playedStatus = null;
+        if ($n < $size) { // byes only exist when N is not a power of 2
+            $playedStatus = $this->gameStatusRepository->findOneBy(['name' => 'played']);
+            if (!$playedStatus) {
+                throw ApiProblemException::badRequest('Game status "played" not found in database');
+            }
+        }
+
         foreach ($games[1] as $game) {
             $hasTeam1 = $game->getTeam1() !== null;
             $hasTeam2 = $game->getTeam2() !== null;
@@ -156,10 +164,6 @@ class BracketGeneratorService
             $winnerSlot = $hasTeam1 ? 1 : 2;
             $winnerTeam = $hasTeam1 ? $game->getTeam1() : $game->getTeam2();
 
-            $playedStatus = $this->gameStatusRepository->findOneBy(['name' => 'played']);
-            if (!$playedStatus) {
-                throw ApiProblemException::badRequest('Game status "played" not found in database');
-            }
             $game->setWinner($winnerSlot);
             $game->setStatus($playedStatus);
 
