@@ -5,11 +5,13 @@ namespace App\Service;
 use App\Entity\Bracket;
 use App\Entity\Game;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 
 class BracketProgressionService
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -58,6 +60,13 @@ class BracketProgressionService
 
     private function placeTeam(Game $target, ?int $slot, $team): void
     {
+        if ($target->getStatus()?->getName() === 'played') {
+            $this->logger->warning('Bracket progression skipped: downstream game already played', [
+                'target_game_id' => $target->getId(),
+            ]);
+            return;
+        }
+
         if ($slot === 1) {
             $target->setTeam1($team);
         } elseif ($slot === 2) {

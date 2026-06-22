@@ -86,6 +86,8 @@ class BracketController extends BaseController
     #[Route('/brackets', name: 'app_bracket_create', methods: ['POST'])]
     public function createBracket(Request $request): JsonResponse
     {
+        $this->checkUserRole('ROLE_ADMIN');
+
         $data = $this->getRequestData($request);
 
         if (!isset($data['name'])) {
