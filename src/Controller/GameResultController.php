@@ -8,6 +8,7 @@ use App\Exception\ApiProblemException;
 use App\Repository\GameResultRepository;
 use App\Repository\GameStatusRepository;
 use App\Repository\TeamStatRepository;
+use App\Service\BracketProgressionService;
 use App\Service\SeasonClosureService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -107,6 +108,7 @@ class GameResultController extends BaseController
         GameStatusRepository $gameStatusRepository,
         TeamStatRepository $teamStatRepository,
         SeasonClosureService $seasonClosureService,
+        BracketProgressionService $bracketProgressionService,
     ): JsonResponse {
         $user = $this->getAuthenticatedUser();
         $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
@@ -171,6 +173,17 @@ class GameResultController extends BaseController
             ]);
         }
 
+        if ($game->getBracket() !== null) {
+            try {
+                $bracketProgressionService->advance($game);
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to advance bracket after result confirmation', [
+                    'game_id' => $game->getId(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $this->json($this->formatEntityData($result));
     }
 
@@ -220,6 +233,7 @@ class GameResultController extends BaseController
         GameStatusRepository $gameStatusRepository,
         TeamStatRepository $teamStatRepository,
         SeasonClosureService $seasonClosureService,
+        BracketProgressionService $bracketProgressionService,
     ): JsonResponse {
         $this->checkUserRole('ROLE_ADMIN');
 
@@ -279,6 +293,17 @@ class GameResultController extends BaseController
             ]);
         }
 
+        if ($game->getBracket() !== null) {
+            try {
+                $bracketProgressionService->advance($game);
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to advance bracket after admin result resolution', [
+                    'game_id' => $game->getId(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $this->json($this->formatEntityData($result));
     }
 
@@ -290,6 +315,10 @@ class GameResultController extends BaseController
         ?int $winner,
     ): void {
         $division = $game->getDivision();
+        if ($division === null) {
+            // Match de bracket : aucune stat de division à mettre à jour
+            return;
+        }
         $team1 = $game->getTeam1();
         $team2 = $game->getTeam2();
 

@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Exception\ApiProblemException;
+use App\Service\BracketProgressionService;
 use App\Service\SeasonClosureService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -252,7 +253,7 @@ class GameController extends BaseController
     }
 
     #[Route('/games/{id}', name: 'app_game_patch', methods: ['PATCH'], requirements: ['id' => '\d+'])]
-    public function patchGame(int $id, Request $request, SeasonClosureService $seasonClosureService): JsonResponse
+    public function patchGame(int $id, Request $request, SeasonClosureService $seasonClosureService, BracketProgressionService $bracketProgressionService): JsonResponse
     {
         $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
         $data = $this->getRequestData($request);
@@ -305,6 +306,17 @@ class GameController extends BaseController
                     'game_id' => $game->getId(),
                     'error' => $e->getMessage(),
                 ]);
+            }
+
+            if ($game->getBracket() !== null) {
+                try {
+                    $bracketProgressionService->advance($game);
+                } catch (\Throwable $e) {
+                    $this->logger->error('Failed to advance bracket after game patch', [
+                        'game_id' => $game->getId(),
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
         }
 

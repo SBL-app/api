@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Bracket;
 use App\Entity\Division;
 use App\Entity\Game;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -62,5 +63,19 @@ class GameRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
 
         return $count > 0;
+    }
+
+    /**
+     * @return Game[]
+     */
+    public function findByBracket(Bracket $bracket): array
+    {
+        return $this->createQueryBuilder('g')
+            ->where('g.bracket = :bracket')
+            ->setParameter('bracket', $bracket)
+            ->orderBy('g.round', 'ASC')
+            ->addOrderBy('g.bracketPosition', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

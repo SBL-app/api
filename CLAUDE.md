@@ -112,6 +112,10 @@ Game ← MatchProposal → User (proposer, receiver)
 Game ← MatchReport → Team (requested by User)
 Game ← MatchResult → Team, User (score submission + validation + reminderSentAt)
 User ← PushSubscription (endpoint, VAPID keys)
+Bracket → BracketEntry → Team (seed snapshot)
+Bracket → Division (nullable: playoff de division ; absent = tournoi détaché)
+Game → Bracket (nullable) ; Game.division et Game.week sont nullables (matchs de bracket)
+Game → Game (winnerToGame / loserToGame : progression de l'arbre)
 ```
 
 ## Features
@@ -214,6 +218,22 @@ User ← PushSubscription (endpoint, VAPID keys)
 - 404/405 excluded from email alerts
 - Test command: `php bin/console app:test-email-alert`
 - Env: `MAILER_DSN`, `MAILER_FROM`, `MAILER_TO`
+
+### 17. Playoff Brackets (`BracketController`)
+- `POST /api/brackets` — créer un bracket (admin) : `name`, `qualified_count`, `has_third_place_match?`, `division_id?`, `format?`
+- `GET /api/brackets/{id}` — arbre complet (seeds + rounds + matchs)
+- `GET /api/divisions/{id}/bracket` — bracket d'une division
+- `POST /api/brackets/{id}/seed` — auto-seed depuis le classement de la division (admin)
+- `PUT /api/brackets/{id}/entries` — seeds manuels pour tournoi détaché (admin)
+- `POST /api/brackets/{id}/generate` — génère l'arbre (simple élim + byes + petite finale) (admin)
+- `DELETE /api/brackets/{id}` — supprime bracket, games et entries (admin)
+- Format V1 : simple élimination + match pour la 3e place ; 1 match unique par confrontation
+- Réutilise `Game` (`division`/`week` nullables + champs bracket) et tout le flux `GameResult`
+- Progression automatique : à la confirmation d'un résultat de match de bracket, le vainqueur (et le perdant pour la petite finale) avance via `BracketProgressionService` (déclenché depuis `GameResultController` et le forfait dans `GameController::patchGame`)
+- Seeding figé à la génération (snapshot `BracketEntry`) ; byes attribués aux meilleurs seeds quand le nombre de qualifiés n'est pas une puissance de 2
+- Tournoi détaché : bracket sans division + entries manuelles, indépendant des saisons
+- Les matchs de bracket ont `division = null` → exclus du recalcul des `TeamStat` et de l'auto-clôture de saison
+- Services : `BracketSeedingService`, `BracketGeneratorService`, `BracketProgressionService`
 
 ## Conventions
 

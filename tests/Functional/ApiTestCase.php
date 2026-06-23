@@ -41,8 +41,12 @@ abstract class ApiTestCase extends WebTestCase
         $schemaTool = new SchemaTool($this->entityManager);
         $metadata = $this->entityManager->getMetadataFactory()->getAllMetadata();
 
-        // Supprimer et recréer le schéma
-        $schemaTool->dropSchema($metadata);
+        // Supprimer et recréer le schéma.
+        // dropDatabase() supprime toutes les tables inconditionnellement : plus robuste
+        // que dropSchema($metadata) qui, sous SQLite, peut échouer à supprimer une table
+        // à cause des clés étrangères auto-référentes de Game (winnerToGame/loserToGame),
+        // laissant des tables résiduelles qui font échouer le createSchema suivant.
+        $schemaTool->dropDatabase();
         $schemaTool->createSchema($metadata);
     }
 
