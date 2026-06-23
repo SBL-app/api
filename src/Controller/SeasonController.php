@@ -16,6 +16,7 @@ use App\Repository\TeamStatRepository;
 use App\Repository\RegistrationRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use App\Service\AuthenticationService;
+use App\Service\SeasonClosureService;
 
 #[Route('/api')]
 class SeasonController extends BaseController
@@ -267,6 +268,18 @@ class SeasonController extends BaseController
         }
 
         return $this->securedUpdateEntity($season);
+    }
+
+    #[Route('/seasons/{id}/close', name: 'app_season_close', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function closeSeason(int $id, SeasonClosureService $seasonClosureService): JsonResponse
+    {
+        $this->checkUserRole('ROLE_ADMIN');
+
+        $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+
+        $seasonClosureService->closeSeason($season);
+
+        return $this->json($this->formatEntityData($season));
     }
 
     #[Route('/seasons/{id}', name: 'app_season_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
