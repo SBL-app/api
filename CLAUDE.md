@@ -147,6 +147,7 @@ Game → Game (winnerToGame / loserToGame : progression de l'arbre)
 - `GET /api/seasons/current/week` — current week number
 - `GET /api/seasons/{id}/completion` — season completion stats
 - `GET /api/seasons/{id}/teams` — teams registered for a season
+- `POST /api/seasons/{id}/close` — clôture manuelle admin : finalise toutes les divisions + la saison (refuse 409 si déjà finalisée ou si un match n'est pas joué) ; complète l'auto-clôture de `SeasonClosureService`
 
 ### 6. Divisions (`DivisionController`)
 - CRUD on divisions (`/api/divisions`)

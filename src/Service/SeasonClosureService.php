@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Division;
 use App\Entity\Game;
 use App\Entity\Season;
+use App\Exception\ApiProblemException;
 use App\Repository\DivisionRepository;
 use App\Repository\GameRepository;
 use App\Repository\TeamStatRepository;
@@ -31,6 +32,41 @@ class SeasonClosureService
         }
 
         $this->tryFinalizeDivision($division);
+    }
+
+    /**
+     * Clôture manuelle d'une saison par un admin : finalise toutes les divisions
+     * puis la saison. Refuse si la saison est déjà finalisée ou si un match
+     * n'est pas encore joué.
+     *
+     * @throws ApiProblemException
+     */
+    public function closeSeason(Season $season): void
+    {
+        if ($season->isFinalized()) {
+            throw ApiProblemException::conflict('Season is already finalized');
+        }
+
+        $divisions = $this->divisionRepository->findBy(['season' => $season]);
+
+        foreach ($divisions as $division) {
+            if ($this->gameRepository->hasNonPlayedGameInDivision($division)) {
+                throw ApiProblemException::conflict('Cannot close season: some games are not yet played');
+            }
+        }
+
+        foreach ($divisions as $division) {
+            if (!$division->isFinalized()) {
+                $division->setIsFinalized(true);
+            }
+        }
+        $season->setIsFinalized(true);
+        $this->entityManager->flush();
+
+        foreach ($divisions as $division) {
+            $this->notifyDivisionFinalized($division);
+        }
+        $this->notifySeasonFinalized($season);
     }
 
     private function tryFinalizeDivision(Division $division): void

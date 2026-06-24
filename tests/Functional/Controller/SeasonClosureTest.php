@@ -278,6 +278,77 @@ class SeasonClosureTest extends ApiTestCase
     }
 
     // ========================================================================
+    // Clôture manuelle admin (POST /api/seasons/{id}/close)
+    // ========================================================================
+
+    public function testAdminCanCloseSeasonWhenAllGamesPlayed(): void
+    {
+        $ctx = $this->createBaseContext(1);
+
+        $ctx['game']->setStatus($ctx['playedStatus']);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($ctx['admin'], 'api');
+
+        $response = $this->jsonRequest('POST', '/api/seasons/' . $ctx['season']->getId() . '/close');
+
+        $this->assertResponseStatusCode(200);
+        $this->assertTrue($response['is_finalized']);
+
+        $this->entityManager->refresh($ctx['season']);
+        $this->entityManager->refresh($ctx['division']);
+        $this->assertTrue($ctx['season']->isFinalized());
+        $this->assertTrue($ctx['division']->isFinalized());
+    }
+
+    public function testCloseSeasonBlockedWhenGamesNotPlayed(): void
+    {
+        $ctx = $this->createBaseContext(1);
+
+        $this->client->loginUser($ctx['admin'], 'api');
+
+        $response = $this->jsonRequest('POST', '/api/seasons/' . $ctx['season']->getId() . '/close');
+
+        $this->assertResponseStatusCode(409);
+        $this->assertStringContainsString('Cannot close season', $response['detail']);
+
+        $this->entityManager->refresh($ctx['season']);
+        $this->assertFalse($ctx['season']->isFinalized());
+    }
+
+    public function testCloseSeasonBlockedWhenAlreadyFinalized(): void
+    {
+        $ctx = $this->createBaseContext(1);
+
+        $ctx['season']->setIsFinalized(true);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($ctx['admin'], 'api');
+
+        $response = $this->jsonRequest('POST', '/api/seasons/' . $ctx['season']->getId() . '/close');
+
+        $this->assertResponseStatusCode(409);
+        $this->assertStringContainsString('already finalized', $response['detail']);
+    }
+
+    public function testCloseSeasonRequiresAdmin(): void
+    {
+        $ctx = $this->createBaseContext(1);
+
+        $ctx['game']->setStatus($ctx['playedStatus']);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($ctx['captain1'], 'api');
+
+        $this->jsonRequest('POST', '/api/seasons/' . $ctx['season']->getId() . '/close');
+
+        $this->assertResponseStatusCode(403);
+
+        $this->entityManager->refresh($ctx['season']);
+        $this->assertFalse($ctx['season']->isFinalized());
+    }
+
+    // ========================================================================
     // is_finalized exposé dans les réponses API
     // ========================================================================
 
