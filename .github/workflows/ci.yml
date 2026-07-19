@@ -21,8 +21,10 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
+      # --no-check-lock : le lock sera régénéré par `composer update` juste après
+      # (l'environnement local n'a pas Composer pour le mettre à jour au commit).
       - name: Validate composer.json
-        run: composer validate --no-check-publish
+        run: composer validate --no-check-publish --no-check-lock
 
       - name: Install dependencies
         run: composer update --no-scripts --no-interaction --prefer-dist
