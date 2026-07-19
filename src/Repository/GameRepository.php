@@ -35,6 +35,22 @@ class GameRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * Numéro de semaine le plus élevé du calendrier d'une saison (null si aucun match).
+     */
+    public function findMaxWeekForSeason(int $seasonId): ?int
+    {
+        $max = $this->createQueryBuilder('g')
+            ->select('MAX(g.week)')
+            ->innerJoin('g.division', 'd')
+            ->andWhere('d.season = :season')
+            ->setParameter('season', $seasonId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return null !== $max ? (int) $max : null;
+    }
+
     //    /**
     //     * @return Game[] Returns an array of Game objects
     //     */

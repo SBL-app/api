@@ -148,6 +148,37 @@ class GameController extends AbstractController
         return $this->json($data);
     }
 
+    #[Route('/games/{id}/schedule', name: 'app_game_schedule', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function scheduleGame(Request $request, Game $game, EntityManager $em): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        if (!is_array($data) || !isset($data['date']) || !is_string($data['date'])) {
+            return $this->json(['error' => 'Missing or invalid "date" field'], 400);
+        }
+
+        try {
+            $date = new \DateTime($data['date']);
+        } catch (\Exception) {
+            return $this->json(['error' => 'Invalid "date" format'], 400);
+        }
+
+        $game->setDate($date);
+        $em->flush();
+
+        return $this->json([
+            'id' => $game->getId(),
+            'date' => $game->getDate()?->format('Y-m-d H:i:s'),
+            'week' => $game->getWeek(),
+            'team1' => $game->getTeam1()?->getName(),
+            'team2' => $game->getTeam2()?->getName(),
+            'score1' => $game->getScore1(),
+            'score2' => $game->getScore2(),
+            'winner' => $game->getWinner(),
+            'status' => $game->getStatus()?->getName(),
+            'division' => $game->getDivision()?->getName(),
+        ]);
+    }
+
     // #[Route('/game', name: 'app_game_create', methods: ['POST'])]
     // public function createGame(Request $request, TeamRepository $teamRepository, GameStatusRepository $gameStatusRepository, DivisionRepository $divisionRepository, EntityManager $em): JsonResponse
     // {

@@ -51,7 +51,37 @@ class SeasonController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/season/{id}', name: 'app_season_show', methods: ['GET'])]
+    #[Route('/season/current/week', name: 'app_season_current_week', methods: ['GET'])]
+    public function getCurrentSeasonWeek(SeasonRepository $seasonRepository, GameRepository $gameRepository): JsonResponse
+    {
+        $now = new \DateTime();
+        $season = $seasonRepository->findCurrent($now);
+        if (!$season) {
+            return $this->json(['error' => 'No current season'], 404);
+        }
+
+        $start = $season->getStartDate();
+        $daysSinceStart = null !== $start ? (int) $start->diff($now)->days : 0;
+        $currentWeek = intdiv($daysSinceStart, 7) + 1;
+
+        $maxWeek = $gameRepository->findMaxWeekForSeason((int) $season->getId());
+        if (null !== $maxWeek && $currentWeek > $maxWeek) {
+            $currentWeek = $maxWeek;
+        }
+        if ($currentWeek < 1) {
+            $currentWeek = 1;
+        }
+
+        return $this->json([
+            'season_id' => $season->getId(),
+            'name' => $season->getName(),
+            'start_date' => $season->getStartDate()?->format('d-m-Y'),
+            'end_date' => $season->getEndDate()?->format('d-m-Y'),
+            'current_week' => $currentWeek,
+        ]);
+    }
+
+    #[Route('/season/{id}', name: 'app_season_show', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function getSeason(Season $season): JsonResponse
     {
         return $this->json([

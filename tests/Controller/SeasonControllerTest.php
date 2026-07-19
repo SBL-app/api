@@ -13,6 +13,7 @@ use App\Repository\DivisionRepository;
 use App\Repository\GameRepository;
 use App\Repository\GameStatusRepository;
 use App\Repository\RegistrationRepository;
+use App\Repository\SeasonRepository;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -133,5 +134,58 @@ final class SeasonControllerTest extends TestCase
         self::assertSame(0, $data['total']);
         self::assertSame(0, $data['finished']);
         self::assertSame('0', $data['pourcent']);
+    }
+
+    public function testGetCurrentSeasonWeekComputesWeekFromStartDate(): void
+    {
+        // Saison démarrée il y a 15 jours -> semaine 3 (floor(15 / 7) + 1).
+        $season = (new Season())
+            ->setName('Saison en cours')
+            ->setStartDate(new \DateTime('-15 days'))
+            ->setEndDate(new \DateTime('+15 days'));
+
+        $seasonRepository = $this->createMock(SeasonRepository::class);
+        $seasonRepository->expects(self::once())->method('findCurrent')->willReturn($season);
+
+        $gameRepository = $this->createMock(GameRepository::class);
+        $gameRepository->method('findMaxWeekForSeason')->willReturn(10);
+
+        $data = $this->decode($this->makeController()->getCurrentSeasonWeek($seasonRepository, $gameRepository));
+
+        self::assertSame(3, $data['current_week']);
+        self::assertSame('Saison en cours', $data['name']);
+        self::assertArrayHasKey('season_id', $data);
+    }
+
+    public function testGetCurrentSeasonWeekIsClampedToMaxScheduledWeek(): void
+    {
+        $season = (new Season())
+            ->setName('Saison presque finie')
+            ->setStartDate(new \DateTime('-60 days'))
+            ->setEndDate(new \DateTime('+5 days'));
+
+        $seasonRepository = $this->createMock(SeasonRepository::class);
+        $seasonRepository->method('findCurrent')->willReturn($season);
+
+        $gameRepository = $this->createMock(GameRepository::class);
+        $gameRepository->method('findMaxWeekForSeason')->willReturn(6);
+
+        $data = $this->decode($this->makeController()->getCurrentSeasonWeek($seasonRepository, $gameRepository));
+
+        // ~9 semaines écoulées mais le calendrier s'arrête à la semaine 6.
+        self::assertSame(6, $data['current_week']);
+    }
+
+    public function testGetCurrentSeasonWeekReturns404WhenNoCurrentSeason(): void
+    {
+        $seasonRepository = $this->createMock(SeasonRepository::class);
+        $seasonRepository->method('findCurrent')->willReturn(null);
+
+        $gameRepository = $this->createMock(GameRepository::class);
+        $gameRepository->expects(self::never())->method('findMaxWeekForSeason');
+
+        $response = $this->makeController()->getCurrentSeasonWeek($seasonRepository, $gameRepository);
+
+        self::assertSame(404, $response->getStatusCode());
     }
 }
