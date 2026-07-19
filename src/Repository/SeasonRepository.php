@@ -16,6 +16,22 @@ class SeasonRepository extends ServiceEntityRepository
         parent::__construct($registry, Season::class);
     }
 
+    /**
+     * Saison « en cours » : dont l'intervalle [startDate, endDate] contient la date donnée.
+     * En cas de chevauchement, la plus récente est retournée.
+     */
+    public function findCurrent(\DateTimeInterface $now): ?Season
+    {
+        return $this->createQueryBuilder('s')
+            ->andWhere('s.startDate <= :now')
+            ->andWhere('s.endDate >= :now')
+            ->setParameter('now', $now)
+            ->orderBy('s.startDate', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     //    /**
     //     * @return Season[] Returns an array of Season objects
     //     */

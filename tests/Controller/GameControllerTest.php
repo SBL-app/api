@@ -9,6 +9,7 @@ use App\Entity\GameStatus;
 use App\Entity\Player;
 use App\Entity\Team;
 use App\Repository\GameRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -108,6 +109,57 @@ final class GameControllerTest extends TestCase
 
         $request = new Request(['week' => '3', 'season_id' => 'abc']);
         $response = $this->makeController()->getUnscheduledGames($request, $gameRepository);
+
+        self::assertSame(400, $response->getStatusCode());
+    }
+
+    private function makeScheduledGame(): Game
+    {
+        return (new Game())
+            ->setWeek(4)
+            ->setDivision((new Division())->setName('D1'))
+            ->setStatus((new GameStatus())->setName('à planifier'))
+            ->setTeam1($this->makeTeam('Alpha', '111'))
+            ->setTeam2($this->makeTeam('Beta', '222'));
+    }
+
+    public function testScheduleGameSetsDateAndPersists(): void
+    {
+        $game = $this->makeScheduledGame();
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->expects(self::once())->method('flush');
+
+        $request = new Request(content: (string) json_encode(['date' => '2025-09-01T21:00:00Z']));
+        $data = $this->decode($this->makeController()->scheduleGame($request, $game, $em));
+
+        self::assertSame('2025-09-01 21:00:00', $data['date']);
+        self::assertSame('Alpha', $data['team1']);
+        self::assertInstanceOf(\DateTimeInterface::class, $game->getDate());
+    }
+
+    public function testScheduleGameWithMissingDateReturns400(): void
+    {
+        $game = $this->makeScheduledGame();
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->expects(self::never())->method('flush');
+
+        $request = new Request(content: (string) json_encode([]));
+        $response = $this->makeController()->scheduleGame($request, $game, $em);
+
+        self::assertSame(400, $response->getStatusCode());
+    }
+
+    public function testScheduleGameWithInvalidDateReturns400(): void
+    {
+        $game = $this->makeScheduledGame();
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->expects(self::never())->method('flush');
+
+        $request = new Request(content: (string) json_encode(['date' => 'not-a-date']));
+        $response = $this->makeController()->scheduleGame($request, $game, $em);
 
         self::assertSame(400, $response->getStatusCode());
     }
