@@ -1,0 +1,58 @@
+name: CD
+
+# Déploiement continu de l'API : sur push sur main, synchronisation du code vers
+# le sous-dossier `api/` de la stack sur le serveur, rebuild du service `api`
+# (PHP-FPM) via docker compose, puis exécution des migrations Doctrine.
+#
+# Secrets requis :
+#   SSH_HOST, SSH_USER, SSH_KEY, SSH_PORT (optionnel, défaut 22), DEPLOY_PATH
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy API over SSH
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.SSH_PORT || '22' }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Sync API source
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'vendor' \
+            --exclude 'var' \
+            --exclude '.env.local' \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT || '22' }}" \
+            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/api/"
+
+      - name: Rebuild service & run migrations
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "${{ secrets.SSH_PORT || '22' }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cd '${{ secrets.DEPLOY_PATH }}' \
+              && docker compose up -d --build api api-nginx \
+              && docker compose exec -T api php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration \
+              && docker image prune -f"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

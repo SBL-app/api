@@ -106,6 +106,59 @@ class GameController extends BaseController
         }
     }
 
+    #[Route('/games/unscheduled', name: 'app_game_unscheduled', methods: ['GET'])]
+    public function getUnscheduledGames(Request $request, GameRepository $gameRepository): JsonResponse
+    {
+        $week = $request->query->get('week');
+        $seasonId = $request->query->get('season_id');
+
+        if ($week === null || !ctype_digit((string) $week)) {
+            return $this->json(['error' => 'Missing or invalid "week" query parameter'], 400);
+        }
+        if ($seasonId === null || !ctype_digit((string) $seasonId)) {
+            return $this->json(['error' => 'Missing or invalid "season_id" query parameter'], 400);
+        }
+
+        $games = $gameRepository->findUnscheduled((int) $week, (int) $seasonId);
+
+        $data = array_map(function (Game $game) {
+            return [
+                'id' => $game->getId(),
+                'week' => $game->getWeek(),
+                'division' => $game->getDivision()?->getName(),
+                'team1' => $game->getTeam1()?->getName(),
+                'team2' => $game->getTeam2()?->getName(),
+                'team1_captain_discord' => $game->getTeam1()?->getCaptain()?->getDiscord(),
+                'team2_captain_discord' => $game->getTeam2()?->getCaptain()?->getDiscord(),
+                'status' => $game->getStatus()?->getName(),
+            ];
+        }, $games);
+
+        return $this->json($data);
+    }
+
+    #[Route('/games/{id}/schedule', name: 'app_game_schedule', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function scheduleGame(int $id, Request $request): JsonResponse
+    {
+        $game = $this->findEntityOrFail('App\Entity\Game', $id, 'Game');
+
+        $data = $this->getRequestData($request);
+        if (!isset($data['date']) || !is_string($data['date'])) {
+            return $this->json(['error' => 'Missing or invalid "date" field'], 400);
+        }
+
+        try {
+            $date = new \DateTime($data['date']);
+        } catch (\Exception) {
+            return $this->json(['error' => 'Invalid "date" format'], 400);
+        }
+
+        $game->setDate($date);
+        $this->entityManager->flush();
+
+        return $this->json($this->formatGameData($game));
+    }
+
     #[Route('/games/{id}', name: 'app_game_get', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function getGame(int $id): JsonResponse
     {

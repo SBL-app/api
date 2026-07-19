@@ -32,6 +32,9 @@
         "symfony/yaml": "^7.3"
     },
     "require-dev": {
+        "doctrine/doctrine-fixtures-bundle": "^3.6",
+        "friendsofphp/php-cs-fixer": "^3.68",
+        "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^12.3",
         "symfony/browser-kit": "7.3.*",
         "symfony/css-selector": "7.3.*",
@@ -76,7 +79,11 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
-        ]
+        ],
+        "test": "phpunit",
+        "phpstan": "phpstan analyse",
+        "cs-check": "php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "php-cs-fixer fix"
     },
     "conflict": {
         "symfony/symfony": "*"

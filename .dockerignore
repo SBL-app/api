@@ -11,6 +11,8 @@ docker-compose*.yml
 .env.local
 .env.*.local
 var/
+var/cache/*
+var/log/*
 vendor/
 
 # IDE
@@ -18,10 +20,15 @@ vendor/
 .vscode/
 *.swp
 
-# Tests
+# Tests & outils de qualité
 tests/
 phpunit.xml
+phpunit.xml.dist
 .phpunit.result.cache
+.phpunit.cache/
+phpstan.neon.dist
+.php-cs-fixer.cache
+.php-cs-fixer.dist.php
 
 # Documentation
 *.md
