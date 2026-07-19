@@ -36,7 +36,38 @@ class GameController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/games/{divisionId}', name: 'app_game_division', methods: ['GET'])]
+    #[Route('/games/unscheduled', name: 'app_game_unscheduled', methods: ['GET'])]
+    public function getUnscheduledGames(Request $request, GameRepository $gameRepository): JsonResponse
+    {
+        $week = $request->query->get('week');
+        $seasonId = $request->query->get('season_id');
+
+        if ($week === null || !ctype_digit((string) $week)) {
+            return $this->json(['error' => 'Missing or invalid "week" query parameter'], 400);
+        }
+        if ($seasonId === null || !ctype_digit((string) $seasonId)) {
+            return $this->json(['error' => 'Missing or invalid "season_id" query parameter'], 400);
+        }
+
+        $games = $gameRepository->findUnscheduled((int) $week, (int) $seasonId);
+
+        $data = array_map(function (Game $game) {
+            return [
+                'id' => $game->getId(),
+                'week' => $game->getWeek(),
+                'division' => $game->getDivision()?->getName(),
+                'team1' => $game->getTeam1()?->getName(),
+                'team2' => $game->getTeam2()?->getName(),
+                'team1_captain_discord' => $game->getTeam1()?->getCapitain()?->getDiscord(),
+                'team2_captain_discord' => $game->getTeam2()?->getCapitain()?->getDiscord(),
+                'status' => $game->getStatus()?->getName(),
+            ];
+        }, $games);
+
+        return $this->json($data);
+    }
+
+    #[Route('/games/{divisionId}', name: 'app_game_division', methods: ['GET'], requirements: ['divisionId' => '\d+'])]
     public function getGamesByDivisionId(GameRepository $gameRepository, int $divisionId): JsonResponse
     {
         $games = $gameRepository->findBy(['division' => $divisionId]);
