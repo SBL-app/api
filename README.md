@@ -1,77 +1,63 @@
-Symfony Standard Edition
-========================
+# SBL — API
 
-**WARNING**: This distribution does not support Symfony 4. See the
-[Installing & Setting up the Symfony Framework][15] page to find a replacement
-that fits you best.
+API REST de la **Splatoon Baguette League**, construite avec **Symfony 7.3**
+(PHP 8.2+) et **Doctrine ORM** (PostgreSQL). Elle expose saisons, divisions,
+équipes, joueurs, matchs et statistiques.
 
-Welcome to the Symfony Standard Edition - a fully-functional Symfony
-application that you can use as the skeleton for your new applications.
+## Prérequis
 
-For details on how to download and get started with Symfony, see the
-[Installation][1] chapter of the Symfony Documentation.
+- PHP 8.2+ avec les extensions `ctype`, `iconv`, `pdo_pgsql`
+- Composer 2
+- PostgreSQL 16 (ou via la stack Docker du dépôt `infrastructure`)
 
-What's inside?
---------------
+## Installation
 
-The Symfony Standard Edition is configured with the following defaults:
+```bash
+composer install
+cp .env .env.local        # puis renseignez APP_SECRET et DATABASE_URL en local
+php bin/console doctrine:migrations:migrate
+```
 
-  * An AppBundle you can use to start coding;
+## Lancement (développement)
 
-  * Twig as the only configured template engine;
+```bash
+php -S localhost:8000 -t public/
+# ou avec Symfony CLI :
+symfony serve
+```
 
-  * Doctrine ORM/DBAL;
+## Qualité, tests et sécurité
 
-  * Swiftmailer;
+```bash
+composer test        # tests unitaires (PHPUnit)
+composer phpstan     # analyse statique (PHPStan)
+composer cs-check    # style de code (PHP-CS-Fixer, dry-run)
+composer cs-fix      # correction automatique du style
+```
 
-  * Annotations enabled for everything.
+- **Tests** : les entités et le `SecurityHeadersSubscriber` sont couverts par
+  des tests unitaires (`tests/`). Couverture générée en CI.
+- **CI** (`.github/workflows/ci.yml`) : `composer validate`, PHPUnit + couverture,
+  PHPStan, PHP-CS-Fixer et build de l'image Docker à chaque push / PR.
+- **CD** (`.github/workflows/cd.yml`) : déploiement SSH sur `main` (rebuild du
+  service `api` + migrations Doctrine). Secrets : `SSH_HOST`, `SSH_USER`,
+  `SSH_KEY`, `SSH_PORT` (optionnel), `DEPLOY_PATH`.
+- **Sécurité** : voir [`SECURITY.md`](SECURITY.md) — revue OWASP Top 10.
 
-It comes pre-configured with the following bundles:
+## Docker
 
-  * **FrameworkBundle** - The core Symfony framework bundle
+Le [`Dockerfile`](Dockerfile) produit une image **PHP-FPM** de production
+(multi-stage, autoloader optimisé, non-root). Elle est orchestrée avec Nginx et
+PostgreSQL via le dépôt `infrastructure`.
 
-  * [**SensioFrameworkExtraBundle**][6] - Adds several enhancements, including
-    template and routing annotation capability
+## Structure
 
-  * [**DoctrineBundle**][7] - Adds support for the Doctrine ORM
-
-  * [**TwigBundle**][8] - Adds support for the Twig templating engine
-
-  * [**SecurityBundle**][9] - Adds security by integrating Symfony's security
-    component
-
-  * [**SwiftmailerBundle**][10] - Adds support for Swiftmailer, a library for
-    sending emails
-
-  * [**MonologBundle**][11] - Adds support for Monolog, a logging library
-
-  * **WebProfilerBundle** (in dev/test env) - Adds profiling functionality and
-    the web debug toolbar
-
-  * **SensioDistributionBundle** (in dev/test env) - Adds functionality for
-    configuring and working with Symfony distributions
-
-  * [**SensioGeneratorBundle**][13] (in dev env) - Adds code generation
-    capabilities
-
-  * [**WebServerBundle**][14] (in dev env) - Adds commands for running applications
-    using the PHP built-in web server
-
-  * **DebugBundle** (in dev/test env) - Adds Debug and VarDumper component
-    integration
-
-All libraries and bundles included in the Symfony Standard Edition are
-released under the MIT or BSD license.
-
-Enjoy!
-
-[1]:  https://symfony.com/doc/3.4/setup.html
-[6]:  https://symfony.com/doc/current/bundles/SensioFrameworkExtraBundle/index.html
-[7]:  https://symfony.com/doc/3.4/doctrine.html
-[8]:  https://symfony.com/doc/3.4/templating.html
-[9]:  https://symfony.com/doc/3.4/security.html
-[10]: https://symfony.com/doc/3.4/email.html
-[11]: https://symfony.com/doc/3.4/logging.html
-[13]: https://symfony.com/doc/current/bundles/SensioGeneratorBundle/index.html
-[14]: https://symfony.com/doc/current/setup/built_in_web_server.html
-[15]: https://symfony.com/doc/current/setup.html
+```
+src/
+├── Controller/       # endpoints REST (lecture seule)
+├── Entity/           # entités Doctrine
+├── Repository/       # repositories Doctrine
+├── DataFixtures/     # jeux de données de démonstration
+└── EventSubscriber/  # SecurityHeadersSubscriber (en-têtes de sécurité)
+tests/                # tests unitaires (PHPUnit)
+```

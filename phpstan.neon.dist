@@ -1,0 +1,10 @@
+parameters:
+    level: 5
+    paths:
+        - src
+        - tests
+    excludePaths:
+        - src/DataFixtures/*
+    # Doctrine/Symfony exposent des méthodes magiques ; on reste indulgent sur
+    # certains patterns le temps de résorber la dette du code existant.
+    treatPhpDocTypesAsCertain: false

@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    name: PHPUnit + couverture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, iconv, pdo, pdo_pgsql, intl
+          coverage: pcov
+          tools: composer:v2
+
+      # --no-check-lock : le lock sera régénéré par `composer update` juste après
+      # (l'environnement local n'a pas Composer pour le mettre à jour au commit).
+      - name: Validate composer.json
+        run: composer validate --no-check-publish --no-check-lock
+
+      - name: Install dependencies
+        run: composer update --no-scripts --no-interaction --prefer-dist
+
+      - name: Run PHPUnit with coverage
+        run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-coverage
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  static-analysis:
+    name: PHPStan (analyse statique)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, iconv, pdo, pdo_pgsql, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer update --no-scripts --no-interaction --prefer-dist
+
+      # Rapport informatif le temps de résorber la dette du code existant.
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --no-progress --error-format=table
+        continue-on-error: true
+
+  coding-standards:
+    name: PHP-CS-Fixer (style)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2, php-cs-fixer
+
+      - name: Check coding standards
+        run: php-cs-fixer fix --dry-run --diff --config=.php-cs-fixer.dist.php
+        continue-on-error: true
+
+  docker-build:
+    name: Build image Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t sbl-api:ci .
