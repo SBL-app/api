@@ -103,7 +103,6 @@ class SeasonController extends AbstractController
         return $this->json($games);
     }
 
-    // TODO: need to be test with fake data
     #[Route('/season/{id}/teams', name: 'app_season_teams', methods: ['GET'])]
     public function getSeasonTeams(Season $season, RegistrationRepository $registrationRepository): JsonResponse
     {
@@ -125,7 +124,6 @@ class SeasonController extends AbstractController
         return $this->json($data);
     }
 
-    //TODO: need to be tested
     #[Route('/season/{id}/pourcent/{decimal}', name: 'app_season_pourcent', methods: ['GET'])]
     public function getFinishedMatchPourcent(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository, int $decimal): JsonResponse
     {
