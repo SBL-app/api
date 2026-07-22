@@ -159,6 +159,9 @@ class PlayerControllerTest extends ApiTestCase
 
     public function testCreatePlayer(): void
     {
+        // Les écritures exigent ROLE_API.
+        $this->authenticateAsApi();
+
         $team = new Team();
         $team->setName('Team for New Player');
         $this->entityManager->persist($team);
@@ -187,6 +190,9 @@ class PlayerControllerTest extends ApiTestCase
 
     public function testUpdatePlayer(): void
     {
+        // Les écritures exigent ROLE_API.
+        $this->authenticateAsApi();
+
         $team = new Team();
         $team->setName('Original Team');
 
@@ -215,6 +221,9 @@ class PlayerControllerTest extends ApiTestCase
 
     public function testUpdatePlayerNotFound(): void
     {
+        // Les écritures exigent ROLE_API.
+        $this->authenticateAsApi();
+
         $updateData = [
             'name' => 'Updated Name'
         ];
@@ -229,6 +238,9 @@ class PlayerControllerTest extends ApiTestCase
 
     public function testDeletePlayer(): void
     {
+        // Les écritures exigent ROLE_API.
+        $this->authenticateAsApi();
+
         $player = new Player();
         $player->setName('Player to Delete');
         $player->setDiscord('delete#1234');
@@ -244,6 +256,9 @@ class PlayerControllerTest extends ApiTestCase
 
     public function testDeletePlayerNotFound(): void
     {
+        // Les écritures exigent ROLE_API.
+        $this->authenticateAsApi();
+
         $response = $this->jsonRequest('DELETE', '/api/players/999');
 
         $this->assertResponseStatusCodeSame(404);

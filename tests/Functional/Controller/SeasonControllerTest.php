@@ -122,10 +122,11 @@ class SeasonControllerTest extends ApiTestCase
 
         $this->assertResponseIsSuccessful();
         $this->assertIsArray($response);
-        // Le pourcentage devrait être 0% car pas de matchs
-        $this->assertArrayHasKey('total', $response);
-        $this->assertArrayHasKey('finished', $response);
-        $this->assertArrayHasKey('pourcent', $response);
+        // Le pourcentage devrait être 0% car pas de matchs. Clés alignées sur la
+        // réponse réelle de l'endpoint (et sur ce que consomme le frontend).
+        $this->assertArrayHasKey('total_games', $response);
+        $this->assertArrayHasKey('finished_games', $response);
+        $this->assertArrayHasKey('percentage', $response);
     }
 
     public function testGetSeasonCompletionNotFound(): void
