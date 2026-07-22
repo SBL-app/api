@@ -63,6 +63,11 @@ security:
         - { path: ^/api/auth/discord$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord/callback$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord/bot$, roles: PUBLIC_ACCESS }
+        # verify/refresh sont auto-validants (le token fourni fait office de
+        # justificatif) : accessibles sans rôle, le contrôleur renvoie 401 si le
+        # token est absent ou invalide. À placer avant la règle ^/api/auth.
+        - { path: ^/api/auth/verify$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/refresh$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth, roles: ROLE_USER }
         # User profile endpoints accessible to any authenticated user
         - { path: ^/api/users/me, roles: ROLE_USER, methods: [GET] }
