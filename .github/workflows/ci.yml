@@ -21,13 +21,28 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
-      # --no-check-lock : le lock sera régénéré par `composer update` juste après
-      # (l'environnement local n'a pas Composer pour le mettre à jour au commit).
+      # Le lock est commité et maintenu à jour : on vérifie qu'il correspond au
+      # composer.json, puis on installe depuis le lock (déterministe). On évite
+      # `composer update`, qui re-résout tout et échoue dès qu'une alerte de
+      # sécurité frappe une version épinglée de Symfony.
       - name: Validate composer.json
-        run: composer validate --no-check-publish --no-check-lock
+        run: composer validate --no-check-publish
 
       - name: Install dependencies
-        run: composer update --no-scripts --no-interaction --prefer-dist
+        run: composer install --no-scripts --no-interaction --prefer-dist
+
+      # Les tests d'intégration (KernelTestCase) supposent le schéma déjà créé
+      # — équivalent de `make setup-test-db`. Sans ça : « no such table ».
+      # Pour SQLite, schema:create crée aussi le fichier de base ; on n'appelle
+      # pas database:create --if-not-exists, non supporté par la plateforme SQLite.
+      - name: Prepare test database
+        run: php bin/console doctrine:schema:create --env=test
+
+      # lexik JWT a besoin d'une paire de clés pour signer les tokens ; sans
+      # elle, /api/auth/login échoue et tous les tests authentifiés cascadent.
+      # Passphrase = JWT_PASSPHRASE de .env.test (« test »).
+      - name: Generate JWT keypair (test)
+        run: php bin/console lexik:jwt:generate-keypair --env=test --overwrite --no-interaction
 
       - name: Run PHPUnit with coverage
         run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
@@ -55,7 +70,7 @@ jobs:
           tools: composer:v2
 
       - name: Install dependencies
-        run: composer update --no-scripts --no-interaction --prefer-dist
+        run: composer install --no-scripts --no-interaction --prefer-dist
 
       # Rapport informatif le temps de résorber la dette du code existant.
       - name: Run PHPStan

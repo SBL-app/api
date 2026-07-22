@@ -14,7 +14,11 @@ class ApiSecurityListener
     private const PROTECTED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
     private const EXCLUDED_PATHS = [
         '/api/auth/login',
-        '/api/auth/login-api-key'
+        '/api/auth/login-api-key',
+        // verify/refresh valident eux-mêmes le token fourni : ce ne sont pas des
+        // écritures de données et ils ne doivent pas exiger ROLE_API.
+        '/api/auth/verify',
+        '/api/auth/refresh',
     ];
     private const ROLE_USER_PREFIXES = [
         '/api/users/me',

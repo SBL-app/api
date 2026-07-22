@@ -77,6 +77,10 @@ class DivisionController extends BaseController
         TeamStatRepository $teamStatRepository,
         TeamRepository $teamRepository,
     ): JsonResponse {
+        // La saison parente doit exister : sinon 404 (cohérent avec les autres
+        // endpoints /seasons/{id}/...), et non une liste vide sur un id inconnu.
+        $this->findEntityOrFail("App\Entity\Season", $seasonId, "Season");
+
         $divisions = $divisionRepository->findBy(["season" => $seasonId]);
 
         $data = array_map(function ($division) use (

@@ -1,0 +1,10 @@
+# En test, on relâche fortement le rate limiting des endpoints d'auth : sinon
+# les requêtes de login s'accumulent par IP (identique pour tous les tests) et
+# les dernières du run tombent en 429, faisant échouer des tests qui passent
+# isolément. Aucun test n'assert le rate limiting lui-même.
+framework:
+    rate_limiter:
+        auth_login:
+            limit: 100000
+        auth_api_key:
+            limit: 100000
