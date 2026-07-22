@@ -31,6 +31,13 @@ jobs:
       - name: Install dependencies
         run: composer install --no-scripts --no-interaction --prefer-dist
 
+      # Les tests d'intégration (KernelTestCase) supposent le schéma déjà créé
+      # — équivalent de `make setup-test-db`. Sans ça : « no such table ».
+      # Pour SQLite, schema:create crée aussi le fichier de base ; on n'appelle
+      # pas database:create --if-not-exists, non supporté par la plateforme SQLite.
+      - name: Prepare test database
+        run: php bin/console doctrine:schema:create --env=test
+
       - name: Run PHPUnit with coverage
         run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
 
