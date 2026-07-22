@@ -38,6 +38,12 @@ jobs:
       - name: Prepare test database
         run: php bin/console doctrine:schema:create --env=test
 
+      # lexik JWT a besoin d'une paire de clés pour signer les tokens ; sans
+      # elle, /api/auth/login échoue et tous les tests authentifiés cascadent.
+      # Passphrase = JWT_PASSPHRASE de .env.test (« test »).
+      - name: Generate JWT keypair (test)
+        run: php bin/console lexik:jwt:generate-keypair --env=test --overwrite --no-interaction
+
       - name: Run PHPUnit with coverage
         run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
 
