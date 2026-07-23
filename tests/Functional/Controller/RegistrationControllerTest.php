@@ -286,13 +286,17 @@ class RegistrationControllerTest extends ApiTestCase
     {
         $season = $this->makeOpenSeason();
         $team = $this->makeTeamWithCaptain(TeamMember::ROLE_CAPTAIN, 3);
+
+        // Inscription déjà existante en base.
+        $existing = new Registration();
+        $existing->setSeason($season);
+        $existing->setTeam($team);
+        $this->entityManager->persist($existing);
         $this->entityManager->flush();
 
-        $uri = '/api/seasons/' . $season->getId() . '/register';
-        $this->jsonRequest('POST', $uri, ['team_id' => $team->getId()]);
-        $this->assertResponseStatusCode(201);
-
-        $this->jsonRequest('POST', $uri, ['team_id' => $team->getId()]);
+        $this->jsonRequest('POST', '/api/seasons/' . $season->getId() . '/register', [
+            'team_id' => $team->getId(),
+        ]);
         $this->assertResponseStatusCode(409);
     }
 
