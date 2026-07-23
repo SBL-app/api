@@ -2,8 +2,9 @@
 
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use App\Exception\ApiProblemException;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Season;
 use App\Repository\DivisionRepository;
@@ -14,128 +15,183 @@ use App\Repository\TeamRepository;
 use App\Repository\TeamStatRepository;
 use App\Repository\RegistrationRepository;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
-use Symfony\Component\HttpFoundation\Request;
+use App\Service\AuthenticationService;
 
-class SeasonController extends AbstractController
+#[Route('/api')]
+class SeasonController extends BaseController
 {
-    #[Route('/seasons', name: 'app_season', methods: ['GET'])]
-    public function getSeasons(SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
+    protected function formatEntityData($entity): array
     {
-        $seasons = $seasonRepository->findAll();
-        foreach ($seasons as $season) {
-            $totalGames = 0;
-            $finishedGames = 0;
-            $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
-            $divisions = $divisionRepository->findBy(['season' => $season]);
-            foreach ($divisions as $division) {
-                $games = $gameRepository->findBy(['division' => $division]);
-                foreach ($games as $game) {
-                    $totalGames++;
-                    if ($game->getStatus() === $finishedStatus) {
-                        $finishedGames++;
-                    }
+        if (!$entity instanceof Season) {
+            throw new \InvalidArgumentException('Entity must be an instance of Season');
+        }
+        return [
+            'id' => $entity->getId(),
+            'name' => $entity->getName(),
+            'start_date' => $entity->getStartDate()->format('d-m-Y'),
+            'end_date' => $entity->getEndDate()->format('d-m-Y'),
+            'registration_open_date' => $entity->getRegistrationOpenDate()?->format('d-m-Y'),
+            'registration_close_date' => $entity->getRegistrationCloseDate()?->format('d-m-Y'),
+            'registration_open' => $entity->isRegistrationOpen(),
+        ];
+    }
+    /**
+     * Calcule les statistiques des matchs pour une saison donnée
+     */
+    private function calculateSeasonGameStats(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): array
+    {
+        $totalGames = 0;
+        $finishedGames = 0;
+        $finishedStatus = $gameStatusRepository->findOneBy(['name' => 'joué']);
+        $divisions = $divisionRepository->findBy(['season' => $season]);
+
+        foreach ($divisions as $division) {
+            $games = $gameRepository->findBy(['division' => $division]);
+            foreach ($games as $game) {
+                $totalGames++;
+                if ($game->getStatus() === $finishedStatus) {
+                    $finishedGames++;
                 }
             }
-            $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
-            $percentage = number_format($percentage, 2);
-            $data[] = [
-                'id' => $season->getId(),
-                'name' => $season->getName(),
-                'start_date' => $season->getStartDate()->format('d-m-Y'),
-                'end_date' => $season->getEndDate()->format('d-m-Y'),
-                'total_games' => $totalGames,
-                'finished_games' => $finishedGames,
-                'percentage' => $percentage
-            ];
         }
-        return $this->json($data);
+
+        $percentage = $totalGames > 0 ? ($finishedGames / $totalGames) * 100 : 0;
+
+        return [
+            'total_games' => $totalGames,
+            'finished_games' => $finishedGames,
+            'percentage' => $percentage
+        ];
     }
 
-    #[Route('/season/current/week', name: 'app_season_current_week', methods: ['GET'])]
-    public function getCurrentSeasonWeek(SeasonRepository $seasonRepository, GameRepository $gameRepository): JsonResponse
+    /**
+     * Formate les données d'une saison avec ou sans statistiques
+     */
+    private function formatSeasonData(Season $season, ?DivisionRepository $divisionRepository = null, ?GameRepository $gameRepository = null, ?GameStatusRepository $gameStatusRepository = null): array
     {
-        $now = new \DateTime();
-        $season = $seasonRepository->findCurrent($now);
-        if (!$season) {
-            return $this->json(['error' => 'No current season'], 404);
-        }
-
-        $start = $season->getStartDate();
-        $daysSinceStart = null !== $start ? (int) $start->diff($now)->days : 0;
-        $currentWeek = intdiv($daysSinceStart, 7) + 1;
-
-        $maxWeek = $gameRepository->findMaxWeekForSeason((int) $season->getId());
-        if (null !== $maxWeek && $currentWeek > $maxWeek) {
-            $currentWeek = $maxWeek;
-        }
-        if ($currentWeek < 1) {
-            $currentWeek = 1;
-        }
-
-        return $this->json([
-            'season_id' => $season->getId(),
-            'name' => $season->getName(),
-            'start_date' => $season->getStartDate()?->format('d-m-Y'),
-            'end_date' => $season->getEndDate()?->format('d-m-Y'),
-            'current_week' => $currentWeek,
-        ]);
-    }
-
-    #[Route('/season/{id}', name: 'app_season_show', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function getSeason(Season $season): JsonResponse
-    {
-        return $this->json([
+        $data = [
             'id' => $season->getId(),
             'name' => $season->getName(),
             'start_date' => $season->getStartDate()->format('d-m-Y'),
             'end_date' => $season->getEndDate()->format('d-m-Y')
-        ]);
+        ];
+
+        // Si les repositories sont fournis, ajouter les statistiques
+        if ($divisionRepository && $gameRepository && $gameStatusRepository) {
+            $stats = $this->calculateSeasonGameStats($season, $divisionRepository, $gameRepository, $gameStatusRepository);
+            $data = array_merge($data, [
+                'total_games' => $stats['total_games'],
+                'finished_games' => $stats['finished_games'],
+                'percentage' => number_format($stats['percentage'], 2)
+            ]);
+        }
+
+        return $data;
     }
 
-
-    #[Route('/season/{id}/games', name: 'app_season_games', methods: ['GET'])]
-    public function getSeasonGames(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository): JsonResponse
+    #[Route('/seasons/current', name: 'app_season_current', methods: ['GET'])]
+    public function getCurrentSeason(SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
-        $divisions = $divisionRepository->findBy(['season' => $season]);
-        foreach ($divisions as $division) {
-            $games = $gameRepository->findBy(['division' => $division]);
-            foreach ($games as $game) {
-                $rep[] = [
-                    'id' => $game->getId(),
-                    'date' => $game->getDate()->format('d-m-Y'),
-                    'week' => $game->getWeek(),
-                    'team1' => $game->getTeam1()->getName(),
-                    'team2' => $game->getTeam2()->getName(),
-                    'score1' => $game->getScore1(),
-                    'score2' => $game->getScore2(),
-                    'winner' => $game->getWinner(),
-                    'status' => $game->getStatus()->getName()
-                ];
+        $now = new \DateTime();
+        $seasons = $seasonRepository->findAll();
+
+        $currentSeason = null;
+        foreach ($seasons as $season) {
+            if ($season->getStartDate() <= $now && $season->getEndDate() >= $now) {
+                $currentSeason = $season;
+                break;
             }
         }
-        return $this->json($rep);
-    }
 
-    // TODO: need to be test with fake data, maybe it's useless
-    #[Route('/season/{id}/games/{status}', name: 'app_season_games_by_status', methods: ['GET'])]
-    public function getSeasonGamesByStatus(Season $season, DivisionRepository $divisionRepository, TeamStatRepository $teamStatRepository, string $status): JsonResponse
-    {
-        $games = [];
-        $divisions = $divisionRepository->findBy(['season' => $season]);
-        foreach ($divisions as $division) {
-            $teamsId = $teamStatRepository->findBy(['division' => $division]);
-            foreach ($teamsId as $teamId) {
-                if ($teamId->getGames() === $status) {
-                    $games[] = $teamId->getGames();
+        if (!$currentSeason) {
+            // Si pas de saison en cours, prendre la prochaine saison (start_date > now)
+            usort($seasons, fn($a, $b) => $a->getStartDate() <=> $b->getStartDate());
+            foreach ($seasons as $season) {
+                if ($season->getStartDate() > $now) {
+                    $currentSeason = $season;
+                    break;
                 }
             }
         }
-        return $this->json($games);
+
+        if (!$currentSeason) {
+            throw ApiProblemException::notFound('No current or upcoming season found');
+        }
+
+        return $this->json($this->formatSeasonData($currentSeason, $divisionRepository, $gameRepository, $gameStatusRepository));
     }
 
-    #[Route('/season/{id}/teams', name: 'app_season_teams', methods: ['GET'])]
-    public function getSeasonTeams(Season $season, RegistrationRepository $registrationRepository): JsonResponse
+    #[Route('/seasons/current/week', name: 'app_season_current_week', methods: ['GET'])]
+    public function getCurrentSeasonWeek(SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository): JsonResponse
     {
+        $now = new \DateTime();
+        $seasons = $seasonRepository->findAll();
+
+        $currentSeason = null;
+        foreach ($seasons as $season) {
+            if ($season->getStartDate() <= $now && $season->getEndDate() >= $now) {
+                $currentSeason = $season;
+                break;
+            }
+        }
+
+        if (!$currentSeason) {
+            throw ApiProblemException::notFound('No current season found');
+        }
+
+        // Calculer le numéro de semaine depuis le début de la saison
+        $startDate = $currentSeason->getStartDate();
+        $interval = $startDate->diff($now);
+        $weekNumber = (int) ceil(($interval->days + 1) / 7);
+
+        // Trouver le numéro de semaine max dans les matchs
+        $divisions = $divisionRepository->findBy(['season' => $currentSeason]);
+        $maxWeek = 1;
+        foreach ($divisions as $division) {
+            $games = $gameRepository->findBy(['division' => $division]);
+            foreach ($games as $game) {
+                if ($game->getWeek() > $maxWeek) {
+                    $maxWeek = $game->getWeek();
+                }
+            }
+        }
+
+        return $this->json([
+            'season_id' => $currentSeason->getId(),
+            'season_name' => $currentSeason->getName(),
+            'current_week' => min($weekNumber, $maxWeek),
+            'max_week' => $maxWeek,
+            'start_date' => $currentSeason->getStartDate()->format('d-m-Y'),
+            'end_date' => $currentSeason->getEndDate()->format('d-m-Y')
+        ]);
+    }
+
+    #[Route('/seasons/{id}', name: 'app_season_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getSeason(int $id, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
+    {
+        $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+        return $this->json($this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository));
+    }
+
+    #[Route('/seasons', name: 'app_seasons', methods: ['GET'])]
+    public function getSeasons(SeasonRepository $seasonRepository, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
+    {
+        $seasons = $seasonRepository->findAll();
+        $data = [];
+        foreach ($seasons as $season) {
+            $data[] = $this->formatSeasonData($season, $divisionRepository, $gameRepository, $gameStatusRepository);
+        }
+        return $this->json($data);
+    }
+
+    #[Route('/seasons/{seasonId}/teams', name: 'app_season_teams', methods: ['GET'], requirements: ['seasonId' => '\d+'])]
+    public function getSeasonTeams(int $seasonId, SeasonRepository $seasonRepository, RegistrationRepository $registrationRepository): JsonResponse
+    {
+        $season = $seasonRepository->find($seasonId);
+        if (!$season) {
+            throw ApiProblemException::notFound('Season not found');
+        }
+
         $teams = $registrationRepository->findBy(['season' => $season]);
         $teamsData = array_map(function ($team) {
             return [
@@ -143,101 +199,100 @@ class SeasonController extends AbstractController
                 'name' => $team->getTeam()->getName()
             ];
         }, $teams);
-        $data = [
-            'id' => $season->getId(),
-            'name' => $season->getName(),
-            'start_date' => $season->getStartDate()->format('d-m-Y'),
-            'end_date' => $season->getEndDate()->format('d-m-Y'),
+
+        $seasonData = $this->formatSeasonData($season);
+        $data = array_merge($seasonData, [
             'teams' => $teamsData
-        ];
+        ]);
 
         return $this->json($data);
     }
 
-    #[Route('/season/{id}/pourcent/{decimal}', name: 'app_season_pourcent', methods: ['GET'])]
-    public function getFinishedMatchPourcent(Season $season, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository, int $decimal): JsonResponse
+    #[Route('/seasons/{id}/completion', name: 'app_season_completion', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getSeasonCompletion(int $id, Request $request, DivisionRepository $divisionRepository, GameRepository $gameRepository, GameStatusRepository $gameStatusRepository): JsonResponse
     {
-        $nbTotalGames = 0;
-        $nbFinishedGames = 0;
-        $divisions = $divisionRepository->findBy(['season' => $season]);
-        foreach ($divisions as $division) {
-            $games = $gameRepository->findBy(['division' => $division]);
-            foreach ($games as $game) {
-                $nbTotalGames++;
-                if ($game->getStatus() === $gameStatusRepository->findOneBy(['name' => 'joué'])) {
-                    $nbFinishedGames++;
-                }
-            }
-        }
-        $pourcent = $nbTotalGames > 0 ? ($nbFinishedGames / $nbTotalGames) * 100 : 0;
-        $pourcent = number_format($pourcent, $decimal);
+        $decimal = $request->query->get('decimal', 2);
+
+        $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+
+        $stats = $this->calculateSeasonGameStats($season, $divisionRepository, $gameRepository, $gameStatusRepository);
+
         return $this->json([
-            'total' => $nbTotalGames,
-            'finished' => $nbFinishedGames,
-            'pourcent' => $pourcent
+            'id' => $season->getId(),
+            'name' => $season->getName(),
+            'start_date' => $season->getStartDate()->format('d-m-Y'),
+            'end_date' => $season->getEndDate()->format('d-m-Y'),
+            'total_games' => $stats['total_games'],
+            'finished_games' => $stats['finished_games'],
+            'percentage' => number_format($stats['percentage'], (int)$decimal)
         ]);
     }
 
-    // #[Route('/season', name: 'app_season_create', methods: ['POST'])]
-    // public function createSeason(Request $request, Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $season->setName($data['name']);
-    //     $season->setStartDate(new \DateTime($data['start_date']));
-    //     $season->setEndDate(new \DateTime($data['end_date']));
-    //     $em->persist($season);
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $season->getId(),
-    //         'name' => $season->getName(),
-    //         'start_date' => $season->getStartDate()->format('d-m-Y'),
-    //         'end_date' => $season->getEndDate()->format('d-m-Y')
-    //     ]);
-    // }
+    #[Route('/seasons', name: 'app_season_create', methods: ['POST'])]
+    public function createSeason(Request $request): JsonResponse
+    {
+        $data = $this->getRequestData($request);
+        $season = new Season();
+        $season->setName($data['name']);
+        $season->setStartDate(new \DateTime($data['start_date']));
+        $season->setEndDate(new \DateTime($data['end_date']));
+        if (!empty($data['registration_open_date'])) {
+            $season->setRegistrationOpenDate(new \DateTime($data['registration_open_date']));
+        }
+        if (!empty($data['registration_close_date'])) {
+            $season->setRegistrationCloseDate(new \DateTime($data['registration_close_date']));
+        }
 
-    // #[Route('/season/{id}', name: 'app_season_update', methods: ['PUT'])]
-    // public function updateSeason(Request $request, Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     $season->setName($data['name']);
-    //     $season->setStartDate(new \DateTime($data['start_date']));
-    //     $season->setEndDate(new \DateTime($data['end_date']));
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $season->getId(),
-    //         'name' => $season->getName(),
-    //         'start_date' => $season->getStartDate()->format('d-m-Y'),
-    //         'end_date' => $season->getEndDate()->format('d-m-Y')
-    //     ]);
-    // }
+        return $this->securedCreateEntity($season, $request);
+    }
 
-    // #[Route('/season/{id}', name: 'app_season_patch', methods: ['PATCH'])]
-    // public function patchSeason(Request $request, Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
-    //     if (isset($data['name'])) {
-    //         $season->setName($data['name']);
-    //     }
-    //     if (isset($data['start_date'])) {
-    //         $season->setStartDate(new \DateTime($data['start_date']));
-    //     }
-    //     if (isset($data['end_date'])) {
-    //         $season->setEndDate(new \DateTime($data['end_date']));
-    //     }
-    //     $em->flush();
-    //     return $this->json([
-    //         'id' => $season->getId(),
-    //         'name' => $season->getName(),
-    //         'start_date' => $season->getStartDate()->format('d-m-Y'),
-    //         'end_date' => $season->getEndDate()->format('d-m-Y')
-    //     ]);
-    // }
+    #[Route('/seasons/{id}', name: 'app_season_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
+    public function updateSeason(int $id, Request $request): JsonResponse
+    {
+        $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+        $data = $this->getRequestData($request);
+        $season->setName($data['name']);
+        $season->setStartDate(new \DateTime($data['start_date']));
+        $season->setEndDate(new \DateTime($data['end_date']));
+        if (array_key_exists('registration_open_date', $data)) {
+            $season->setRegistrationOpenDate($data['registration_open_date'] ? new \DateTime($data['registration_open_date']) : null);
+        }
+        if (array_key_exists('registration_close_date', $data)) {
+            $season->setRegistrationCloseDate($data['registration_close_date'] ? new \DateTime($data['registration_close_date']) : null);
+        }
 
-    // #[Route('/season/{id}', name: 'app_season_delete', methods: ['DELETE'])]
-    // public function deleteSeason(Season $season, EntityManager $em): JsonResponse
-    // {
-    //     $em->remove($season);
-    //     $em->flush();
-    //     return new JsonResponse(['message' => 'Season deleted successfully'], 200);
-    // }
+        return $this->securedUpdateEntity($season);
+    }
+
+    #[Route('/seasons/{id}', name: 'app_season_patch', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function patchSeason(int $id, Request $request): JsonResponse
+    {
+        $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+        $data = $this->getRequestData($request);
+        if (isset($data['name'])) {
+            $season->setName($data['name']);
+        }
+        if (isset($data['start_date'])) {
+            $season->setStartDate(new \DateTime($data['start_date']));
+        }
+        if (isset($data['end_date'])) {
+            $season->setEndDate(new \DateTime($data['end_date']));
+        }
+        if (array_key_exists('registration_open_date', $data)) {
+            $season->setRegistrationOpenDate($data['registration_open_date'] ? new \DateTime($data['registration_open_date']) : null);
+        }
+        if (array_key_exists('registration_close_date', $data)) {
+            $season->setRegistrationCloseDate($data['registration_close_date'] ? new \DateTime($data['registration_close_date']) : null);
+        }
+
+        return $this->securedUpdateEntity($season);
+    }
+
+    #[Route('/seasons/{id}', name: 'app_season_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function deleteSeason(int $id): JsonResponse
+    {
+        $season = $this->findEntityOrFail('App\Entity\Season', $id, 'Season');
+
+        return $this->securedDeleteEntity($season, 'Season');
+    }
 }

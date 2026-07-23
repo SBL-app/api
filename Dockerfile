@@ -1,46 +1,59 @@
 # syntax=docker/dockerfile:1
+FROM php:8.3-fpm-alpine
 
-# ---- Étape 1 : dépendances Composer + autoloader optimisé ----
-FROM composer:2 AS vendor
+# Install system dependencies
+RUN apk add --no-cache \
+    postgresql-dev \
+    postgresql-client \
+    icu-dev \
+    libzip-dev \
+    gmp-dev \
+    zip \
+    unzip \
+    git \
+    && docker-php-ext-install \
+    pdo_pgsql \
+    intl \
+    zip \
+    opcache \
+    gmp
 
-WORKDIR /app
-COPY . .
-# --no-scripts : on ne boote pas Symfony pendant l'installation.
-# --ignore-platform-reqs : l'image composer n'a pas toutes les extensions PHP
-#   cibles ; elles seront présentes dans l'image runtime.
-RUN composer install \
-      --no-dev \
-      --no-scripts \
-      --no-interaction \
-      --prefer-dist \
-      --optimize-autoloader \
-      --ignore-platform-reqs
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# ---- Étape 2 : image PHP-FPM de production ----
-FROM php:8.3-fpm-alpine AS runtime
-
-# Extensions PHP nécessaires (PostgreSQL + OPcache).
-RUN apk add --no-cache --virtual .build-deps postgresql-dev \
-    && docker-php-ext-install -j"$(nproc)" pdo pdo_pgsql opcache \
-    && apk del .build-deps \
-    && apk add --no-cache libpq
-
-# Configuration OPcache orientée production.
-RUN { \
-      echo 'opcache.enable=1'; \
-      echo 'opcache.enable_cli=0'; \
-      echo 'opcache.memory_consumption=128'; \
-      echo 'opcache.max_accelerated_files=20000'; \
-      echo 'opcache.validate_timestamps=0'; \
-    } > /usr/local/etc/php/conf.d/opcache.ini
-
+# Set working directory
 WORKDIR /var/www/html
 
-# Code applicatif + vendor déjà installé (avec autoloader optimisé).
-COPY --from=vendor /app ./
-RUN chown -R www-data:www-data /var/www/html
+# Copy composer files first for better caching
+COPY composer.json composer.lock ./
 
-USER www-data
+# Install dependencies
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
+# Copy application code
+COPY . .
+
+# Generate autoloader and run scripts
+RUN composer dump-autoload --optimize \
+    && composer run-script post-install-cmd --no-interaction || true
+
+# Create var directory and set permissions
+RUN mkdir -p var/cache var/log \
+    && chown -R www-data:www-data var
+
+# PHP-FPM configuration - listen on all interfaces for Docker networking
+RUN sed -i 's/listen = 127.0.0.1:9000/listen = 0.0.0.0:9000/' /usr/local/etc/php-fpm.d/www.conf
+
+# PHP configuration for production
+RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini
 
 EXPOSE 9000
-CMD ["php-fpm"]
+
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker-scheduler-entrypoint.sh /usr/local/bin/docker-scheduler-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-scheduler-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

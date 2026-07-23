@@ -1,0 +1,25 @@
+meta {
+  name: Patch Division
+  type: http
+  seq: 9
+}
+
+patch {
+  url: {{base_url}}/api/divisions/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Division A Patched"
+  }
+}

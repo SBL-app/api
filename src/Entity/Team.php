@@ -19,7 +19,10 @@ class Team
     private ?string $name = null;
 
     #[ORM\ManyToOne]
-    private ?Player $capitain = null;
+    private ?Player $captain = null;
+
+    #[ORM\ManyToOne]
+    private ?User $captainUser = null;
 
     /**
      * @var Collection<int, Registration>
@@ -27,9 +30,16 @@ class Team
     #[ORM\OneToMany(targetEntity: Registration::class, mappedBy: 'team')]
     private Collection $registrations;
 
+    /**
+     * @var Collection<int, TeamMember>
+     */
+    #[ORM\OneToMany(targetEntity: TeamMember::class, mappedBy: 'team', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $members;
+
     public function __construct()
     {
         $this->registrations = new ArrayCollection();
+        $this->members = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -49,14 +59,26 @@ class Team
         return $this;
     }
 
-    public function getCapitain(): ?Player
+    public function getCaptain(): ?Player
     {
-        return $this->capitain;
+        return $this->captain;
     }
 
-    public function setCapitain(?Player $capitainId): static
+    public function setCaptain(?Player $captainId): static
     {
-        $this->capitain = $capitainId;
+        $this->captain = $captainId;
+
+        return $this;
+    }
+
+    public function getCaptainUser(): ?User
+    {
+        return $this->captainUser;
+    }
+
+    public function setCaptainUser(?User $captainUser): static
+    {
+        $this->captainUser = $captainUser;
 
         return $this;
     }
@@ -89,5 +111,64 @@ class Team
         }
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, TeamMember>
+     */
+    public function getMembers(): Collection
+    {
+        return $this->members;
+    }
+
+    public function addMember(TeamMember $member): static
+    {
+        if (!$this->members->contains($member)) {
+            $this->members->add($member);
+            $member->setTeam($this);
+        }
+
+        return $this;
+    }
+
+    public function removeMember(TeamMember $member): static
+    {
+        if ($this->members->removeElement($member)) {
+            if ($member->getTeam() === $this) {
+                $member->setTeam(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return TeamMember[]
+     */
+    public function getCaptains(): array
+    {
+        return $this->members->filter(
+            fn(TeamMember $m) => $m->isCaptain()
+        )->toArray();
+    }
+
+    public function isCaptain(User $user): bool
+    {
+        foreach ($this->members as $member) {
+            if ($member->getUser() === $user && $member->isCaptain()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function isMember(User $user): bool
+    {
+        foreach ($this->members as $member) {
+            if ($member->getUser() === $user) {
+                return true;
+            }
+        }
+        return false;
     }
 }

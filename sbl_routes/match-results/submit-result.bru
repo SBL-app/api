@@ -1,0 +1,26 @@
+meta {
+  name: Submit Match Result
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/games/1/submit-result
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "score1": 3,
+    "score2": 1
+  }
+}

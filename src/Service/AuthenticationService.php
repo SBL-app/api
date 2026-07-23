@@ -1,0 +1,187 @@
+<?php
+
+namespace App\Service;
+
+use App\Entity\User;
+use App\Repository\UserRepository;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\Request;
+
+/**
+ * Service pour la gestion des tokens JWT et l'authentification
+ */
+class AuthenticationService
+{
+    public function __construct(
+        private JWTTokenManagerInterface $jwtManager,
+        private UserRepository $userRepository,
+        private LoggerInterface $logger
+    ) {}
+
+    /**
+     * Extrait le token JWT de la requête
+     */
+    public function extractTokenFromRequest(Request $request): ?string
+    {
+        $authHeader = $request->headers->get('Authorization');
+
+        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+            return null;
+        }
+
+        return substr($authHeader, 7);
+    }
+
+    /**
+     * Vérifie si un token JWT est valide
+     */
+    public function isTokenValid(string $token): bool
+    {
+        try {
+            $payload = $this->jwtManager->parse($token);
+
+            if (!isset($payload['username']) || !isset($payload['exp']) || $payload['exp'] <= time()) {
+                return false;
+            }
+
+            // Vérifier si le token a été révoqué
+            $user = $this->userRepository->findOneBy(['username' => $payload['username']]);
+            if ($user && $this->isTokenRevoked($payload, $user)) {
+                return false;
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            $this->logger->error('Token validation failed', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Vérifie si un token a été révoqué (émis avant tokenInvalidatedAt)
+     */
+    public function isTokenRevoked(array $payload, User $user): bool
+    {
+        $tokenInvalidatedAt = $user->getTokenInvalidatedAt();
+
+        if ($tokenInvalidatedAt === null) {
+            return false;
+        }
+
+        $tokenIssuedAt = $payload['iat'] ?? 0;
+
+        return $tokenIssuedAt < $tokenInvalidatedAt->getTimestamp();
+    }
+
+    /**
+     * Vérifie si un token JWT peut être rafraîchi (pas trop ancien)
+     */
+    public function canTokenBeRefreshed(string $token, int $maxRefreshHours = 24): bool
+    {
+        try {
+            $payload = $this->jwtManager->parse($token);
+            $expiration = $payload['exp'] ?? 0;
+            $maxRefreshTime = $maxRefreshHours * 60 * 60;
+
+            return (time() - $expiration) <= $maxRefreshTime;
+        } catch (\Exception $e) {
+            $this->logger->error('Token refresh check failed', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Récupère l'utilisateur à partir d'un token JWT
+     */
+    public function getUserFromToken(string $token): ?User
+    {
+        try {
+            $payload = $this->jwtManager->parse($token);
+            $username = $payload['username'] ?? null;
+
+            if (!$username) {
+                return null;
+            }
+
+            $user = $this->userRepository->findOneBy(['username' => $username]);
+
+            if (!$user || !$user->isActive()) {
+                return null;
+            }
+
+            // Vérifier si le token a été révoqué
+            if ($this->isTokenRevoked($payload, $user)) {
+                return null;
+            }
+
+            return $user;
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to get user from token', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
+     * Crée un nouveau token JWT pour un utilisateur
+     */
+    public function createTokenForUser(User $user): string
+    {
+        return $this->jwtManager->create($user);
+    }
+
+    /**
+     * Valide une clé API
+     */
+    public function validateApiKey(string $apiKey): ?User
+    {
+        $user = $this->userRepository->findOneBy(['apiKey' => $apiKey]);
+
+        if (!$user || !$user->isActive()) {
+            $this->logger->warning('API key validation failed: user not found or inactive');
+            return null;
+        }
+
+        if (!in_array('ROLE_API', $user->getRoles())) {
+            $this->logger->warning('API key validation failed: missing ROLE_API', ['user_id' => $user->getId()]);
+            return null;
+        }
+
+        if ($user->isApiKeyExpired()) {
+            $this->logger->warning('API key validation failed: key expired', ['user_id' => $user->getId()]);
+            return null;
+        }
+
+        return $user;
+    }
+
+    /**
+     * Vérifie si un utilisateur a le rôle requis
+     */
+    public function userHasRole(User $user, string $role): bool
+    {
+        return in_array($role, $user->getRoles());
+    }
+
+    /**
+     * Vérifie si un utilisateur peut effectuer des opérations de modification
+     */
+    public function canUserModifyData(User $user): bool
+    {
+        return $this->userHasRole($user, 'ROLE_API') || $this->userHasRole($user, 'ROLE_ADMIN');
+    }
+
+    /**
+     * Formate les informations utilisateur pour les réponses API
+     */
+    public function formatUserResponse(User $user): array
+    {
+        return [
+            'id' => $user->getId(),
+            'username' => $user->getUsername(),
+            'roles' => $user->getRoles(),
+            'last_login' => $user->getLastLogin()?->format('Y-m-d H:i:s'),
+            'is_active' => $user->isActive()
+        ];
+    }
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Report Game (Captain)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/games/1/report
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "reason": "Indisponibilité de l'équipe"
+  }
+}

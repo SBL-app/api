@@ -1,0 +1,10 @@
+framework:
+    rate_limiter:
+        auth_login:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 minute'
+        auth_api_key:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 minute'

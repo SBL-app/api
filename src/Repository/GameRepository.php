@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Division;
 use App\Entity\Game;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -14,6 +15,23 @@ class GameRepository extends ServiceEntityRepository
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Game::class);
+    }
+
+    /**
+     * Trouve les matchs dont la date est entre $from et $to et dont le rappel n'a pas encore été envoyé.
+     *
+     * @return Game[]
+     */
+    public function findGamesForReminder(\DateTimeInterface $from, \DateTimeInterface $to): array
+    {
+        return $this->createQueryBuilder('g')
+            ->where('g.date > :from')
+            ->andWhere('g.date <= :to')
+            ->andWhere('g.reminderSentAt IS NULL')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getResult();
     }
 
     /**
@@ -66,13 +84,18 @@ class GameRepository extends ServiceEntityRepository
     //        ;
     //    }
 
-    //    public function findOneBySomeField($value): ?Game
-    //    {
-    //        return $this->createQueryBuilder('g')
-    //            ->andWhere('g.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    /**
+     * @return Game[]
+     */
+    public function findPlayedByDivision(Division $division): array
+    {
+        return $this->createQueryBuilder('g')
+            ->join('g.status', 's')
+            ->where('g.division = :division')
+            ->andWhere('s.name = :status')
+            ->setParameter('division', $division)
+            ->setParameter('status', 'played')
+            ->getQuery()
+            ->getResult();
+    }
 }

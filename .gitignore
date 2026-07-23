@@ -9,3 +9,15 @@
 /vendor/
 ###< symfony/framework-bundle ###
 /.vscode
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+
+/migration_postgres.sql
+/.claude/worktrees/
+/app/config/parameters.yml

@@ -1,0 +1,27 @@
+meta {
+  name: Update Season
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{base_url}}/api/seasons/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Saison 1 Updated",
+    "start_date": "2026-01-01",
+    "end_date": "2026-06-30"
+  }
+}

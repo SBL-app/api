@@ -1,0 +1,32 @@
+meta {
+  name: Update Team Stat
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/team-stats/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "team": 1,
+    "division": 1,
+    "wins": 3,
+    "losses": 1,
+    "ties": 0,
+    "winRounds": 9,
+    "looseRounds": 3,
+    "points": 9
+  }
+}

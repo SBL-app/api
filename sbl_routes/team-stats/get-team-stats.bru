@@ -1,0 +1,16 @@
+meta {
+  name: Get Team Stats
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/team-stats
+  body: none
+  auth: none
+}
+
+params:query {
+  ~team_id: 1
+  ~division_id: 1
+}

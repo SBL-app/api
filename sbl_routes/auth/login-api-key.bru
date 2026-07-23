@@ -1,0 +1,21 @@
+meta {
+  name: Login with API Key
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/auth/login-api-key
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "api_key": "your_api_key_here"
+  }
+}

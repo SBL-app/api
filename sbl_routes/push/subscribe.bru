@@ -1,0 +1,29 @@
+meta {
+  name: Subscribe to Push Notifications
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/push/subscribe
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "endpoint": "https://fcm.googleapis.com/fcm/send/example",
+    "keys": {
+      "p256dh": "REPLACE_WITH_REAL_P256DH_KEY",
+      "auth": "REPLACE_WITH_REAL_AUTH_KEY"
+    }
+  }
+}

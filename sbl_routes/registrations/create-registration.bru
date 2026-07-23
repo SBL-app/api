@@ -1,0 +1,26 @@
+meta {
+  name: Create Registration
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/registrations
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "season": 1,
+    "team": 1
+  }
+}

@@ -1,0 +1,26 @@
+meta {
+  name: Change Team Member Role
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{base_url}}/api/teams/1/members/role
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "discord_id": "123456789012345678",
+    "role": "captain"
+  }
+}

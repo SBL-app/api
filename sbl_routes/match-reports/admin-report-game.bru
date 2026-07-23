@@ -1,0 +1,25 @@
+meta {
+  name: Admin Report Game
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/games/1/admin-report
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "reason": "Les deux équipes n'ont pas trouvé de créneau"
+  }
+}

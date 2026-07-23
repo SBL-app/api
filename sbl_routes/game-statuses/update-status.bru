@@ -1,0 +1,25 @@
+meta {
+  name: Update Game Status
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/game-statuses/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "joué"
+  }
+}

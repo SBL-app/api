@@ -1,0 +1,25 @@
+meta {
+  name: Patch Season
+  type: http
+  seq: 9
+}
+
+patch {
+  url: {{base_url}}/api/seasons/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Saison 1 Patched"
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Delete Game
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{base_url}}/api/games/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Update Team
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/teams/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Team Alpha Updated"
+  }
+}

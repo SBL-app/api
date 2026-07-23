@@ -1,0 +1,16 @@
+meta {
+  name: Get Registrations
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/registrations
+  body: none
+  auth: none
+}
+
+params:query {
+  ~season_id: 1
+  ~team_id: 1
+}

@@ -1,0 +1,27 @@
+meta {
+  name: Create Player
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/players
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Player One",
+    "discord": "playerone#1234",
+    "team": 1
+  }
+}

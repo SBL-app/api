@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "sbl_routes",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

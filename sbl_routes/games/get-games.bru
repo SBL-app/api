@@ -1,0 +1,19 @@
+meta {
+  name: Get Games
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/games
+  body: none
+  auth: none
+}
+
+params:query {
+  ~week: 1
+  ~season_id: 1
+  ~division_id: 1
+  ~team_id: 1
+  ~scheduled: false
+}

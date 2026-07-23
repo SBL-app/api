@@ -1,24 +1,39 @@
-# Contrôle de version
+# Git
 .git
 .gitignore
-.github
 
-# Dépendances (réinstallées dans l'image)
-vendor/
+# Docker
+Dockerfile
+docker-compose*.yml
+
+# Development
+.env
+.env.local
+.env.*.local
+var/
 var/cache/*
 var/log/*
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
 
 # Tests & outils de qualité
 tests/
-.phpunit.cache/
-.php-cs-fixer.cache
+phpunit.xml
 phpunit.xml.dist
+.phpunit.result.cache
+.phpunit.cache/
 phpstan.neon.dist
+.php-cs-fixer.cache
 .php-cs-fixer.dist.php
-
-# Secrets & environnement local
-.env.local
-.env.*.local
 
 # Documentation
 *.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml

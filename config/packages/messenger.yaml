@@ -1,0 +1,5 @@
+framework:
+    messenger:
+        transports:
+            scheduler_default:
+                dsn: 'scheduler://default'

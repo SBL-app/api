@@ -4,6 +4,22 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Valeur par défaut de la variable d'environnement (surchargeable via .env / conteneur).
+    env(REGISTRATION_MIN_PLAYERS): '3'
+    discord.client_id: '%env(DISCORD_CLIENT_ID)%'
+    discord.client_secret: '%env(DISCORD_CLIENT_SECRET)%'
+    discord.redirect_uri: '%env(DISCORD_REDIRECT_URI)%'
+    discord.bot_secret: '%env(DISCORD_BOT_SECRET)%'
+    discord.frontend_url: '%env(FRONTEND_URL)%'
+    vapid.public_key: '%env(VAPID_PUBLIC_KEY)%'
+    vapid.private_key: '%env(VAPID_PRIVATE_KEY)%'
+    vapid.subject: '%env(VAPID_SUBJECT)%'
+    match_result.reminder_day: '%env(MATCH_RESULT_REMINDER_DAY)%'
+    match_result.reminder_hour: '%env(int:MATCH_RESULT_REMINDER_HOUR)%'
+    match_result.deadline_day: '%env(MATCH_RESULT_DEADLINE_DAY)%'
+    match_result.deadline_hour: '%env(int:MATCH_RESULT_DEADLINE_HOUR)%'
+    # Nombre minimum de joueurs qu'une équipe doit avoir pour s'inscrire à une saison.
+    app.registration.min_players: '%env(int:REGISTRATION_MIN_PLAYERS)%'
 
 services:
     # default configuration for services in *this* file
@@ -19,6 +35,28 @@ services:
             - '../src/DependencyInjection/'
             # - '../src/Entity/'
             - '../src/Kernel.php'
+            - '../src/AppBundle/'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    App\Service\DiscordOAuthService:
+        arguments:
+            $clientId: '%discord.client_id%'
+            $clientSecret: '%discord.client_secret%'
+            $redirectUri: '%discord.redirect_uri%'
+            $botSecret: '%discord.bot_secret%'
+            $frontendUrl: '%discord.frontend_url%'
+
+    App\Service\PushNotificationService:
+        arguments:
+            $vapidPublicKey: '%vapid.public_key%'
+            $vapidPrivateKey: '%vapid.private_key%'
+            $vapidSubject: '%vapid.subject%'
+
+    App\MessageHandler\MatchResultTimeoutHandler:
+        arguments:
+            $matchResultReminderDay: '%match_result.reminder_day%'
+            $matchResultReminderHour: '%match_result.reminder_hour%'
+            $matchResultDeadlineDay: '%match_result.deadline_day%'
+            $matchResultDeadlineHour: '%match_result.deadline_hour%'
