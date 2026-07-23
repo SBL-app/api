@@ -461,6 +461,14 @@ class DivisionController extends BaseController
     #[Route("/seasons/{seasonId}/promotion-preview", name: "app_season_promotion_preview", methods: ["GET"], requirements: ["seasonId" => "\d+"])]
     public function promotionPreview(int $seasonId, SeasonPromotionService $promotionService): JsonResponse
     {
+        // Ce endpoint GET est en PUBLIC_ACCESS au niveau du firewall : un
+        // anonyme atteint donc le contrôleur. On convertit l'absence
+        // d'authentification en 401 propre avant la vérification du rôle.
+        try {
+            $this->getAuthenticatedUser();
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            throw ApiProblemException::unauthorized($e->getMessage());
+        }
         $this->checkUserRole('ROLE_ADMIN');
 
         /** @var Season $season */
