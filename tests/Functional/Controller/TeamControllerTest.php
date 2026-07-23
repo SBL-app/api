@@ -192,4 +192,108 @@ class TeamControllerTest extends ApiTestCase
         $this->assertNull($response['captain']);
         $this->assertNull($response['captain_id']);
     }
+
+    // ==========================================
+    // Roster management by captains (issue api#30)
+    // ==========================================
+
+    /**
+     * Crée une équipe et y attache un utilisateur avec le rôle donné, puis
+     * authentifie le client comme cet utilisateur (firewall « api »).
+     */
+    private function createTeamWithAuthenticatedMember(string $role): Team
+    {
+        $user = new \App\Entity\User();
+        $user->setUsername('cap_' . uniqid());
+        $user->setPassword('hashed');
+        $user->setRoles(['ROLE_USER']);
+        $user->setIsActive(true);
+        $user->setDiscordId('discord_' . uniqid());
+        $this->entityManager->persist($user);
+
+        $team = new Team();
+        $team->setName('Roster Team');
+        $this->entityManager->persist($team);
+
+        $member = new \App\Entity\TeamMember();
+        $member->setUser($user);
+        $member->setRole($role);
+        $team->addMember($member);
+        $this->entityManager->persist($member);
+
+        $this->entityManager->flush();
+
+        $this->client->loginUser($user, 'api');
+
+        return $team;
+    }
+
+    public function testCaptainCanAddPlayerToRoster(): void
+    {
+        $team = $this->createTeamWithAuthenticatedMember(\App\Entity\TeamMember::ROLE_CAPTAIN);
+
+        $response = $this->jsonRequest('POST', '/api/teams/' . $team->getId() . '/players', [
+            'name' => 'Nouveau Joueur',
+            'discord' => 'joueur#4242',
+        ]);
+
+        $this->assertResponseStatusCode(201);
+        $this->assertEquals('Nouveau Joueur', $response['name']);
+        $this->assertEquals('joueur#4242', $response['discord']);
+        $this->assertEquals($team->getId(), $response['team_id']);
+    }
+
+    public function testNonCaptainCannotAddPlayerToRoster(): void
+    {
+        $team = $this->createTeamWithAuthenticatedMember(\App\Entity\TeamMember::ROLE_MEMBER);
+
+        $this->jsonRequest('POST', '/api/teams/' . $team->getId() . '/players', [
+            'name' => 'Joueur Refusé',
+        ]);
+
+        $this->assertResponseStatusCode(403);
+    }
+
+    public function testAddPlayerRequiresName(): void
+    {
+        $team = $this->createTeamWithAuthenticatedMember(\App\Entity\TeamMember::ROLE_CAPTAIN);
+
+        $this->jsonRequest('POST', '/api/teams/' . $team->getId() . '/players', [
+            'discord' => 'sansnom#0001',
+        ]);
+
+        $this->assertResponseStatusCode(400);
+    }
+
+    public function testCaptainCanRemovePlayerFromRoster(): void
+    {
+        $team = $this->createTeamWithAuthenticatedMember(\App\Entity\TeamMember::ROLE_CAPTAIN);
+
+        $player = new Player();
+        $player->setName('Joueur À Retirer');
+        $player->setTeam($team);
+        $this->entityManager->persist($player);
+        $this->entityManager->flush();
+
+        $this->jsonRequest('DELETE', '/api/teams/' . $team->getId() . '/players/' . $player->getId());
+        $this->assertResponseStatusCode(204);
+    }
+
+    public function testCaptainCannotRemovePlayerFromAnotherTeam(): void
+    {
+        $team = $this->createTeamWithAuthenticatedMember(\App\Entity\TeamMember::ROLE_CAPTAIN);
+
+        $otherTeam = new Team();
+        $otherTeam->setName('Autre Équipe');
+        $this->entityManager->persist($otherTeam);
+
+        $player = new Player();
+        $player->setName('Joueur Externe');
+        $player->setTeam($otherTeam);
+        $this->entityManager->persist($player);
+        $this->entityManager->flush();
+
+        $this->jsonRequest('DELETE', '/api/teams/' . $team->getId() . '/players/' . $player->getId());
+        $this->assertResponseStatusCode(404);
+    }
 }
