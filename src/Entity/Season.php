@@ -25,6 +25,12 @@ class Season
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $endDate = null;
 
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $registrationOpenDate = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $registrationCloseDate = null;
+
     /**
      * @var Collection<int, Registration>
      */
@@ -75,6 +81,55 @@ class Season
         $this->endDate = $endDate;
 
         return $this;
+    }
+
+    public function getRegistrationOpenDate(): ?\DateTimeInterface
+    {
+        return $this->registrationOpenDate;
+    }
+
+    public function setRegistrationOpenDate(?\DateTimeInterface $registrationOpenDate): static
+    {
+        $this->registrationOpenDate = $registrationOpenDate;
+
+        return $this;
+    }
+
+    public function getRegistrationCloseDate(): ?\DateTimeInterface
+    {
+        return $this->registrationCloseDate;
+    }
+
+    public function setRegistrationCloseDate(?\DateTimeInterface $registrationCloseDate): static
+    {
+        $this->registrationCloseDate = $registrationCloseDate;
+
+        return $this;
+    }
+
+    /**
+     * Indique si la période d'inscription est ouverte à l'instant donné.
+     * Une borne nulle est considérée comme non contraignante :
+     * - open null  → pas de date d'ouverture (déjà ouverte)
+     * - close null → pas de date de fermeture (toujours ouverte)
+     */
+    public function isRegistrationOpen(?\DateTimeInterface $now = null): bool
+    {
+        $now = $now ?? new \DateTimeImmutable();
+
+        if ($this->registrationOpenDate !== null && $now < $this->registrationOpenDate) {
+            return false;
+        }
+
+        if ($this->registrationCloseDate !== null) {
+            // Fin de journée incluse pour la date de fermeture.
+            $closeEndOfDay = (new \DateTimeImmutable($this->registrationCloseDate->format('Y-m-d')))->setTime(23, 59, 59);
+            if ($now > $closeEndOfDay) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
