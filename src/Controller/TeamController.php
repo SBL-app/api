@@ -403,4 +403,86 @@ class TeamController extends BaseController
             'role' => $targetMembership->getRole(),
         ]);
     }
+
+    // ==========================================
+    // Team Roster (Players) Management by captains (ROLE_USER)
+    //
+    // Un capitaine peut gérer le roster (entités Player) de SA propre équipe
+    // sans avoir besoin de ROLE_API. Complète la gestion des membres (comptes
+    // User liés à Discord) par la gestion des joueurs de feuille de match.
+    // ==========================================
+
+    /**
+     * S'assure que l'utilisateur authentifié est capitaine de l'équipe donnée.
+     */
+    private function assertCurrentUserIsCaptain(Team $team, TeamMemberRepository $teamMemberRepository): void
+    {
+        try {
+            $currentUser = $this->getAuthenticatedUser();
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            throw ApiProblemException::unauthorized($e->getMessage());
+        }
+
+        $membership = $teamMemberRepository->findByTeamAndUser($team, $currentUser);
+        if (!$membership || !$membership->isCaptain()) {
+            throw ApiProblemException::forbidden('Only team captains can manage the roster');
+        }
+    }
+
+    #[Route('/teams/{teamId}/players', name: 'app_team_add_player', methods: ['POST'], requirements: ['teamId' => '\d+'])]
+    public function addTeamPlayer(int $teamId, Request $request, TeamMemberRepository $teamMemberRepository): JsonResponse
+    {
+        $team = $this->findEntityOrFail(Team::class, $teamId, 'Team');
+        $this->assertCurrentUserIsCaptain($team, $teamMemberRepository);
+
+        $data = $this->getRequestData($request);
+
+        if (!isset($data['name']) || empty(trim((string) $data['name']))) {
+            throw ApiProblemException::validationError('Player name is required', [['field' => 'name', 'message' => 'This value should not be blank.']]);
+        }
+
+        $name = trim($data['name']);
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 50) {
+            throw ApiProblemException::validationError('Player name must be between 2 and 50 characters', [['field' => 'name', 'message' => 'This value must be between 2 and 50 characters.']]);
+        }
+
+        $player = new Player();
+        $player->setName($name);
+        $player->setDiscord(isset($data['discord']) ? (string) $data['discord'] : null);
+        $player->setTeam($team);
+
+        $this->entityManager->persist($player);
+        $this->entityManager->flush();
+
+        $this->logger->info('Player added to roster by captain', ['team' => $teamId, 'player' => $player->getId()]);
+
+        $response = $this->json([
+            'id' => $player->getId(),
+            'name' => $player->getName(),
+            'discord' => $player->getDiscord(),
+            'team_id' => $team->getId(),
+            'team_name' => $team->getName(),
+        ], 201);
+        $response->headers->set('Location', '/api/players/' . $player->getId());
+        return $response;
+    }
+
+    #[Route('/teams/{teamId}/players/{playerId}', name: 'app_team_remove_player', methods: ['DELETE'], requirements: ['teamId' => '\d+', 'playerId' => '\d+'])]
+    public function removeTeamPlayer(int $teamId, int $playerId, PlayerRepository $playerRepository, TeamMemberRepository $teamMemberRepository): JsonResponse
+    {
+        $team = $this->findEntityOrFail(Team::class, $teamId, 'Team');
+        $this->assertCurrentUserIsCaptain($team, $teamMemberRepository);
+
+        $player = $playerRepository->find($playerId);
+        if (!$player || !$player->getTeam() || $player->getTeam()->getId() !== $team->getId()) {
+            throw ApiProblemException::notFound('Player not found in this team');
+        }
+
+        $this->entityManager->remove($player);
+        $this->entityManager->flush();
+
+        $this->logger->info('Player removed from roster by captain', ['team' => $teamId, 'player' => $playerId]);
+
+        return new JsonResponse(null, 204);
+    }
 }

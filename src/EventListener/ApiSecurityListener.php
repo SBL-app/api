@@ -90,6 +90,11 @@ class ApiSecurityListener
             return true;
         }
 
+        // Match /api/teams/{id}/players and /api/teams/{id}/players/{playerId}
+        if (preg_match('#^/api/teams/\d+/players(/\d+)?$#', $path)) {
+            return true;
+        }
+
         // Match /api/seasons/{id}/register (inscription par le capitaine)
         if (preg_match('#^/api/seasons/\d+/register$#', $path)) {
             return true;
