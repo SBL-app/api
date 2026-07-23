@@ -95,6 +95,11 @@ class ApiSecurityListener
             return true;
         }
 
+        // Match /api/seasons/{id}/register (inscription par le capitaine)
+        if (preg_match('#^/api/seasons/\d+/register$#', $path)) {
+            return true;
+        }
+
         return false;
     }
 }

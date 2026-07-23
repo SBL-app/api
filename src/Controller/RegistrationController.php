@@ -6,7 +6,11 @@ use App\Exception\ApiProblemException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Registration;
+use App\Entity\Season;
+use App\Entity\Team;
 use App\Repository\RegistrationRepository;
+use App\Repository\PlayerRepository;
+use App\Repository\TeamMemberRepository;
 use Symfony\Component\HttpFoundation\Request;
 
 #[Route('/api')]
@@ -19,8 +23,13 @@ class RegistrationController extends BaseController
         }
         return [
             'id' => $entity->getId(),
-            'season' => $entity->getSeason()->getName(),
-            'team' => $entity->getTeam()->getName()
+            'season' => $entity->getSeason() ? $entity->getSeason()->getName() : null,
+            'season_id' => $entity->getSeason() ? $entity->getSeason()->getId() : null,
+            'team' => $entity->getTeam() ? $entity->getTeam()->getName() : null,
+            'team_id' => $entity->getTeam() ? $entity->getTeam()->getId() : null,
+            'status' => $entity->getStatus(),
+            'created_at' => $entity->getCreatedAt()->format('Y-m-d H:i:s'),
+            'reviewed_at' => $entity->getReviewedAt()?->format('Y-m-d H:i:s'),
         ];
     }
 
@@ -135,5 +144,110 @@ class RegistrationController extends BaseController
     {
         $registration = $this->findEntityOrFail('App\Entity\Registration', $id, 'Registration');
         return $this->securedDeleteEntity($registration, 'Registration');
+    }
+
+    // ==========================================
+    // Flux d'inscription à une saison (issue api#35)
+    // ==========================================
+
+    /**
+     * POST /api/seasons/{seasonId}/register
+     *
+     * Le capitaine d'une équipe inscrit SON équipe à une saison ouverte.
+     * Body : {"team_id": <id>}. L'inscription est créée au statut "pending"
+     * et devra être validée par un admin.
+     */
+    #[Route('/seasons/{seasonId}/register', name: 'app_season_register_team', methods: ['POST'], requirements: ['seasonId' => '\d+'])]
+    public function registerTeam(
+        int $seasonId,
+        Request $request,
+        RegistrationRepository $registrationRepository,
+        TeamMemberRepository $teamMemberRepository,
+        PlayerRepository $playerRepository
+    ): JsonResponse {
+        try {
+            $currentUser = $this->getAuthenticatedUser();
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            throw ApiProblemException::unauthorized($e->getMessage());
+        }
+
+        /** @var Season $season */
+        $season = $this->findEntityOrFail(Season::class, $seasonId, 'Season');
+
+        $data = $this->getRequestData($request);
+        $teamId = $data['team_id'] ?? $data['team'] ?? null;
+        if (!$teamId) {
+            throw ApiProblemException::validationError('team_id is required', [['field' => 'team_id', 'message' => 'This value should not be blank.']]);
+        }
+
+        /** @var Team $team */
+        $team = $this->findEntityOrFail(Team::class, $teamId, 'Team');
+
+        // Seul le capitaine de l'équipe peut l'inscrire.
+        $membership = $teamMemberRepository->findByTeamAndUser($team, $currentUser);
+        if (!$membership || !$membership->isCaptain()) {
+            throw ApiProblemException::forbidden('Only the team captain can register the team');
+        }
+
+        // Période d'inscription.
+        if (!$season->isRegistrationOpen()) {
+            throw ApiProblemException::badRequest('Registration is not open for this season');
+        }
+
+        // Pas de doublon.
+        $existing = $registrationRepository->findOneBy(['season' => $season, 'team' => $team]);
+        if ($existing) {
+            throw ApiProblemException::conflict('This team is already registered for this season');
+        }
+
+        // Prérequis : nombre minimum de joueurs.
+        $minPlayers = (int) $this->getParameter('app.registration.min_players');
+        $playerCount = count($playerRepository->findBy(['team' => $team]));
+        if ($playerCount < $minPlayers) {
+            throw ApiProblemException::badRequest(sprintf('Team must have at least %d players to register (currently %d)', $minPlayers, $playerCount));
+        }
+
+        $registration = new Registration();
+        $registration->setSeason($season);
+        $registration->setTeam($team);
+        $registration->setStatus(Registration::STATUS_PENDING);
+
+        $this->entityManager->persist($registration);
+        $this->entityManager->flush();
+
+        $this->logger->info('Team registered to season', ['season' => $seasonId, 'team' => $team->getId(), 'registration' => $registration->getId()]);
+
+        $response = $this->json($this->formatEntityData($registration), 201);
+        $response->headers->set('Location', '/api/registrations/' . $registration->getId());
+        return $response;
+    }
+
+    /**
+     * PATCH /api/registrations/{id}/review
+     *
+     * Un admin valide ou refuse une inscription en attente.
+     * Body : {"status": "approved"|"rejected"}.
+     */
+    #[Route('/registrations/{id}/review', name: 'app_registration_review', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function reviewRegistration(int $id, Request $request): JsonResponse
+    {
+        $this->checkUserRole('ROLE_ADMIN');
+
+        /** @var Registration $registration */
+        $registration = $this->findEntityOrFail(Registration::class, $id, 'Registration');
+        $data = $this->getRequestData($request);
+
+        $status = $data['status'] ?? null;
+        if (!in_array($status, [Registration::STATUS_APPROVED, Registration::STATUS_REJECTED], true)) {
+            throw ApiProblemException::badRequest('status must be "approved" or "rejected"');
+        }
+
+        $registration->setStatus($status);
+        $registration->setReviewedAt(new \DateTimeImmutable());
+        $this->entityManager->flush();
+
+        $this->logger->info('Registration reviewed', ['registration' => $id, 'status' => $status]);
+
+        return $this->json($this->formatEntityData($registration));
     }
 }

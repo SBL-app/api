@@ -29,7 +29,10 @@ class SeasonController extends BaseController
             'id' => $entity->getId(),
             'name' => $entity->getName(),
             'start_date' => $entity->getStartDate()->format('d-m-Y'),
-            'end_date' => $entity->getEndDate()->format('d-m-Y')
+            'end_date' => $entity->getEndDate()->format('d-m-Y'),
+            'registration_open_date' => $entity->getRegistrationOpenDate()?->format('d-m-Y'),
+            'registration_close_date' => $entity->getRegistrationCloseDate()?->format('d-m-Y'),
+            'registration_open' => $entity->isRegistrationOpen(),
         ];
     }
     /**
@@ -233,6 +236,12 @@ class SeasonController extends BaseController
         $season->setName($data['name']);
         $season->setStartDate(new \DateTime($data['start_date']));
         $season->setEndDate(new \DateTime($data['end_date']));
+        if (!empty($data['registration_open_date'])) {
+            $season->setRegistrationOpenDate(new \DateTime($data['registration_open_date']));
+        }
+        if (!empty($data['registration_close_date'])) {
+            $season->setRegistrationCloseDate(new \DateTime($data['registration_close_date']));
+        }
 
         return $this->securedCreateEntity($season, $request);
     }
@@ -245,6 +254,12 @@ class SeasonController extends BaseController
         $season->setName($data['name']);
         $season->setStartDate(new \DateTime($data['start_date']));
         $season->setEndDate(new \DateTime($data['end_date']));
+        if (array_key_exists('registration_open_date', $data)) {
+            $season->setRegistrationOpenDate($data['registration_open_date'] ? new \DateTime($data['registration_open_date']) : null);
+        }
+        if (array_key_exists('registration_close_date', $data)) {
+            $season->setRegistrationCloseDate($data['registration_close_date'] ? new \DateTime($data['registration_close_date']) : null);
+        }
 
         return $this->securedUpdateEntity($season);
     }
@@ -262,6 +277,12 @@ class SeasonController extends BaseController
         }
         if (isset($data['end_date'])) {
             $season->setEndDate(new \DateTime($data['end_date']));
+        }
+        if (array_key_exists('registration_open_date', $data)) {
+            $season->setRegistrationOpenDate($data['registration_open_date'] ? new \DateTime($data['registration_open_date']) : null);
+        }
+        if (array_key_exists('registration_close_date', $data)) {
+            $season->setRegistrationCloseDate($data['registration_close_date'] ? new \DateTime($data['registration_close_date']) : null);
         }
 
         return $this->securedUpdateEntity($season);

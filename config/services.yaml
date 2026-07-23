@@ -4,6 +4,8 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Valeur par défaut de la variable d'environnement (surchargeable via .env / conteneur).
+    env(REGISTRATION_MIN_PLAYERS): '3'
     discord.client_id: '%env(DISCORD_CLIENT_ID)%'
     discord.client_secret: '%env(DISCORD_CLIENT_SECRET)%'
     discord.redirect_uri: '%env(DISCORD_REDIRECT_URI)%'
@@ -16,6 +18,8 @@ parameters:
     match_result.reminder_hour: '%env(int:MATCH_RESULT_REMINDER_HOUR)%'
     match_result.deadline_day: '%env(MATCH_RESULT_DEADLINE_DAY)%'
     match_result.deadline_hour: '%env(int:MATCH_RESULT_DEADLINE_HOUR)%'
+    # Nombre minimum de joueurs qu'une équipe doit avoir pour s'inscrire à une saison.
+    app.registration.min_players: '%env(int:REGISTRATION_MIN_PLAYERS)%'
 
 services:
     # default configuration for services in *this* file
