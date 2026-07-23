@@ -10,6 +10,9 @@ use App\Repository\SeasonRepository;
 use App\Repository\GameStatusRepository;
 use App\Service\PushNotificationService;
 use App\Service\TeamStatCalculatorService;
+use App\Service\SeasonPromotionService;
+use App\Entity\Team;
+use App\Entity\TeamStat;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -42,6 +45,9 @@ class DivisionController extends BaseController
                 ? $entity->getSeason()->getName()
                 : "",
             "is_finalized" => $entity->isFinalized(),
+            "level" => $entity->getLevel(),
+            "promotion_count" => $entity->getPromotionCount(),
+            "relegation_count" => $entity->getRelegationCount(),
         ];
     }
 
@@ -328,6 +334,8 @@ class DivisionController extends BaseController
             $division->setSeason(null);
         }
 
+        $this->applyHierarchyFields($division, $data);
+
         return $this->securedCreateEntity($division, $request);
     }
 
@@ -351,6 +359,8 @@ class DivisionController extends BaseController
             );
             $division->setSeason($season);
         }
+
+        $this->applyHierarchyFields($division, $data);
 
         return $this->securedUpdateEntity($division);
     }
@@ -380,6 +390,8 @@ class DivisionController extends BaseController
             );
             $division->setSeason($season);
         }
+
+        $this->applyHierarchyFields($division, $data);
 
         $shouldNotify = isset($data["is_finalized"])
             && $data["is_finalized"] === true
@@ -417,6 +429,156 @@ class DivisionController extends BaseController
         }
 
         return $response;
+    }
+
+    /**
+     * Applique les champs de hiérarchie (niveau, promotions, relégations)
+     * présents dans les données de requête à une division.
+     */
+    private function applyHierarchyFields(Division $division, array $data): void
+    {
+        if (isset($data["level"])) {
+            $division->setLevel((int) $data["level"]);
+        }
+        if (isset($data["promotion_count"])) {
+            $division->setPromotionCount((int) $data["promotion_count"]);
+        }
+        if (isset($data["relegation_count"])) {
+            $division->setRelegationCount((int) $data["relegation_count"]);
+        }
+    }
+
+    // ==========================================
+    // Promotion / relégation (issue api#36)
+    // ==========================================
+
+    /**
+     * GET /api/seasons/{seasonId}/promotion-preview
+     *
+     * Prévisualise (sans rien modifier) les mouvements de promotion/relégation
+     * calculés à partir des classements finaux. Réservé aux admins.
+     */
+    #[Route("/seasons/{seasonId}/promotion-preview", name: "app_season_promotion_preview", methods: ["GET"], requirements: ["seasonId" => "\d+"])]
+    public function promotionPreview(int $seasonId, SeasonPromotionService $promotionService): JsonResponse
+    {
+        $this->checkUserRole('ROLE_ADMIN');
+
+        /** @var Season $season */
+        $season = $this->findEntityOrFail(Season::class, $seasonId, 'Season');
+
+        return $this->json([
+            'season_id' => $season->getId(),
+            'season_name' => $season->getName(),
+            'divisions' => $promotionService->computeMovements($season),
+        ]);
+    }
+
+    /**
+     * POST /api/seasons/{seasonId}/apply-promotions
+     *
+     * Applique les mouvements calculés à une saison cible en créant les
+     * TeamStat (0-initialisées) et Registration (approuvées) des équipes dans
+     * la division du niveau cible. Les ajustements manuels sont possibles via
+     * `adjustments: [{team_id, to_level}]`. Réservé aux admins.
+     */
+    #[Route("/seasons/{seasonId}/apply-promotions", name: "app_season_apply_promotions", methods: ["POST"], requirements: ["seasonId" => "\d+"])]
+    public function applyPromotions(
+        int $seasonId,
+        Request $request,
+        SeasonPromotionService $promotionService,
+        DivisionRepository $divisionRepository,
+        TeamStatRepository $teamStatRepository,
+        \App\Repository\RegistrationRepository $registrationRepository,
+    ): JsonResponse {
+        $this->checkUserRole('ROLE_ADMIN');
+
+        /** @var Season $sourceSeason */
+        $sourceSeason = $this->findEntityOrFail(Season::class, $seasonId, 'Season');
+
+        $data = $this->getRequestData($request);
+        $targetSeasonId = $data['target_season_id'] ?? null;
+        if (!$targetSeasonId) {
+            throw ApiProblemException::validationError('target_season_id is required', [['field' => 'target_season_id', 'message' => 'This value should not be blank.']]);
+        }
+
+        /** @var Season $targetSeason */
+        $targetSeason = $this->findEntityOrFail(Season::class, $targetSeasonId, 'Season');
+
+        // Niveaux cibles calculés, puis surchargés par les ajustements manuels.
+        $movements = $promotionService->computeMovements($sourceSeason);
+        $targetLevels = $promotionService->flattenTargetLevels($movements);
+
+        foreach (($data['adjustments'] ?? []) as $adjustment) {
+            if (isset($adjustment['team_id'], $adjustment['to_level'])) {
+                $targetLevels[(int) $adjustment['team_id']] = (int) $adjustment['to_level'];
+            }
+        }
+
+        // Indexe les divisions de la saison cible par niveau.
+        $targetDivisionsByLevel = [];
+        foreach ($divisionRepository->findBy(['season' => $targetSeason]) as $division) {
+            $targetDivisionsByLevel[$division->getLevel()] = $division;
+        }
+
+        $applied = [];
+        $skipped = [];
+
+        foreach ($targetLevels as $teamId => $toLevel) {
+            $division = $targetDivisionsByLevel[$toLevel] ?? null;
+            if ($division === null) {
+                $skipped[] = ['team_id' => $teamId, 'reason' => 'no target division at level ' . $toLevel];
+                continue;
+            }
+
+            /** @var Team|null $team */
+            $team = $this->entityManager->getRepository(Team::class)->find($teamId);
+            if ($team === null) {
+                $skipped[] = ['team_id' => $teamId, 'reason' => 'team not found'];
+                continue;
+            }
+
+            // Inscription à la saison cible (si absente).
+            $existingRegistration = $registrationRepository->findOneBy(['season' => $targetSeason, 'team' => $team]);
+            if ($existingRegistration === null) {
+                $registration = new \App\Entity\Registration();
+                $registration->setSeason($targetSeason);
+                $registration->setTeam($team);
+                $this->entityManager->persist($registration);
+            }
+
+            // TeamStat 0-initialisée dans la division cible (si absente).
+            $existingStat = $teamStatRepository->findOneBy(['team' => $team, 'division' => $division]);
+            if ($existingStat === null) {
+                $stat = new TeamStat();
+                $stat->setTeam($team);
+                $stat->setDivision($division);
+                $stat->setWins(0);
+                $stat->setLosses(0);
+                $stat->setTies(0);
+                $stat->setPoints(0);
+                $stat->setWinRounds(0);
+                $stat->setLooseRounds(0);
+                $this->entityManager->persist($stat);
+            }
+
+            $applied[] = ['team_id' => $teamId, 'to_level' => $toLevel, 'division_id' => $division->getId()];
+        }
+
+        $this->entityManager->flush();
+
+        $this->logger->info('Promotions applied', [
+            'source_season' => $seasonId,
+            'target_season' => $targetSeason->getId(),
+            'applied' => count($applied),
+            'skipped' => count($skipped),
+        ]);
+
+        return $this->json([
+            'source_season_id' => $sourceSeason->getId(),
+            'target_season_id' => $targetSeason->getId(),
+            'applied' => $applied,
+            'skipped' => $skipped,
+        ]);
     }
 
     #[Route("/divisions/{id}", name: "app_division_delete", methods: ["DELETE"], requirements: ["id" => "\d+"])]
