@@ -100,6 +100,11 @@ class ApiSecurityListener
             return true;
         }
 
+        // Match /api/teams/{id}/transfers (transfert par le capitaine d'accueil)
+        if (preg_match('#^/api/teams/\d+/transfers$#', $path)) {
+            return true;
+        }
+
         return false;
     }
 }

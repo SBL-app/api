@@ -77,6 +77,8 @@ security:
         - { path: ^/api/teams/\d+/players, roles: ROLE_USER }
         # Season registration by team captains — ROLE_USER, not ROLE_API
         - { path: ^/api/seasons/\d+/register, roles: ROLE_USER }
+        # Player transfers by destination team captains — ROLE_USER, not ROLE_API
+        - { path: ^/api/teams/\d+/transfers, roles: ROLE_USER, methods: [POST] }
         # Push subscription endpoints accessible to any authenticated user (ROLE_USER, not ROLE_API)
         - { path: ^/api/push/subscribe, roles: ROLE_USER }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }

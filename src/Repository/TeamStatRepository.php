@@ -34,6 +34,25 @@ class TeamStatRepository extends ServiceEntityRepository
         return $this->findBy(['division' => $division]);
     }
 
+    /**
+     * Retourne le TeamStat d'une équipe pour une saison donnée (via la division),
+     * ou null si l'équipe n'est rattachée à aucune division de cette saison.
+     */
+    public function findOneByTeamAndSeason(Team $team, \App\Entity\Season $season): ?TeamStat
+    {
+        $result = $this->createQueryBuilder('ts')
+            ->join('ts.division', 'd')
+            ->andWhere('ts.team = :team')
+            ->andWhere('d.season = :season')
+            ->setParameter('team', $team)
+            ->setParameter('season', $season)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $result instanceof TeamStat ? $result : null;
+    }
+
     //    /**
     //     * @return TeamStat[] Returns an array of TeamStat objects
     //     */
