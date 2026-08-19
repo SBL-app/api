@@ -1,0 +1,91 @@
+version: 2
+
+# Processus de mise à jour des dépendances — API Symfony (C4.1.1)
+#
+# Périmètre  : dépendances PHP (Composer), image de base Docker, actions CI.
+# Fréquence  : hebdomadaire le lundi — les correctifs de sécurité restent
+#              proposés immédiatement par GitHub, indépendamment de ce rythme.
+# Mode       : automatique pour la détection et l'ouverture des pull requests,
+#              manuel pour la validation. Aucune fusion automatique : sur un
+#              projet servant une ligue en activité, une régression introduite
+#              sans relecture coûte plus cher que le délai de revue.
+
+updates:
+  # ---------------------------------------------------------------
+  # Dépendances PHP
+  # ---------------------------------------------------------------
+  - package-ecosystem: composer
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Europe/Paris
+    open-pull-requests-limit: 5
+    target-branch: dev
+    labels:
+      - "type:deps"
+      - "composant:api"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "chore"
+      include: scope
+    groups:
+      # Les composants Symfony sont interdépendants : les mettre à jour
+      # séparément produit des pull requests en échec de CI, chacune attendant
+      # les autres. Le regroupement rend l'ensemble testable en une fois.
+      symfony:
+        patterns:
+          - "symfony/*"
+        update-types:
+          - minor
+          - patch
+      doctrine:
+        patterns:
+          - "doctrine/*"
+        update-types:
+          - minor
+          - patch
+      # Les montées de version des outils de développement ne présentent aucun
+      # risque en production : elles sont regroupées pour limiter le bruit.
+      dev-tools:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Les versions majeures sont exclues du flux automatique : elles
+      # impliquent des ruptures de compatibilité qui relèvent d'une décision
+      # de planification, pas d'une revue de pull request hebdomadaire.
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+
+  # ---------------------------------------------------------------
+  # Image de base Docker
+  # ---------------------------------------------------------------
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Europe/Paris
+    labels:
+      - "type:deps"
+      - "composant:infra"
+    commit-message:
+      prefix: "deps"
+
+  # ---------------------------------------------------------------
+  # Actions GitHub utilisées par la CI
+  # ---------------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels:
+      - "type:deps"
+      - "composant:infra"
+    commit-message:
+      prefix: "ci"

@@ -1,0 +1,183 @@
+name: "Fiche de consignation d'anomalie"
+description: "Consigner une anomalie détectée en production ou en recette"
+title: "[BUG] "
+labels: ["type:bug", "statut:a-trier"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Consignation d'une anomalie
+
+        Cette fiche structure la collecte des informations nécessaires à la
+        **reproduction** puis à la **correction** de l'anomalie. Les champs
+        marqués d'un astérisque sont obligatoires : sans eux, l'anomalie ne
+        peut pas être reproduite de façon fiable et le correctif risque de
+        traiter un symptôme plutôt que la cause.
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: Source de la détection
+      description: Par quel canal l'anomalie est-elle remontée ?
+      options:
+        - Sentry (détection automatique)
+        - Uptime Kuma (alerte de supervision)
+        - Retour du staff SBL (client)
+        - Retour d'un joueur (utilisateur final)
+        - Tests automatisés (CI)
+        - Constatée en développement
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severite
+    attributes:
+      label: Sévérité
+      description: |
+        S1 — Service indisponible ou perte de données, aucun contournement possible
+        S2 — Fonctionnalité majeure inutilisable, contournement complexe
+        S3 — Fonctionnalité secondaire dégradée, contournement simple
+        S4 — Défaut cosmétique ou confort
+      options:
+        - "S1 — Critique"
+        - "S2 — Majeure"
+        - "S3 — Mineure"
+        - "S4 — Cosmétique"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: composant
+    attributes:
+      label: Composant concerné
+      options:
+        - API (Symfony)
+        - Frontend (Vue 3)
+        - Bot Discord
+        - Scheduler
+        - Base de données
+        - Infrastructure / déploiement
+        - Indéterminé
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version applicative
+      description: >
+        Valeur du champ `version` retourné par `/api/health`, ou tag de la
+        release concernée. Permet de relier l'anomalie à une entrée précise
+        du journal de versions.
+      placeholder: "v1.4.2 (commit a3f9c1d2)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environnement
+    attributes:
+      label: Environnement
+      options:
+        - Production
+        - Développement local
+        - Environnement de test (CI)
+    validations:
+      required: true
+
+  - type: textarea
+    id: contexte
+    attributes:
+      label: Contexte d'apparition
+      description: >
+        Qui a rencontré le problème, dans quelles circonstances, et depuis
+        quand. Préciser si l'anomalie est apparue après un déploiement.
+      placeholder: |
+        Signalé par le staff SBL le 12/08 sur Discord.
+        Concerne les capitaines d'équipe uniquement.
+        Apparu après le déploiement de la v1.4.2.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Étapes de reproduction
+      description: >
+        Séquence numérotée et minimale permettant de reproduire l'anomalie.
+        C'est le champ le plus important de la fiche : une anomalie non
+        reproductible ne peut pas être corrigée de manière fiable.
+      placeholder: |
+        1. Se connecter avec un compte capitaine d'équipe
+        2. Ouvrir la page « Mes matchs »
+        3. Cliquer sur « Proposer une date » pour un match déjà joué
+        4. Observer l'erreur
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: attendu
+    attributes:
+      label: Comportement attendu
+      placeholder: "Le bouton ne devrait pas être proposé sur un match déjà joué."
+    validations:
+      required: true
+
+  - type: textarea
+    id: constate
+    attributes:
+      label: Comportement constaté
+      placeholder: "Une erreur 500 est renvoyée et la page reste bloquée sur le chargement."
+    validations:
+      required: true
+
+  - type: input
+    id: sentry
+    attributes:
+      label: Lien Sentry
+      description: >
+        URL de l'événement Sentry associé, s'il existe. Il contient la stack
+        trace complète, le contexte de la requête et la release concernée.
+      placeholder: "https://sentry.io/organizations/.../issues/..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Journaux et messages d'erreur
+      description: >
+        Extrait de `docker compose logs api`, réponse HTTP brute, ou console
+        du navigateur. Le formatage en bloc de code est automatique.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact utilisateurs
+      description: >
+        Nombre d'utilisateurs affectés, contournement disponible, urgence
+        réelle. Cet élément conditionne l'arbitrage de priorisation.
+      placeholder: |
+        8 capitaines sur 24 concernés.
+        Contournement : passer par la page du match plutôt que par « Mes matchs ».
+    validations:
+      required: true
+
+  - type: textarea
+    id: analyse
+    attributes:
+      label: Analyse préliminaire et piste de correction
+      description: >
+        À compléter lors du triage. Cause suspectée et correctif envisagé.
+      placeholder: |
+        Cause suspectée : le contrôle du statut du match est absent côté front.
+        Piste : filtrer sur gameStatus dans le composant, et durcir la
+        validation côté API pour empêcher toute proposition sur un match clos.
+    validations:
+      required: false

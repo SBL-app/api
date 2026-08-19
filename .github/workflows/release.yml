@@ -1,0 +1,106 @@
+name: Release
+
+# Génération du journal des versions et publication d'une release GitHub.
+#
+# Déclenchement manuel plutôt qu'automatique sur chaque merge : sur ce projet,
+# plusieurs correctifs sont souvent fusionnés dans la même journée. Publier une
+# release par merge produirait un journal illisible pour le staff SBL. Le
+# déclenchement manuel permet de regrouper un ensemble cohérent d'évolutions,
+# tout en conservant une génération entièrement automatique du contenu.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Type d'incrément sémantique"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publier une nouvelle version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+        with:
+          # L'historique complet et les tags sont nécessaires : git-cliff
+          # calcule la version suivante à partir du dernier tag existant.
+          fetch-depth: 0
+
+      - name: Calculer la version suivante
+        id: version
+        run: |
+          set -euo pipefail
+          dernier_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          version=${dernier_tag#v}
+
+          IFS='.' read -r majeure mineure correctif <<< "$version"
+
+          case "${{ inputs.bump }}" in
+            major) majeure=$((majeure + 1)); mineure=0; correctif=0 ;;
+            minor) mineure=$((mineure + 1)); correctif=0 ;;
+            patch) correctif=$((correctif + 1)) ;;
+          esac
+
+          nouvelle="v${majeure}.${mineure}.${correctif}"
+          echo "precedente=${dernier_tag}" >> "$GITHUB_OUTPUT"
+          echo "nouvelle=${nouvelle}" >> "$GITHUB_OUTPUT"
+          echo "Version : ${dernier_tag} -> ${nouvelle}"
+
+      - name: Générer le journal des versions
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag ${{ steps.version.outputs.nouvelle }}
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extraire les notes de la version
+        id: notes
+        run: |
+          set -euo pipefail
+          # Les notes de release reprennent la seule section de la nouvelle
+          # version, et non l'intégralité du journal.
+          awk '/^## \[/{n++} n==1' CHANGELOG.md > NOTES.md
+          {
+            echo 'contenu<<DELIMITEUR'
+            cat NOTES.md
+            echo 'DELIMITEUR'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Committer le journal mis à jour
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet CHANGELOG.md; then
+            echo "Aucune évolution à consigner depuis ${{ steps.version.outputs.precedente }}."
+            exit 1
+          fi
+
+          git add CHANGELOG.md
+          git commit -m "chore(release): ${{ steps.version.outputs.nouvelle }}"
+          git tag -a "${{ steps.version.outputs.nouvelle }}" \
+            -m "Release ${{ steps.version.outputs.nouvelle }}"
+          git push origin HEAD --follow-tags
+
+      - name: Publier la release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.nouvelle }}
+          name: ${{ steps.version.outputs.nouvelle }}
+          body: ${{ steps.notes.outputs.contenu }}
+          draft: false
+          prerelease: false

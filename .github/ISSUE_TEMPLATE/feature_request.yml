@@ -1,0 +1,41 @@
+name: "Demande d'évolution"
+description: "Proposer une nouvelle fonctionnalité ou une amélioration"
+title: "[FEAT] "
+labels: ["type:feature", "statut:a-trier"]
+body:
+  - type: dropdown
+    id: demandeur
+    attributes:
+      label: Origine de la demande
+      options:
+        - Staff SBL (client)
+        - Joueur (utilisateur final)
+        - Initiative technique (dette, performance, sécurité)
+    validations:
+      required: true
+
+  - type: textarea
+    id: besoin
+    attributes:
+      label: Besoin exprimé
+      description: Décrire le besoin métier, sans présumer de la solution technique.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution envisagée
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priorite
+    attributes:
+      label: Priorité proposée
+      options:
+        - Haute — bloquant pour la saison en cours
+        - Moyenne — à planifier sur le trimestre
+        - Basse — backlog
+    validations:
+      required: true
