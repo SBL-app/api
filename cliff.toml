@@ -1,0 +1,83 @@
+# Configuration git-cliff — génération automatique du journal de versions.
+#
+# Le journal de versions ne doit pas dépendre de la discipline de rédaction
+# manuelle : sur un projet mené en solo sur deux ans, un CHANGELOG tenu à la
+# main finit systématiquement par diverger du code réellement déployé.
+# La génération depuis les messages de commit garantit qu'aucune modification
+# fusionnée sur main ne peut échapper au journal.
+
+[changelog]
+header = """
+# Journal des versions — API SBL
+
+Toutes les évolutions notables de l'API Symfony sont consignées dans ce fichier.
+
+Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
+versionnage respecte le [Semantic Versioning](https://semver.org/lang/fr/).\n
+"""
+
+body = """
+{% if version %}
+## [{{ version | trim_start_matches(pat="v") }}] — {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}
+## [Non publié]
+{% endif %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | upper_first }}\
+{% if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }})){% endif %}\
+ ([{{ commit.id | truncate(length=7, end="") }}]({{ self::remote_url() }}/commit/{{ commit.id }}))\
+{% endfor %}
+{% endfor %}\n
+"""
+
+trim = true
+
+footer = """
+<!-- Généré par git-cliff -->
+"""
+
+[changelog.remote.github]
+owner = "SBL-app"
+repo = "api"
+
+[git]
+# Le versionnage sémantique est déduit des préfixes de commit :
+# feat! ou BREAKING CHANGE -> majeure, feat -> mineure, fix -> patch.
+conventional_commits = true
+
+# Les commits hors convention sont volontairement écartés plutôt que classés
+# dans un fourre-tout : un journal de versions doit rester lisible par le
+# client, pas exhaustif au sens technique.
+filter_unconventional = true
+
+split_commits = false
+protect_breaking_commits = true
+filter_commits = false
+topo_order = false
+sort_commits = "newest"
+
+commit_parsers = [
+  { message = "^feat", group = "Ajouté" },
+  { message = "^fix", group = "Corrigé" },
+  { message = "^perf", group = "Performance" },
+  { message = "^refactor", group = "Modifié" },
+  { message = "^security", group = "Sécurité" },
+  { message = "^deps", group = "Sécurité" },
+  { message = "^revert", group = "Annulé" },
+  { message = "^docs", skip = true },
+  { message = "^test", skip = true },
+  { message = "^chore", skip = true },
+  { message = "^ci", skip = true },
+  { message = "^style", skip = true },
+  { message = "^Merge", skip = true },
+]
+
+commit_preprocessors = [
+  # Retire le préfixe conventionnel du texte affiché : il est déjà porté par
+  # le titre de section.
+  { pattern = '^(feat|fix|perf|refactor|security|deps|revert)(\\([^)]*\\))?!?: *', replace = "" },
+]
+
+tag_pattern = "v[0-9]*"

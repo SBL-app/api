@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Incident de production en cours
+    url: https://discord.com/channels/
+    about: >
+      Pour une indisponibilité constatée en production (sévérité S1), signaler
+      d'abord sur le canal #alertes-technique afin d'accélérer la prise en
+      charge, puis créer la fiche de consignation.
