@@ -7,7 +7,12 @@ Dockerfile
 docker-compose*.yml
 
 # Development
-.env
+# `.env` n'est PAS exclu : Symfony exige sa présence au démarrage
+# (Dotenv::bootEnv), même quand toute la configuration vient de vraies
+# variables d'environnement. Il ne contient que des valeurs par défaut, jamais
+# de secrets — ceux-ci vivent dans `.env.local`, exclu ci-dessous, et sont
+# fournis en production par le docker-compose (les vraies variables
+# d'environnement l'emportent sur le fichier).
 .env.local
 .env.*.local
 var/
