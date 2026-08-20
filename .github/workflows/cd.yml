@@ -4,6 +4,14 @@ name: CD
 # le sous-dossier `api/` de la stack sur le serveur, rebuild du service `api`
 # (PHP-FPM) via docker compose, puis exécution des migrations Doctrine.
 #
+# Le service `api` tourne en `restart: unless-stopped` et n'a pas de
+# healthcheck : quand il plante au démarrage, il redémarre en boucle et
+# `docker compose exec` échoue sur un message opaque (`exit code 137`, ou
+# `Container ... is restarting` selon la version du démon). Le déploiement
+# attend donc que le conteneur soit stable avant de lancer les migrations. En
+# cas d'échec sur un déclenchement manuel, les logs du conteneur sont publiés
+# (voir la note sur cette étape).
+#
 # Secrets requis :
 #   SSH_HOST, SSH_USER, SSH_KEY, SSH_PORT (optionnel, défaut 22), DEPLOY_PATH
 
@@ -20,6 +28,10 @@ jobs:
   deploy:
     name: Deploy API over SSH
     runs-on: ubuntu-latest
+    env:
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +41,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.SSH_PORT || '22' }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "$SSH_PORT" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Sync API source
         run: |
@@ -40,18 +52,104 @@ jobs:
             --exclude 'vendor' \
             --exclude 'var' \
             --exclude '.env.local' \
-            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT || '22' }}" \
-            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/api/"
+            -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT" \
+            ./ "$SSH_TARGET:$DEPLOY_PATH/api/"
 
-      - name: Rebuild service & run migrations
+      - name: Rebuild service
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/deploy_key -p "${{ secrets.SSH_PORT || '22' }}" \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "cd '${{ secrets.DEPLOY_PATH }}' \
-              && docker compose up -d --build api api-nginx \
-              && docker compose exec -T api php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration \
-              && docker image prune -f"
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
+            "cd '$DEPLOY_PATH' && docker compose up -d --build api api-nginx"
+
+      # `docker compose up -d` rend la main dès que le conteneur est lancé, pas
+      # quand il est viable. On vérifie qu'il tient debout avant d'aller plus
+      # loin : `up --build` venant de recréer le conteneur, tout redémarrage
+      # compté ici est forcément postérieur au déploiement, donc un crash.
+      - name: Wait for the api container to stabilise
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
+            "cd '$DEPLOY_PATH' && bash -s" <<'REMOTE'
+          set -uo pipefail
+
+          cid=$(docker compose ps -q api || true)
+          if [ -z "$cid" ]; then
+            echo "::error::conteneur api introuvable après 'docker compose up'"
+            exit 1
+          fi
+
+          stable=0
+          for attempt in $(seq 1 30); do
+            status=$(docker inspect -f '{{.State.Status}}' "$cid")
+            restarts=$(docker inspect -f '{{.RestartCount}}' "$cid")
+
+            if [ "$restarts" -gt 0 ]; then
+              echo "::error::le conteneur api a redémarré $restarts fois depuis sa recréation : il plante au démarrage"
+              exit 1
+            fi
+
+            case "$status" in
+              running)
+                stable=$((stable + 1))
+                # Trois relevés consécutifs : un conteneur qui plante après une
+                # seconde ne doit pas être déclaré sain.
+                if [ "$stable" -ge 3 ]; then
+                  echo "conteneur api stable (running, 0 redémarrage)"
+                  exit 0
+                fi
+                ;;
+              restarting|created)
+                stable=0
+                echo "api est '$status' (tentative $attempt/30)…"
+                ;;
+              exited|dead)
+                echo "::error::le conteneur api est '$status'"
+                exit 1
+                ;;
+            esac
+            sleep 2
+          done
+
+          echo "::error::le conteneur api n'est pas devenu stable en 60 s"
+          exit 1
+          REMOTE
+
+      - name: Run Doctrine migrations
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
+            "cd '$DEPLOY_PATH' && docker compose exec -T api php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
+
+      - name: Prune dangling images
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
+            "cd '$DEPLOY_PATH' && docker image prune -f"
+
+      # Sans ça, un plantage du conteneur n'est lisible qu'en se connectant au
+      # serveur.
+      #
+      # Volontairement limité à `workflow_dispatch` : le dépôt est public, et
+      # les logs d'un Symfony en `APP_ENV: prod` peuvent contenir des
+      # identifiants. Le filtrage ci-dessous masque les formes connues
+      # (identifiants d'URI, variables sensibles) mais ne peut pas tout couvrir.
+      # Ces valeurs venant du `.env` du serveur et non des secrets GitHub, le
+      # masquage automatique d'Actions ne s'y applique pas. On ne publie donc
+      # ces logs que sur un déclenchement manuel, quand quelqu'un les regarde.
+      - name: Collect container diagnostics
+        if: failure() && github.event_name == 'workflow_dispatch'
+        run: |
+          set -uo pipefail
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
+            "cd '$DEPLOY_PATH' \
+              && echo '--- docker compose ps ---' \
+              && docker compose ps \
+              && echo '--- docker compose logs api (100 dernières lignes) ---' \
+              && docker compose logs --tail=100 --no-color api" 2>&1 \
+            | sed -E \
+                -e 's#(://[^:/@[:space:]]*):[^@[:space:]]+@#\1:***@#g' \
+                -e 's#((APP_SECRET|APP_PASSWORD|JWT_PASSPHRASE|POSTGRES_PASSWORD|DISCORD_CLIENT_SECRET|DISCORD_BOT_SECRET|MAILER_DSN)[[:space:]]*[=:][[:space:]]*)[^[:space:]]+#\1***#gi' \
+            || true
 
       - name: Clean up SSH key
         if: always()
