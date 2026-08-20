@@ -8,8 +8,9 @@ name: CD
 # healthcheck : quand il plante au démarrage, il redémarre en boucle et
 # `docker compose exec` échoue sur un message opaque (`exit code 137`, ou
 # `Container ... is restarting` selon la version du démon). Le déploiement
-# attend donc que le conteneur soit stable avant de lancer les migrations, et
-# publie les logs du conteneur quand quelque chose échoue.
+# attend donc que le conteneur soit stable avant de lancer les migrations. En
+# cas d'échec sur un déclenchement manuel, les logs du conteneur sont publiés
+# (voir la note sur cette étape).
 #
 # Secrets requis :
 #   SSH_HOST, SSH_USER, SSH_KEY, SSH_PORT (optionnel, défaut 22), DEPLOY_PATH
@@ -126,11 +127,17 @@ jobs:
             "cd '$DEPLOY_PATH' && docker image prune -f"
 
       # Sans ça, un plantage du conteneur n'est lisible qu'en se connectant au
-      # serveur. Les identifiants présents dans les URI (DATABASE_URL et
-      # consorts) sont masqués avant affichage — voir la note de la PR sur la
-      # limite de ce filtrage.
+      # serveur.
+      #
+      # Volontairement limité à `workflow_dispatch` : le dépôt est public, et
+      # les logs d'un Symfony en `APP_ENV: prod` peuvent contenir des
+      # identifiants. Le filtrage ci-dessous masque les formes connues
+      # (identifiants d'URI, variables sensibles) mais ne peut pas tout couvrir.
+      # Ces valeurs venant du `.env` du serveur et non des secrets GitHub, le
+      # masquage automatique d'Actions ne s'y applique pas. On ne publie donc
+      # ces logs que sur un déclenchement manuel, quand quelqu'un les regarde.
       - name: Collect container diagnostics
-        if: failure()
+        if: failure() && github.event_name == 'workflow_dispatch'
         run: |
           set -uo pipefail
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
