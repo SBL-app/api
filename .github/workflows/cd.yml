@@ -14,6 +14,9 @@ name: CD
 #
 # Secrets requis :
 #   SSH_HOST, SSH_USER, SSH_KEY, SSH_PORT (optionnel, défaut 22), DEPLOY_PATH
+#   API_HEALTH_URL (optionnel) : URL publique de /api/health, vérifiée après
+#     déploiement. Passe par un secret pour ne pas publier le domaine dans ce
+#     dépôt public ; non défini, le test de fumée est ignoré.
 
 on:
   push:
@@ -172,6 +175,45 @@ jobs:
           cd "$DEPLOY_PATH"
           docker image prune -f
           REMOTE
+
+      # Un `docker compose up` réussi ne prouve pas que l'application sert
+      # quelque chose. Le 2026-08-20, ce workflow était vert — conteneur
+      # stable, migrations passées — alors que tous les endpoints renvoyaient
+      # 500, y compris les routes inexistantes. Un déploiement qui se déclare
+      # réussi pendant que l'API est hors service est pire qu'un déploiement
+      # qui échoue : personne ne va voir.
+      #
+      # Seul 200 est accepté : `/api/health` renvoie 503 quand une sonde
+      # critique tombe, ce qui est un échec de déploiement, pas un succès.
+      - name: Smoke test the health endpoint
+        env:
+          API_HEALTH_URL: ${{ secrets.API_HEALTH_URL }}
+        run: |
+          set -uo pipefail
+
+          if [ -z "${API_HEALTH_URL:-}" ]; then
+            echo "::warning::secret API_HEALTH_URL non défini — test de fumée ignoré"
+            exit 0
+          fi
+
+          code=000
+          for attempt in $(seq 1 6); do
+            # `curl -w` écrit déjà 000 quand il échoue ; l'assignation de
+            # repli ne doit pas s'y ajouter, d'où `|| code=000` et non `|| echo`.
+            code=$(curl -sS -o /tmp/health.json -w '%{http_code}' --max-time 15 "$API_HEALTH_URL") || code=000
+            if [ "$code" = "200" ]; then
+              echo "/api/health répond HTTP 200"
+              head -c 2000 /tmp/health.json
+              exit 0
+            fi
+            echo "tentative $attempt/6 : HTTP $code"
+            sleep 5
+          done
+
+          echo "::error::l'API ne sert pas : /api/health répond HTTP $code après 6 tentatives"
+          echo '--- réponse ---'
+          head -c 2000 /tmp/health.json || true
+          exit 1
 
       # Sans ça, un plantage du conteneur n'est lisible qu'en se connectant au
       # serveur.
