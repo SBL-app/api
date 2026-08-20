@@ -230,15 +230,35 @@ jobs:
         run: |
           set -uo pipefail
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
-            "cd '$DEPLOY_PATH' \
-              && echo '--- docker compose ps ---' \
-              && docker compose ps \
-              && echo '--- docker compose logs api (100 dernières lignes) ---' \
-              && docker compose logs --tail=100 --no-color api" 2>&1 \
+            "DEPLOY_PATH='$DEPLOY_PATH' bash -s" 2>&1 <<'REMOTE' \
             | sed -E \
                 -e 's#(://[^:/@[:space:]]*):[^@[:space:]]+@#\1:***@#g' \
                 -e 's#((APP_SECRET|APP_PASSWORD|JWT_PASSPHRASE|POSTGRES_PASSWORD|DISCORD_CLIENT_SECRET|DISCORD_BOT_SECRET|MAILER_DSN)[[:space:]]*[=:][[:space:]]*)[^[:space:]]+#\1***#gi' \
             || true
+          set -uo pipefail
+          cd "$DEPLOY_PATH"
+
+          echo '--- docker compose ps ---'
+          docker compose ps || true
+
+          echo '--- docker compose logs api (100 dernières lignes) ---'
+          docker compose logs --tail=100 --no-color api || true
+
+          # Les erreurs ne passent pas par stdout : en prod, Monolog écrit dans
+          # des `rotating_file` (`var/log/error-2026-08-20.log`). Sans ça, le
+          # diagnostic ne montre que des « GET /index.php 500 » sans cause.
+          echo '--- var/log : fichiers Monolog les plus récents ---'
+          docker compose exec -T api sh -c '
+            cd var/log 2>/dev/null || { echo "(pas de répertoire var/log)"; exit 0; }
+            found=""
+            for f in $(ls -t error-*.log prod-*.log 2>/dev/null | head -2); do
+              found=1
+              echo "--- $f (60 dernières lignes) ---"
+              tail -n 60 "$f"
+            done
+            [ -n "$found" ] || echo "(aucun fichier de log trouvé)"
+          ' || true
+          REMOTE
 
       - name: Clean up SSH key
         if: always()
