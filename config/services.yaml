@@ -6,6 +6,13 @@
 parameters:
     # Valeur par défaut de la variable d'environnement (surchargeable via .env / conteneur).
     env(REGISTRATION_MIN_PLAYERS): '3'
+    # Version déployée, injectée au build (voir la procédure de release).
+    # Les valeurs par défaut évitent d'imposer ces variables en dev, en test et
+    # en CI, où elles n'ont pas de sens.
+    env(APP_VERSION): 'dev'
+    env(APP_COMMIT): 'unknown'
+    app.version: '%env(APP_VERSION)%'
+    app.commit: '%env(APP_COMMIT)%'
     discord.client_id: '%env(DISCORD_CLIENT_ID)%'
     discord.client_secret: '%env(DISCORD_CLIENT_SECRET)%'
     discord.redirect_uri: '%env(DISCORD_REDIRECT_URI)%'
