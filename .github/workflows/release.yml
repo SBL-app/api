@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Récupérer le dépôt
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # L'historique complet et les tags sont nécessaires : git-cliff
           # calcule la version suivante à partir du dernier tag existant.
