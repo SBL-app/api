@@ -55,12 +55,37 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT" \
             ./ "$SSH_TARGET:$DEPLOY_PATH/api/"
 
+      # Quatre dépôts pilotent le même projet docker compose sur le même
+      # serveur. La clé `concurrency:` ci-dessus ne protège que de ce dépôt :
+      # ses groupes sont propres à un dépôt et ne se voient pas entre eux. Les
+      # étapes qui modifient l'état Docker prennent donc un verrou côté
+      # serveur, partagé avec `infrastructure`, `bot` et `SBL-app`.
+      #
+      # Chaque étape est une session SSH distincte, et le verrou tombe avec
+      # elle : un autre déploiement peut encore s'intercaler *entre* deux
+      # étapes. La fenêtre passe de « toute la durée du déploiement » à
+      # « l'intervalle entre deux étapes », sans disparaître complètement.
       - name: Rebuild service
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
-            "cd '$DEPLOY_PATH' && docker compose up -d --build api api-nginx"
+            "DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
 
+          exec 9>/tmp/sbl-deploy.lock
+          if ! flock -w 300 9; then
+            echo "::error::verrou de déploiement non obtenu après 300 s : un autre déploiement est en cours"
+            exit 1
+          fi
+
+          cd "$DEPLOY_PATH"
+          docker compose up -d --build api api-nginx
+          REMOTE
+
+      # Étape en lecture seule (`docker inspect`), volontairement hors verrou :
+      # le tenir ici bloquerait les autres déploiements jusqu'à 60 s sans rien
+      # protéger.
+      #
       # `docker compose up -d` rend la main dès que le conteneur est lancé, pas
       # quand il est viable. On vérifie qu'il tient debout avant d'aller plus
       # loin : `up --build` venant de recréer le conteneur, tout redémarrage
@@ -118,13 +143,35 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
-            "cd '$DEPLOY_PATH' && docker compose exec -T api php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
+            "DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          exec 9>/tmp/sbl-deploy.lock
+          if ! flock -w 300 9; then
+            echo "::error::verrou de déploiement non obtenu après 300 s : un autre déploiement est en cours"
+            exit 1
+          fi
+
+          cd "$DEPLOY_PATH"
+          docker compose exec -T api php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+          REMOTE
 
       - name: Prune dangling images
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_TARGET" \
-            "cd '$DEPLOY_PATH' && docker image prune -f"
+            "DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          exec 9>/tmp/sbl-deploy.lock
+          if ! flock -w 300 9; then
+            echo "::error::verrou de déploiement non obtenu après 300 s : un autre déploiement est en cours"
+            exit 1
+          fi
+
+          cd "$DEPLOY_PATH"
+          docker image prune -f
+          REMOTE
 
       # Sans ça, un plantage du conteneur n'est lisible qu'en se connectant au
       # serveur.
