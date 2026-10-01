@@ -13,7 +13,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api')]
 class MatchReportController extends BaseController
 {
-    private const MAX_REPORTS_PER_SEASON = 2;
+    private const MAX_REPORTS_PER_SEASON = 1;
 
     protected function formatEntityData($entity): array
     {
@@ -64,7 +64,7 @@ class MatchReportController extends BaseController
 
         $season = $game->getDivision()?->getSeason();
         if ($season && $reportRepository->countByTeamAndSeason($team, $season) >= self::MAX_REPORTS_PER_SEASON) {
-            throw ApiProblemException::badRequest('Your team has reached the maximum number of reports for this season (2)');
+            throw ApiProblemException::badRequest(sprintf('Your team has reached the maximum number of reports for this season (%d)', self::MAX_REPORTS_PER_SEASON));
         }
 
         $data = $this->getRequestData($request);
@@ -183,7 +183,7 @@ class MatchReportController extends BaseController
         return $this->json([
             'reports' => array_map(fn($report) => $this->formatEntityData($report), $reports),
             'count' => $count,
-            'remaining' => self::MAX_REPORTS_PER_SEASON - $count,
+            'remaining' => max(0, self::MAX_REPORTS_PER_SEASON - $count),
         ]);
     }
 }
