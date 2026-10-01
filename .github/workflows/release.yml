@@ -97,7 +97,7 @@ jobs:
           git push origin HEAD --follow-tags
 
       - name: Publier la release GitHub
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.nouvelle }}
           name: ${{ steps.version.outputs.nouvelle }}
