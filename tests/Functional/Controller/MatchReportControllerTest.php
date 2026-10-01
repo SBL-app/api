@@ -167,18 +167,12 @@ class MatchReportControllerTest extends ApiTestCase
     {
         $ctx = $this->createMatchContext();
 
-        // Créer 2 reports existants pour team1
+        // Créer le report déjà consommé par team1 (1 report par équipe et par saison)
         $report1 = new MatchReport();
         $report1->setGame($ctx['game']);
         $report1->setTeam($ctx['team1']);
         $report1->setRequestedBy($ctx['captain1']);
         $this->entityManager->persist($report1);
-
-        $report2 = new MatchReport();
-        $report2->setGame($ctx['game']);
-        $report2->setTeam($ctx['team1']);
-        $report2->setRequestedBy($ctx['captain1']);
-        $this->entityManager->persist($report2);
 
         $this->entityManager->flush();
 
@@ -309,7 +303,7 @@ class MatchReportControllerTest extends ApiTestCase
         $this->assertArrayHasKey('count', $response);
         $this->assertArrayHasKey('remaining', $response);
         $this->assertEquals(1, $response['count']);
-        $this->assertEquals(1, $response['remaining']); // MAX_REPORTS_PER_SEASON (2) - 1 = 1
+        $this->assertEquals(0, $response['remaining']); // MAX_REPORTS_PER_SEASON (1) - 1 = 0
         $this->assertCount(1, $response['reports']);
         $this->assertEquals('Need to reschedule', $response['reports'][0]['reason']);
     }
