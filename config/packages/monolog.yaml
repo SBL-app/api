@@ -1,6 +1,7 @@
 monolog:
     channels:
         - deprecation
+        - client
 
 when@dev:
     monolog:
@@ -59,7 +60,9 @@ when@prod:
                 handler: mail_dedup
                 excluded_http_codes: [404, 405]
                 buffer_size: 50
-                channels: ["!event", "!doctrine", "!deprecation"]
+                # Les erreurs front (canal client) sont loguées mais ne déclenchent pas de mail :
+                # un endpoint public pourrait sinon servir à spammer la boîte d'alerte.
+                channels: ["!event", "!doctrine", "!deprecation", "!client"]
             mail_dedup:
                 type: deduplication
                 handler: mail_sender

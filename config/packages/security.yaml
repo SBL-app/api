@@ -72,6 +72,8 @@ security:
         - { path: ^/api/push/subscribe, roles: ROLE_USER }
         # Appel service à service (bot) : authentifié par X-Service-Key dans le contrôleur
         - { path: ^/api/push/send$, roles: PUBLIC_ACCESS }
+        # Remontée des erreurs front : publique (limitée en débit côté contrôleur)
+        - { path: ^/api/client-logs$, roles: PUBLIC_ACCESS, methods: [POST] }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [GET] }
 
