@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Exception\ApiProblemException;
 use App\Service\AdminDashboardService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -20,6 +21,10 @@ class AdminDashboardController extends BaseController
     #[Route('/dashboard', name: 'api_admin_dashboard', methods: ['GET'])]
     public function dashboard(AdminDashboardService $service): JsonResponse
     {
+        // 401 explicite : le listener d'erreurs API convertirait une AccessDeniedException en 500.
+        if (null === $this->getUser()) {
+            throw ApiProblemException::unauthorized('Authentication required');
+        }
         $this->checkUserRole('ROLE_ADMIN');
 
         return $this->json($service->getAggregates());
