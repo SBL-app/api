@@ -14,7 +14,9 @@ class ApiSecurityListener
     private const PROTECTED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
     private const EXCLUDED_PATHS = [
         '/api/auth/login',
-        '/api/auth/login-api-key'
+        '/api/auth/login-api-key',
+        // Authentifié par clé de service (X-Service-Key) dans le contrôleur.
+        '/api/push/send',
     ];
     private const ROLE_USER_PREFIXES = [
         '/api/users/me',
