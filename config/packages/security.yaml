@@ -68,6 +68,8 @@ security:
         - { path: ^/api/users/me, roles: ROLE_USER, methods: [GET] }
         # Team management endpoints accessible to any authenticated user
         - { path: ^/api/teams/\d+/members, roles: ROLE_USER }
+        # Dashboard admin : authentification requise (401), rôle ROLE_ADMIN vérifié dans le contrôleur (403)
+        - { path: ^/api/admin, roles: ROLE_USER, methods: [GET] }
         # Push subscription endpoints accessible to any authenticated user (ROLE_USER, not ROLE_API)
         - { path: ^/api/push/subscribe, roles: ROLE_USER }
         # Appel service à service (bot) : authentifié par X-Service-Key dans le contrôleur
