@@ -79,8 +79,6 @@ security:
         - { path: ^/api/seasons/\d+/register, roles: ROLE_USER }
         # Player transfers by destination team captains — ROLE_USER, not ROLE_API
         - { path: ^/api/teams/\d+/transfers, roles: ROLE_USER, methods: [POST] }
-        # Dashboard admin : authentification requise (401), rôle ROLE_ADMIN vérifié dans le contrôleur (403)
-        - { path: ^/api/admin, roles: ROLE_USER, methods: [GET] }
         # Push subscription endpoints accessible to any authenticated user (ROLE_USER, not ROLE_API)
         - { path: ^/api/push/subscribe, roles: ROLE_USER }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }
