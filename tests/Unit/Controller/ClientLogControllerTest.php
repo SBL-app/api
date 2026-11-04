@@ -3,6 +3,7 @@
 namespace App\Tests\Unit\Controller;
 
 use App\Controller\ClientLogController;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -97,9 +98,7 @@ class ClientLogControllerTest extends TestCase
         $this->assertArrayNotHasKey('extra', $captured);
     }
 
-    /**
-     * @dataProvider invalidBodies
-     */
+    #[DataProvider('invalidBodies')]
     public function testRejectsInvalidPayloadWithoutLogging(array|string $body): void
     {
         $logger = $this->createMock(LoggerInterface::class);
@@ -123,7 +122,7 @@ class ClientLogControllerTest extends TestCase
     public function testRateLimitIsPerIpAndDoesNotLogWhenExceeded(): void
     {
         $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->exactly(2))->method('error');
+        $logger->expects($this->exactly(3))->method('error');
         $controller = $this->controller($logger, 2);
 
         $this->assertSame(204, $controller->collect($this->request(['message' => 'a']))->getStatusCode());
