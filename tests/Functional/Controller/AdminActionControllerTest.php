@@ -88,6 +88,7 @@ class AdminActionControllerTest extends ApiTestCase
         $this->assertSame(3, $game->getScore1());
         $this->assertSame('played', $game->getStatus()->getName());
 
+        $this->client->loginUser($user, 'api'); // firewall stateless : ré-authentifier
         $this->jsonRequest('POST', '/api/admin/games/' . $game->getId() . '/validate-result');
         $this->assertResponseStatusCode(409);
     }
@@ -114,7 +115,7 @@ class AdminActionControllerTest extends ApiTestCase
     public function testCloseDivision(): void
     {
         $open = $this->game('pending_result');
-        $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
+        $user = $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
         $url = '/api/admin/divisions/' . $this->division->getId() . '/close';
 
         $this->jsonRequest('POST', $url);
@@ -122,9 +123,11 @@ class AdminActionControllerTest extends ApiTestCase
 
         $open->setStatus($this->statuses['played']);
         $this->entityManager->flush();
+        $this->client->loginUser($user, 'api');
         $this->jsonRequest('POST', $url);
         $this->assertResponseIsSuccessful();
 
+        $this->client->loginUser($user, 'api');
         $this->jsonRequest('POST', $url);
         $this->assertResponseStatusCode(409);
     }
