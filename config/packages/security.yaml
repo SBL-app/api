@@ -76,6 +76,8 @@ security:
         - { path: ^/api/push/send$, roles: PUBLIC_ACCESS }
         # Remontée des erreurs front : publique (limitée en débit côté contrôleur)
         - { path: ^/api/client-logs$, roles: PUBLIC_ACCESS, methods: [POST] }
+        # Admin quick actions: ROLE_ADMIN enforced in the controller (403), not ROLE_API
+        - { path: ^/api/admin, roles: ROLE_USER }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [GET] }
 

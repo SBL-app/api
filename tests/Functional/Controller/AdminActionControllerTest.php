@@ -9,6 +9,7 @@ use App\Entity\MatchResult;
 use App\Entity\Season;
 use App\Entity\Team;
 use App\Tests\Functional\ApiTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class AdminActionControllerTest extends ApiTestCase
 {
@@ -50,14 +51,14 @@ class AdminActionControllerTest extends ApiTestCase
         return [['/api/admin/games/1/validate-result'], ['/api/admin/games/1/remind'], ['/api/admin/divisions/1/close']];
     }
 
-    /** @dataProvider routes */
+    #[DataProvider('routes')]
     public function testAnonymous401(string $url): void
     {
         $this->jsonRequest('POST', $url);
         $this->assertResponseStatusCode(401);
     }
 
-    /** @dataProvider routes */
+    #[DataProvider('routes')]
     public function testNonAdmin403(string $url): void
     {
         $this->authenticateAsApi(['ROLE_USER', 'ROLE_API']);
@@ -65,7 +66,7 @@ class AdminActionControllerTest extends ApiTestCase
         $this->assertResponseStatusCode(403);
     }
 
-    /** @dataProvider routes */
+    #[DataProvider('routes')]
     public function testUnknown404(string $url): void
     {
         $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
