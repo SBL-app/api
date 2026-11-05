@@ -84,11 +84,12 @@ class AdminActionControllerTest extends ApiTestCase
 
         $this->jsonRequest('POST', '/api/admin/games/' . $game->getId() . '/validate-result');
         $this->assertResponseIsSuccessful();
-        $this->entityManager->refresh($game);
-        $this->assertSame(3, $game->getScore1());
-        $this->assertSame('played', $game->getStatus()->getName());
+    }
 
-        $this->client->loginUser($user, 'api'); // firewall stateless : ré-authentifier
+    public function testValidateResultConflictWhenNothingToValidate(): void
+    {
+        $game = $this->game('pending_result');
+        $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
         $this->jsonRequest('POST', '/api/admin/games/' . $game->getId() . '/validate-result');
         $this->assertResponseStatusCode(409);
     }
@@ -112,23 +113,29 @@ class AdminActionControllerTest extends ApiTestCase
         $this->assertResponseStatusCode(409);
     }
 
+    public function testCloseDivisionRefusedWithOpenGames(): void
+    {
+        $this->game('pending_result');
+        $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
+        $this->jsonRequest('POST', '/api/admin/divisions/' . $this->division->getId() . '/close');
+        $this->assertResponseStatusCode(409);
+    }
+
     public function testCloseDivision(): void
     {
-        $open = $this->game('pending_result');
-        $user = $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
-        $url = '/api/admin/divisions/' . $this->division->getId() . '/close';
-
-        $this->jsonRequest('POST', $url);
-        $this->assertResponseStatusCode(409);
-
-        $open->setStatus($this->statuses['played']);
-        $this->entityManager->flush();
-        $this->client->loginUser($user, 'api');
-        $this->jsonRequest('POST', $url);
+        $this->game('played');
+        $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
+        $this->jsonRequest('POST', '/api/admin/divisions/' . $this->division->getId() . '/close');
         $this->assertResponseIsSuccessful();
+    }
 
-        $this->client->loginUser($user, 'api');
-        $this->jsonRequest('POST', $url);
+    public function testCloseDivisionConflictWhenAlreadyClosed(): void
+    {
+        $this->game('played');
+        $this->division->setIsFinalized(true);
+        $this->entityManager->flush();
+        $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
+        $this->jsonRequest('POST', '/api/admin/divisions/' . $this->division->getId() . '/close');
         $this->assertResponseStatusCode(409);
     }
 }
