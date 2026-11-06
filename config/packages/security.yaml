@@ -70,6 +70,8 @@ security:
         - { path: ^/api/teams/\d+/members, roles: ROLE_USER }
         # Push subscription endpoints accessible to any authenticated user (ROLE_USER, not ROLE_API)
         - { path: ^/api/push/subscribe, roles: ROLE_USER }
+        # Appel service à service (bot) : authentifié par X-Service-Key dans le contrôleur
+        - { path: ^/api/push/send$, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [GET] }
 
