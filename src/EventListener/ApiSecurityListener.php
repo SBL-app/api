@@ -23,6 +23,7 @@ class ApiSecurityListener
     private const ROLE_USER_PREFIXES = [
         '/api/users/me',
         '/api/push/subscribe',
+        '/api/admin', // ROLE_ADMIN vérifié dans les contrôleurs
     ];
 
     public function __construct(private Security $security) {}
