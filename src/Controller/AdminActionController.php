@@ -8,7 +8,7 @@ use App\Entity\GameStatus;
 use App\Entity\MatchResult;
 use App\Exception\ApiProblemException;
 use App\Repository\MatchResultRepository;
-use App\Service\PushNotificationService;
+use App\Service\NotificationService;
 use App\Service\TeamStatCalculatorService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -99,7 +99,7 @@ class AdminActionController extends BaseController
      * POST /api/admin/games/{id}/remind - Relance les équipes d'un match sans résultat validé.
      */
     #[Route('/games/{id}/remind', name: 'api_admin_remind_game', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function remind(int $id, PushNotificationService $push, MatchResultRepository $results): JsonResponse
+    public function remind(int $id, NotificationService $push, MatchResultRepository $results): JsonResponse
     {
         $this->requireAdmin();
         /** @var Game $game */
