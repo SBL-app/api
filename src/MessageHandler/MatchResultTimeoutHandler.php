@@ -6,7 +6,7 @@ use App\Entity\GameStatus;
 use App\Message\MatchResultTimeoutMessage;
 use App\Repository\MatchResultRepository;
 use App\Repository\UserRepository;
-use App\Service\PushNotificationService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -18,7 +18,7 @@ class MatchResultTimeoutHandler
     public function __construct(
         private MatchResultRepository $resultRepository,
         private UserRepository $userRepository,
-        private PushNotificationService $pushNotificationService,
+        private NotificationService $pushNotificationService,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
         private ClockInterface $clock,

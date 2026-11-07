@@ -6,7 +6,7 @@ use App\Entity\GameStatus;
 use App\Entity\MatchResult;
 use App\Exception\ApiProblemException;
 use App\Repository\MatchResultRepository;
-use App\Service\PushNotificationService;
+use App\Service\NotificationService;
 use App\Service\SeasonClosureService;
 use App\Service\TeamStatCalculatorService;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -47,7 +47,7 @@ class MatchResultController extends BaseController
         int $id,
         Request $request,
         MatchResultRepository $resultRepository,
-        PushNotificationService $pushNotificationService,
+        NotificationService $pushNotificationService,
     ): JsonResponse {
         $user = $this->getAuthenticatedUser();
 
@@ -130,7 +130,7 @@ class MatchResultController extends BaseController
     public function validateResult(
         int $id,
         int $resultId,
-        PushNotificationService $pushNotificationService,
+        NotificationService $pushNotificationService,
         TeamStatCalculatorService $statCalculator,
         SeasonClosureService $seasonClosureService,
     ): JsonResponse {
@@ -224,7 +224,7 @@ class MatchResultController extends BaseController
         int $id,
         int $resultId,
         Request $request,
-        PushNotificationService $pushNotificationService,
+        NotificationService $pushNotificationService,
     ): JsonResponse {
         $user = $this->getAuthenticatedUser();
 

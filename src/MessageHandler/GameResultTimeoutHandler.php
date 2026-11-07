@@ -5,7 +5,7 @@ namespace App\MessageHandler;
 use App\Message\GameResultTimeoutMessage;
 use App\Repository\GameResultRepository;
 use App\Repository\UserRepository;
-use App\Service\PushNotificationService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -16,7 +16,7 @@ class GameResultTimeoutHandler
     public function __construct(
         private GameResultRepository $gameResultRepository,
         private UserRepository $userRepository,
-        private PushNotificationService $pushNotificationService,
+        private NotificationService $pushNotificationService,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
         private int $scoreValidationTimeoutDays,

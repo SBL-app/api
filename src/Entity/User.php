@@ -13,6 +13,11 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\Table(name: 'users')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    public const CHANNEL_DISCORD = 'discord';
+    public const CHANNEL_PUSH = 'push';
+    public const CHANNEL_MAIL = 'mail';
+    public const CHANNELS = [self::CHANNEL_DISCORD, self::CHANNEL_PUSH, self::CHANNEL_MAIL];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -50,6 +55,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $tokenInvalidatedAt = null;
+
+    #[ORM\Column(length: 180, nullable: true)]
+    private ?string $email = null;
+
+    /** Canaux de notification activés (discord, push, mail). Par défaut : discord seul. */
+    #[ORM\Column(type: 'json')]
+    private array $notificationChannels = [self::CHANNEL_DISCORD];
 
     /**
      * @var Collection<int, TeamMember>
@@ -229,6 +241,35 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->tokenInvalidatedAt = new \DateTimeImmutable();
         return $this;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(?string $email): static
+    {
+        $this->email = $email;
+        return $this;
+    }
+
+    /** @return string[] */
+    public function getNotificationChannels(): array
+    {
+        return $this->notificationChannels;
+    }
+
+    /** @param string[] $channels */
+    public function setNotificationChannels(array $channels): static
+    {
+        $this->notificationChannels = array_values(array_intersect(self::CHANNELS, $channels));
+        return $this;
+    }
+
+    public function wantsNotificationChannel(string $channel): bool
+    {
+        return in_array($channel, $this->notificationChannels, true);
     }
 
     /**

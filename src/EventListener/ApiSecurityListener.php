@@ -15,8 +15,6 @@ class ApiSecurityListener
     private const EXCLUDED_PATHS = [
         '/api/auth/login',
         '/api/auth/login-api-key',
-        // Authentifié par clé de service (X-Service-Key) dans le contrôleur.
-        '/api/push/send',
         // Remontée d'erreurs navigateur : publique, rate-limitée par IP.
         '/api/client-logs',
     ];

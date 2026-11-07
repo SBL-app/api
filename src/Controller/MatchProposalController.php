@@ -8,7 +8,7 @@ use App\Repository\MatchProposalRepository;
 use App\Repository\GameRepository;
 use App\Repository\UserRepository;
 use App\Repository\TeamRepository;
-use App\Service\PushNotificationService;
+use App\Service\NotificationService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -127,7 +127,7 @@ class MatchProposalController extends BaseController
         UserRepository $userRepository,
         TeamRepository $teamRepository,
         MatchProposalRepository $proposalRepository,
-        PushNotificationService $pushNotificationService,
+        NotificationService $pushNotificationService,
     ): JsonResponse {
         try {
             $this->checkModificationPermissions();
@@ -229,7 +229,7 @@ class MatchProposalController extends BaseController
         MatchProposalRepository $proposalRepository,
         UserRepository $userRepository,
         GameRepository $gameRepository,
-        PushNotificationService $pushNotificationService,
+        NotificationService $pushNotificationService,
     ): JsonResponse {
         try {
             $this->checkModificationPermissions();
