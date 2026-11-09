@@ -84,12 +84,14 @@ class AdminDashboardControllerTest extends ApiTestCase
         $this->assertSame(0, $data['reported_games']['total']);
         $this->assertSame(0, $data['pending_registrations']['total']);
         $this->assertSame(0, $data['division_progress'][0]['total']);
+        $this->assertSame([], $data['items']['pending_results']);
+        $this->assertSame([], $data['items']['pending_registrations']);
     }
 
     public function testAggregates(): void
     {
-        $this->makeGame('pending_result', new \DateTime('2024-03-01'));
-        $this->makeGame('pending_result', new \DateTime('2024-03-02'));
+        $pending1 = $this->makeGame('pending_result', new \DateTime('2024-03-01'));
+        $pending2 = $this->makeGame('pending_result', new \DateTime('2024-03-02'));
         $this->makeGame('reported', null);
         $this->makeGame('reported', new \DateTime('2024-03-05')); // déjà reprogrammé : exclu
         $this->makeGame('played', new \DateTime('2024-03-03'));
@@ -125,5 +127,14 @@ class AdminDashboardControllerTest extends ApiTestCase
         $this->assertSame($this->season->getId(), $data['pending_registrations']['by_season'][0]['season_id']);
         $this->assertSame(1, $data['division_progress'][0]['played']);
         $this->assertSame(6, $data['division_progress'][0]['total']);
+
+        $this->assertSame(
+            [$pending1->getId(), $pending2->getId()],
+            array_column($data['items']['pending_results'], 'id')
+        );
+        $this->assertSame($this->division->getId(), $data['items']['pending_results'][0]['division_id']);
+        $this->assertSame($this->team1->getId(), $data['items']['pending_results'][0]['team1']['id']);
+        $this->assertCount(2, $data['items']['pending_registrations']);
+        $this->assertSame($this->season->getId(), $data['items']['pending_registrations'][0]['season_id']);
     }
 }
