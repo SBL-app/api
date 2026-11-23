@@ -78,6 +78,8 @@ security:
         - { path: ^/api/client-logs$, roles: PUBLIC_ACCESS, methods: [POST] }
         # Admin quick actions: 401/403 (ROLE_ADMIN) enforced in the controller
         - { path: ^/api/admin, roles: PUBLIC_ACCESS, methods: [POST] }
+        # Config admin : ROLE_USER, le contrôleur exige ROLE_ADMIN
+        - { path: ^/api/admin/config, roles: ROLE_USER, methods: [PUT] }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [GET] }
 
