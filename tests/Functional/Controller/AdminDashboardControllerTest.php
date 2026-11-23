@@ -86,13 +86,15 @@ class AdminDashboardControllerTest extends ApiTestCase
         $this->assertSame(0, $data['division_progress'][0]['total']);
         $this->assertSame([], $data['items']['pending_results']);
         $this->assertSame([], $data['items']['pending_registrations']);
+        $this->assertSame([], $data['items']['contested_results']);
+        $this->assertSame([], $data['items']['reported_games']);
     }
 
     public function testAggregates(): void
     {
         $pending1 = $this->makeGame('pending_result', new \DateTime('2024-03-01'));
         $pending2 = $this->makeGame('pending_result', new \DateTime('2024-03-02'));
-        $this->makeGame('reported', null);
+        $reported = $this->makeGame('reported', null);
         $this->makeGame('reported', new \DateTime('2024-03-05')); // déjà reprogrammé : exclu
         $this->makeGame('played', new \DateTime('2024-03-03'));
         $contested = $this->makeGame('contested', new \DateTime('2024-03-04'));
@@ -135,6 +137,17 @@ class AdminDashboardControllerTest extends ApiTestCase
         $this->assertSame($this->division->getId(), $data['items']['pending_results'][0]['division_id']);
         $this->assertSame($this->team1->getId(), $data['items']['pending_results'][0]['team1']['id']);
         $this->assertCount(2, $data['items']['pending_registrations']);
+
+        $this->assertCount(1, $data['items']['contested_results']);
+        $item = $data['items']['contested_results'][0];
+        $this->assertSame($result->getId(), $item['id']);
+        $this->assertSame($contested->getId(), $item['game_id']);
+        $this->assertSame($this->division->getId(), $item['division_id']);
+        $this->assertSame(4, $item['score1']);
+        $this->assertSame(2, $item['score2']);
+        $this->assertSame($this->team1->getId(), $item['team']['id']);
+        $this->assertSame([$reported->getId()], array_column($data['items']['reported_games'], 'id'));
+        $this->assertNull($data['items']['reported_games'][0]['date']);
         $this->assertSame($this->season->getId(), $data['items']['pending_registrations'][0]['season_id']);
     }
 }
