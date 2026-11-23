@@ -3,6 +3,7 @@
 namespace App\Tests\Functional\Controller;
 
 use App\Tests\Functional\ApiTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class AdminConfigControllerTest extends ApiTestCase
 {
@@ -58,7 +59,7 @@ class AdminConfigControllerTest extends ApiTestCase
         $this->assertNull($data['matchs_channel_id']);
     }
 
-    /** @dataProvider invalidPayloads */
+    #[DataProvider('invalidPayloads')]
     public function testValidation(array $payload): void
     {
         $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
