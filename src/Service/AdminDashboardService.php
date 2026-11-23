@@ -32,7 +32,67 @@ class AdminDashboardService
             'reported_games' => $this->countGamesByStatus(self::STATUS_REPORTED, true),
             'pending_registrations' => $this->countPendingRegistrations(),
             'division_progress' => $this->getDivisionProgress(),
+            'items' => [
+                'pending_results' => $this->listPendingResults(),
+                'pending_registrations' => $this->listPendingRegistrations(),
+            ],
         ];
+    }
+
+    /**
+     * Liste des matchs en statut pending_result.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function listPendingResults(): array
+    {
+        $games = $this->entityManager->createQueryBuilder()
+            ->select('g', 'd', 't1', 't2')
+            ->from(Game::class, 'g')
+            ->join('g.status', 's')
+            ->leftJoin('g.division', 'd')
+            ->leftJoin('g.team1', 't1')
+            ->leftJoin('g.team2', 't2')
+            ->where('s.name = :status')
+            ->setParameter('status', self::STATUS_PENDING_RESULT)
+            ->orderBy('g.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return array_map(static fn (Game $g): array => [
+            'id' => $g->getId(),
+            'division_id' => $g->getDivision()?->getId(),
+            'division_name' => $g->getDivision()?->getName(),
+            'date' => $g->getDate()?->format(\DATE_ATOM),
+            'team1' => ['id' => $g->getTeam1()?->getId(), 'name' => $g->getTeam1()?->getName()],
+            'team2' => ['id' => $g->getTeam2()?->getId(), 'name' => $g->getTeam2()?->getName()],
+        ], $games);
+    }
+
+    /**
+     * Liste des inscriptions en attente.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function listPendingRegistrations(): array
+    {
+        $registrations = $this->entityManager->createQueryBuilder()
+            ->select('r', 'se', 't')
+            ->from(Registration::class, 'r')
+            ->leftJoin('r.season', 'se')
+            ->leftJoin('r.team', 't')
+            ->where('r.status = :status')
+            ->setParameter('status', Registration::STATUS_PENDING)
+            ->orderBy('r.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return array_map(static fn (Registration $r): array => [
+            'id' => $r->getId(),
+            'season_id' => $r->getSeason()?->getId(),
+            'season_name' => $r->getSeason()?->getName(),
+            'team' => ['id' => $r->getTeam()?->getId(), 'name' => $r->getTeam()?->getName()],
+        ], $registrations);
     }
 
     /**
