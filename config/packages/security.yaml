@@ -63,6 +63,8 @@ security:
         - { path: ^/api/auth/discord$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord/callback$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord/bot$, roles: PUBLIC_ACCESS }
+        # verify/refresh : token vérifié dans le contrôleur (401 problem+json avec detail)
+        - { path: ^/api/auth/(verify|refresh)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth, roles: ROLE_USER }
         # User profile endpoints accessible to any authenticated user
         - { path: ^/api/users/me, roles: ROLE_USER, methods: [GET] }

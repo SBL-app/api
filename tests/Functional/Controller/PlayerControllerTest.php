@@ -10,6 +10,13 @@ use App\Entity\Season;
 
 class PlayerControllerTest extends ApiTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Écritures (POST/PUT/DELETE) : ROLE_API requis, sinon 401
+        $this->authenticateAsApi();
+    }
+
     public function testGetPlayersEmpty(): void
     {
         $response = $this->jsonRequest('GET', '/api/players');

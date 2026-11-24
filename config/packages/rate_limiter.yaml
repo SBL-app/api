@@ -12,3 +12,17 @@ framework:
             policy: 'sliding_window'
             limit: 20
             interval: '1 minute'
+
+when@test:
+    framework:
+        rate_limiter:
+            # Les tests fonctionnels partagent la même IP : on relève les limites d'auth
+            # pour éviter les 429 parasites (client_logs garde sa limite, testée).
+            auth_login:
+                policy: 'sliding_window'
+                limit: 100000
+                interval: '1 minute'
+            auth_api_key:
+                policy: 'sliding_window'
+                limit: 100000
+                interval: '1 minute'
