@@ -6,6 +6,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
+use App\Entity\User;
 
 /**
  * Classe de base pour les tests fonctionnels
@@ -111,6 +112,26 @@ abstract class ApiTestCase extends WebTestCase
         // Pour l'instant, retourne un tableau vide
         // À implémenter si l'authentification JWT est nécessaire pour les tests
         return [];
+    }
+
+    /**
+     * Authentifie le client comme un utilisateur sur le firewall « api »
+     * (endpoints en écriture, ROLE_API requis).
+     */
+    protected function authenticateAsApi(array $roles = ['ROLE_USER', 'ROLE_API']): User
+    {
+        $user = new User();
+        $user->setUsername('test_api_' . uniqid());
+        $user->setPassword('hashed');
+        $user->setRoles($roles);
+        $user->setIsActive(true);
+
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($user, 'api');
+
+        return $user;
     }
 
     /**
