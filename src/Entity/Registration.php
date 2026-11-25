@@ -8,6 +8,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: RegistrationRepository::class)]
 class Registration
 {
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_APPROVED = 'approved';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -18,6 +21,9 @@ class Registration
 
     #[ORM\ManyToOne(inversedBy: 'registrations')]
     private ?Team $team = null;
+
+    #[ORM\Column(length: 20, options: ['default' => 'pending'])]
+    private string $status = self::STATUS_PENDING;
 
     public function getId(): ?int
     {
@@ -44,6 +50,18 @@ class Registration
     public function setTeam(?Team $team): static
     {
         $this->team = $team;
+
+        return $this;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(string $status): static
+    {
+        $this->status = $status;
 
         return $this;
     }
