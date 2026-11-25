@@ -224,7 +224,10 @@ class SeasonController extends BaseController
             'end_date' => $season->getEndDate()->format('d-m-Y'),
             'total_games' => $stats['total_games'],
             'finished_games' => $stats['finished_games'],
-            'percentage' => number_format($stats['percentage'], (int)$decimal)
+            'percentage' => number_format($stats['percentage'], (int)$decimal),
+            'total' => $stats['total_games'],
+            'finished' => $stats['finished_games'],
+            'pourcent' => number_format($stats['percentage'], (int)$decimal)
         ]);
     }
 

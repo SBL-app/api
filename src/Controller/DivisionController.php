@@ -78,6 +78,7 @@ class DivisionController extends BaseController
         TeamStatRepository $teamStatRepository,
         TeamRepository $teamRepository,
     ): JsonResponse {
+        $this->findEntityOrFail("App\\Entity\\Season", $seasonId, "Season");
         $divisions = $divisionRepository->findBy(["season" => $seasonId]);
 
         $data = array_map(function ($division) use (
