@@ -150,4 +150,55 @@ class AdminDashboardControllerTest extends ApiTestCase
         $this->assertNull($data['items']['reported_games'][0]['date']);
         $this->assertSame($this->season->getId(), $data['items']['pending_registrations'][0]['season_id']);
     }
+
+    public function testAggregatesAreSplitPerDivision(): void
+    {
+        $division2 = (new Division())->setName('D2')->setSeason($this->season);
+        $emptyDivision = (new Division())->setName('D3')->setSeason($this->season);
+        $this->entityManager->persist($division2);
+        $this->entityManager->persist($emptyDivision);
+        $this->entityManager->flush();
+
+        $this->makeGame('pending_result', new \DateTime('2024-03-01'));
+        $this->makeGame('played', new \DateTime('2024-03-02'));
+        foreach (['pending_result', 'pending_result', 'played'] as $st) {
+            $g = $this->makeGame($st, new \DateTime('2024-03-03'));
+            $g->setDivision($division2);
+        }
+        $this->entityManager->flush();
+
+        $this->authenticateAsApi(['ROLE_USER', 'ROLE_ADMIN']);
+        $data = $this->jsonRequest('GET', '/api/admin/dashboard');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSame(3, $data['pending_results']['total']);
+        $byDivision = array_column($data['pending_results']['by_division'], 'count', 'division_id');
+        $this->assertSame([$this->division->getId() => 1, $division2->getId() => 2], $byDivision);
+
+        $progress = array_column($data['division_progress'], null, 'division_id');
+        $this->assertSame(['played' => 1, 'total' => 2], [
+            'played' => $progress[$this->division->getId()]['played'],
+            'total' => $progress[$this->division->getId()]['total'],
+        ]);
+        $this->assertSame(1, $progress[$division2->getId()]['played']);
+        $this->assertSame(3, $progress[$division2->getId()]['total']);
+        // Division sans match : présente avec 0/0
+        $this->assertSame(0, $progress[$emptyDivision->getId()]['played']);
+        $this->assertSame(0, $progress[$emptyDivision->getId()]['total']);
+    }
+
+    public function testAdminOnlyAcrossAllDashboardEndpoints(): void
+    {
+        // Le dashboard et ses actions rapides refusent tous un non-admin (403).
+        $this->authenticateAsApi(['ROLE_USER', 'ROLE_API']);
+        foreach ([
+            ['GET', '/api/admin/dashboard'],
+            ['POST', '/api/admin/games/1/validate-result'],
+            ['POST', '/api/admin/games/1/remind'],
+            ['POST', '/api/admin/divisions/1/close'],
+        ] as [$method, $url]) {
+            $this->jsonRequest($method, $url);
+            $this->assertResponseStatusCode(403);
+        }
+    }
 }
