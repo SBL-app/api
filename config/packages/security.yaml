@@ -67,7 +67,7 @@ security:
         - { path: ^/api/auth/(verify|refresh)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth, roles: ROLE_USER }
         # User profile endpoints accessible to any authenticated user
-        - { path: ^/api/users/me, roles: ROLE_USER, methods: [GET] }
+        - { path: ^/api/users/me, roles: ROLE_USER, methods: [GET, PUT] }
         # Team management endpoints accessible to any authenticated user
         - { path: ^/api/teams/\d+/members, roles: ROLE_USER }
         # Dashboard admin : authentification requise (401), rôle ROLE_ADMIN vérifié dans le contrôleur (403)
