@@ -8,6 +8,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Psr\Log\LoggerInterface;
 
 #[AsEventListener(event: KernelEvents::EXCEPTION, priority: 10)]
@@ -25,6 +27,11 @@ class ApiProblemExceptionListener
         }
 
         $exception = $event->getThrowable();
+
+        // Laisse le firewall Symfony gérer 401 (non authentifié) / 403 (accès refusé)
+        if ($exception instanceof AuthenticationException || $exception instanceof AccessDeniedException) {
+            return;
+        }
 
         if ($exception instanceof ApiProblemException) {
             $data = $exception->toArray();

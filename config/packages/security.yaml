@@ -63,6 +63,8 @@ security:
         - { path: ^/api/auth/discord$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord/callback$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/discord/bot$, roles: PUBLIC_ACCESS }
+        # verify/refresh : token vérifié dans le contrôleur (401 problem+json avec detail)
+        - { path: ^/api/auth/(verify|refresh)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth, roles: ROLE_USER }
         # User profile endpoints accessible to any authenticated user
         - { path: ^/api/users/me, roles: ROLE_USER, methods: [GET] }
@@ -72,10 +74,14 @@ security:
         - { path: ^/api/admin, roles: ROLE_USER, methods: [GET] }
         # Push subscription endpoints accessible to any authenticated user (ROLE_USER, not ROLE_API)
         - { path: ^/api/push/subscribe, roles: ROLE_USER }
+        # Appel service à service (bot) : authentifié par X-Service-Key dans le contrôleur
+        - { path: ^/api/push/send$, roles: PUBLIC_ACCESS }
         # Remontée des erreurs front : publique (limitée en débit côté contrôleur)
         - { path: ^/api/client-logs$, roles: PUBLIC_ACCESS, methods: [POST] }
         # Admin quick actions: 401/403 (ROLE_ADMIN) enforced in the controller
         - { path: ^/api/admin, roles: PUBLIC_ACCESS, methods: [POST] }
+        # Config admin : 401/403 (ROLE_ADMIN) gérés dans le contrôleur
+        - { path: ^/api/admin/config, roles: PUBLIC_ACCESS, methods: [PUT] }
         - { path: ^/api, roles: ROLE_API, methods: [POST, PUT, PATCH, DELETE] }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [GET] }
 
