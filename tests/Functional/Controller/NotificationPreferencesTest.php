@@ -28,25 +28,21 @@ class NotificationPreferencesTest extends ApiTestCase
 
         $this->assertResponseStatusCode(200);
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        $this->assertSame(['discord' => true, 'push' => false, 'mail' => false], $data['channels']);
-        $this->assertNull($data['email']);
+        $this->assertSame(['discord' => true, 'push' => false], $data['channels']);
+        $this->assertArrayNotHasKey('email', $data);
     }
 
-    public function testEnableAllChannelsWithEmail(): void
+    public function testEnablePush(): void
     {
         $this->login();
-        $this->jsonRequest('PUT', '/api/users/me/notification-preferences', [
-            'channels' => ['push' => true, 'mail' => true],
-            'email' => 'joueur@example.com',
-        ]);
+        $this->jsonRequest('PUT', '/api/users/me/notification-preferences', ['channels' => ['push' => true]]);
 
         $this->assertResponseStatusCode(200);
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        $this->assertSame(['discord' => true, 'push' => true, 'mail' => true], $data['channels']);
-        $this->assertSame('joueur@example.com', $data['email']);
+        $this->assertSame(['discord' => true, 'push' => true], $data['channels']);
     }
 
-    public function testMailRequiresEmail(): void
+    public function testRejectsMailChannel(): void
     {
         $this->login();
         $this->jsonRequest('PUT', '/api/users/me/notification-preferences', ['channels' => ['mail' => true]]);

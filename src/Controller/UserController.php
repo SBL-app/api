@@ -54,7 +54,7 @@ class UserController extends BaseController
 
     /**
      * PUT /api/users/me/notification-preferences
-     * Corps : {"channels": {"discord": true, "push": false, "mail": true}, "email": "a@b.c"}
+     * Corps : {"channels": {"discord": true, "push": false}
      */
     #[Route('/users/me/notification-preferences', name: 'app_user_me_notification_prefs_update', methods: ['PUT'])]
     public function updateNotificationPreferences(Request $request, EntityManagerInterface $em): JsonResponse
@@ -68,17 +68,6 @@ class UserController extends BaseController
         $data = json_decode($request->getContent(), true);
         if (!is_array($data)) {
             return $this->json(['error' => 'Invalid JSON body'], 422);
-        }
-
-        if (array_key_exists('email', $data)) {
-            $email = is_string($data['email']) ? trim($data['email']) : null;
-            if ($email === '') {
-                $email = null;
-            }
-            if ($email !== null && (strlen($email) > 180 || filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
-                return $this->json(['error' => 'Invalid email'], 422);
-            }
-            $user->setEmail($email);
         }
 
         if (isset($data['channels'])) {
@@ -97,10 +86,6 @@ class UserController extends BaseController
             $user->setNotificationChannels(array_unique($enabled));
         }
 
-        if ($user->wantsNotificationChannel(User::CHANNEL_MAIL) && $user->getEmail() === null) {
-            return $this->json(['error' => 'An email is required to enable mail notifications'], 422);
-        }
-
         $em->flush();
 
         return $this->json($this->formatPreferences($user));
@@ -113,7 +98,7 @@ class UserController extends BaseController
             $channels[$channel] = $user->wantsNotificationChannel($channel);
         }
 
-        return ['channels' => $channels, 'email' => $user->getEmail()];
+        return ['channels' => $channels];
     }
 
     #[Route('/users/me/teams', name: 'app_user_me_teams', methods: ['GET'])]

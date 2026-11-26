@@ -15,8 +15,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     public const CHANNEL_DISCORD = 'discord';
     public const CHANNEL_PUSH = 'push';
-    public const CHANNEL_MAIL = 'mail';
-    public const CHANNELS = [self::CHANNEL_DISCORD, self::CHANNEL_PUSH, self::CHANNEL_MAIL];
+    public const CHANNELS = [self::CHANNEL_DISCORD, self::CHANNEL_PUSH];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -56,10 +55,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $tokenInvalidatedAt = null;
 
-    #[ORM\Column(length: 180, nullable: true)]
-    private ?string $email = null;
-
-    /** Canaux de notification activés (discord, push, mail). Par défaut : discord seul. */
+    /** Canaux de notification activés (discord, push). Par défaut : discord seul. */
     #[ORM\Column(type: 'json')]
     private array $notificationChannels = [self::CHANNEL_DISCORD];
 
@@ -240,17 +236,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function invalidateAllTokens(): static
     {
         $this->tokenInvalidatedAt = new \DateTimeImmutable();
-        return $this;
-    }
-
-    public function getEmail(): ?string
-    {
-        return $this->email;
-    }
-
-    public function setEmail(?string $email): static
-    {
-        $this->email = $email;
         return $this;
     }
 
