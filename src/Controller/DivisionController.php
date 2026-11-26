@@ -8,7 +8,7 @@ use App\Repository\TeamStatRepository;
 use App\Repository\TeamRepository;
 use App\Repository\SeasonRepository;
 use App\Repository\GameStatusRepository;
-use App\Service\PushNotificationService;
+use App\Service\NotificationService;
 use App\Service\SeasonClosureService;
 use App\Service\TeamStatCalculatorService;
 use Symfony\Component\HttpFoundation\Response;

@@ -6,7 +6,9 @@ use App\Entity\User;
 use App\Entity\TeamMember;
 use App\Exception\ApiProblemException;
 use App\Repository\TeamMemberRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api')]
@@ -36,6 +38,67 @@ class UserController extends BaseController
         }
 
         return $this->json($this->formatEntityData($user));
+    }
+
+    #[Route('/users/me/notification-preferences', name: 'app_user_me_notification_prefs', methods: ['GET'])]
+    public function getNotificationPreferences(): JsonResponse
+    {
+        try {
+            $user = $this->getAuthenticatedUser();
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            throw ApiProblemException::unauthorized($e->getMessage());
+        }
+
+        return $this->json($this->formatPreferences($user));
+    }
+
+    /**
+     * PUT /api/users/me/notification-preferences
+     * Corps : {"channels": {"discord": true, "push": false}
+     */
+    #[Route('/users/me/notification-preferences', name: 'app_user_me_notification_prefs_update', methods: ['PUT'])]
+    public function updateNotificationPreferences(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        try {
+            $user = $this->getAuthenticatedUser();
+        } catch (\Symfony\Component\Security\Core\Exception\AccessDeniedException $e) {
+            throw ApiProblemException::unauthorized($e->getMessage());
+        }
+
+        $data = json_decode($request->getContent(), true);
+        if (!is_array($data)) {
+            return $this->json(['error' => 'Invalid JSON body'], 422);
+        }
+
+        if (isset($data['channels'])) {
+            if (!is_array($data['channels'])) {
+                return $this->json(['error' => 'channels must be an object'], 422);
+            }
+            $enabled = $user->getNotificationChannels();
+            foreach ($data['channels'] as $channel => $on) {
+                if (!in_array($channel, User::CHANNELS, true) || !is_bool($on)) {
+                    return $this->json(['error' => 'Unknown channel or non-boolean value: ' . $channel], 422);
+                }
+                $enabled = $on
+                    ? array_merge($enabled, [$channel])
+                    : array_diff($enabled, [$channel]);
+            }
+            $user->setNotificationChannels(array_unique($enabled));
+        }
+
+        $em->flush();
+
+        return $this->json($this->formatPreferences($user));
+    }
+
+    private function formatPreferences(User $user): array
+    {
+        $channels = [];
+        foreach (User::CHANNELS as $channel) {
+            $channels[$channel] = $user->wantsNotificationChannel($channel);
+        }
+
+        return ['channels' => $channels];
     }
 
     #[Route('/users/me/teams', name: 'app_user_me_teams', methods: ['GET'])]

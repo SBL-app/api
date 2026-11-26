@@ -6,7 +6,7 @@ use App\Message\MatchResultTimeoutMessage;
 use App\MessageHandler\MatchResultTimeoutHandler;
 use App\Repository\MatchResultRepository;
 use App\Repository\UserRepository;
-use App\Service\PushNotificationService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -16,14 +16,14 @@ class MatchResultTimeoutHandlerTest extends TestCase
 {
     private MatchResultRepository $resultRepository;
     private UserRepository $userRepository;
-    private PushNotificationService $pushNotificationService;
+    private NotificationService $pushNotificationService;
     private EntityManagerInterface $entityManager;
 
     protected function setUp(): void
     {
         $this->resultRepository = $this->createMock(MatchResultRepository::class);
         $this->userRepository = $this->createMock(UserRepository::class);
-        $this->pushNotificationService = $this->createMock(PushNotificationService::class);
+        $this->pushNotificationService = $this->createMock(NotificationService::class);
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
     }
 

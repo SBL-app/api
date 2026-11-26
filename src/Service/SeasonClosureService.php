@@ -19,7 +19,7 @@ class SeasonClosureService
         private GameRepository $gameRepository,
         private DivisionRepository $divisionRepository,
         private TeamStatRepository $teamStatRepository,
-        private PushNotificationService $pushNotificationService,
+        private NotificationService $pushNotificationService,
         private LoggerInterface $logger,
     ) {
     }

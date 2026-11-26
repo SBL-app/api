@@ -4,7 +4,7 @@ namespace App\MessageHandler;
 
 use App\Message\MatchReminderMessage;
 use App\Repository\GameRepository;
-use App\Service\PushNotificationService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -14,7 +14,7 @@ class MatchReminderHandler
 {
     public function __construct(
         private GameRepository $gameRepository,
-        private PushNotificationService $pushNotificationService,
+        private NotificationService $pushNotificationService,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}

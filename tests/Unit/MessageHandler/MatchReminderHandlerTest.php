@@ -9,7 +9,7 @@ use App\Entity\User;
 use App\Message\MatchReminderMessage;
 use App\MessageHandler\MatchReminderHandler;
 use App\Repository\GameRepository;
-use App\Service\PushNotificationService;
+use App\Service\NotificationService;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -18,14 +18,14 @@ use Psr\Log\NullLogger;
 class MatchReminderHandlerTest extends TestCase
 {
     private GameRepository $gameRepository;
-    private PushNotificationService $pushNotificationService;
+    private NotificationService $pushNotificationService;
     private EntityManagerInterface $entityManager;
     private MatchReminderHandler $handler;
 
     protected function setUp(): void
     {
         $this->gameRepository = $this->createMock(GameRepository::class);
-        $this->pushNotificationService = $this->createMock(PushNotificationService::class);
+        $this->pushNotificationService = $this->createMock(NotificationService::class);
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
 
         $this->handler = new MatchReminderHandler(
